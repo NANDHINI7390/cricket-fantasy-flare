@@ -16,7 +16,7 @@ const Hero = () => {
     <section className="relative h-screen flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img
-          src="/cricket-stadium.jpg"
+          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpEM8fdTpCEnlSrnhzc8ebosd1M4tx8VBvEA&s"
           alt="Cricket Stadium"
           className="w-full h-full object-cover"
           loading="lazy"
