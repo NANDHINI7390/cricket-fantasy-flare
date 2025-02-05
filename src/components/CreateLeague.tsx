@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Trophy, Users, Zap } from "lucide-react";
+import { toast } from "sonner";
 
 const features = [
   {
@@ -20,6 +21,10 @@ const features = [
 ];
 
 const CreateLeague = () => {
+  const handleCreateLeague = () => {
+    toast.info("League creation coming soon! Stay tuned for updates.");
+  };
+
   return (
     <section className="py-16 px-4">
       <div className="max-w-6xl mx-auto">
@@ -69,6 +74,7 @@ const CreateLeague = () => {
             viewport={{ once: true }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={handleCreateLeague}
             className="bg-primary px-8 py-3 rounded-lg text-white font-semibold text-lg shadow-lg hover:bg-primary/90 transition-colors"
           >
             Create League Now

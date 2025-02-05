@@ -1,11 +1,22 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Hero = () => {
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    // For now, we'll show a toast since user authentication isn't implemented yet
+    toast.info("Sign up functionality coming soon!");
+    // This would typically navigate to a sign-up page
+    // navigate("/signup");
+  };
+
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img
-          src="/cricket-bg.jpg"
+          src="/cricket-stadium.jpg"
           alt="Cricket Stadium"
           className="w-full h-full object-cover"
           loading="lazy"
@@ -41,6 +52,7 @@ const Hero = () => {
           transition={{ delay: 0.6, duration: 0.4 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={handleGetStarted}
           className="bg-primary px-8 py-3 rounded-lg text-white font-semibold text-lg shadow-lg hover:bg-primary/90 transition-colors"
         >
           Get Started

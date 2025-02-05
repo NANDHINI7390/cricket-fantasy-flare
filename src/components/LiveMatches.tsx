@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 const matches = [
   {
@@ -27,6 +28,11 @@ const matches = [
 ];
 
 const LiveMatches = () => {
+  const handleViewDetails = (matchId: number) => {
+    toast.info("Match details feature coming soon!");
+    console.log("Viewing match details for match:", matchId);
+  };
+
   return (
     <section className="py-16 px-4 bg-gray-50">
       <div className="max-w-6xl mx-auto">
@@ -64,7 +70,10 @@ const LiveMatches = () => {
                 </div>
               </div>
               
-              <button className="w-full mt-6 bg-primary/10 text-primary font-medium py-2 rounded-lg hover:bg-primary/20 transition-colors">
+              <button 
+                onClick={() => handleViewDetails(match.id)}
+                className="w-full mt-6 bg-primary/10 text-primary font-medium py-2 rounded-lg hover:bg-primary/20 transition-colors"
+              >
                 View Details
               </button>
             </motion.div>
