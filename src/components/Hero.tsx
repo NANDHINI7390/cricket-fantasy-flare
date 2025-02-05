@@ -10,13 +10,13 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative h-screen flex flex-col items-center justify-center bg-gray-900 text-white px-6 md:px-12">
+    <section className="relative h-screen flex flex-col items-center justify-center bg-gray-900 text-white px-6 md:px-12 overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src="https://media.istockphoto.com/id/537434497/photo/cricket-stadium-and-ball.jpg?s=612x612&w=0&k=20&c=LTZK5vjAfGu8_ScKvJy6fnKMYOWAy1nVFQc8TimPHLE="
+          src="https://media.istockphoto.com/id/537434497/photo/cricket-stadium-and-ball.jpg?s=2048x2048&w=0&k=20&c=LTZK5vjAfGu8_ScKvJy6fnKMYOWAy1nVFQc8TimPHLE="
           alt="Cricket Stadium"
-          className="w-full h-full min-h-[400px] md:min-h-[600px] object-cover filter contrast-110"
+          className="w-full h-full object-cover min-h-screen bg-center bg-no-repeat"
           loading="lazy"
         />
         <div className="absolute inset-0 bg-black/40" />
