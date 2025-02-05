@@ -15,12 +15,13 @@ const Hero = () => {
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <img
-          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpEM8fdTpCEnlSrnhzc8ebosd1M4tx8VBvEA&s"
-          alt="Cricket Stadium"
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+      <img
+  src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpEM8fdTpCEnlSrnhzc8ebosd1M4tx8VBvEA&s"
+  alt="Cricket Stadium"
+  className="w-full h-auto max-h-[500px] md:max-h-[700px] object-cover rounded-lg shadow-lg"
+  loading="lazy"
+/>
+
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/50" />
       </div>
       
