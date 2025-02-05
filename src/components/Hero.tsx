@@ -14,12 +14,12 @@ const Hero = () => {
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpEM8fdTpCEnlSrnhzc8ebosd1M4tx8VBvEA&s"
+          src="https://upload.wikimedia.org/wikipedia/commons/5/5d/Melbourne_Cricket_Ground_panorama.jpg"
           alt="Cricket Stadium"
-          className="w-full h-full object-cover opacity-80"
+          className="w-full h-full min-h-[400px] md:min-h-[600px] object-cover filter contrast-110"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-black/40" />
       </div>
 
       {/* Content */}
