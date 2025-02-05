@@ -10,8 +10,8 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative h-screen flex items-center justify-center bg-gray-900">
-      {/* Background Image with Dark Overlay */}
+    <section className="relative h-screen flex flex-col items-center justify-center bg-gray-900 text-white px-6 md:px-12">
+      {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
           src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpEM8fdTpCEnlSrnhzc8ebosd1M4tx8VBvEA&s"
@@ -19,22 +19,22 @@ const Hero = () => {
           className="w-full h-full object-cover opacity-80"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-black/50" /> 
+        <div className="absolute inset-0 bg-black/60" />
       </div>
 
-      {/* Content Section */}
+      {/* Content */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 text-center p-6 sm:p-12 bg-gray-800/80 border border-gray-700 shadow-xl rounded-xl w-[90%] max-w-3xl"
+        className="relative z-10 text-center w-full max-w-3xl"
       >
         {/* Title */}
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.8 }}
-          className="text-4xl sm:text-5xl font-extrabold text-white mb-6 leading-tight"
+          className="text-4xl sm:text-5xl font-extrabold uppercase tracking-wide"
         >
           Fantasy Cricket Elite 🏏
         </motion.h1>
@@ -44,23 +44,31 @@ const Hero = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.8 }}
-          className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-8"
+          className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mt-4 leading-relaxed"
         >
-          Build your dream team. Compete in leagues. Win big.
+          Build your ultimate team, dominate the leaderboard, and win exclusive rewards.
         </motion.p>
 
-        {/* CTA Button */}
-        <motion.button
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleGetStarted}
-          className="px-8 py-3 bg-blue-500 text-white text-lg font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-all"
+        {/* Call-To-Action Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
+          className="mt-8 flex flex-col sm:flex-row gap-4 justify-center"
         >
-          Get Started 🚀
-        </motion.button>
+          <button
+            onClick={handleGetStarted}
+            className="px-6 py-3 bg-blue-500 text-white text-lg font-semibold rounded-md shadow-md hover:bg-blue-600 transition-all"
+          >
+            Get Started 🚀
+          </button>
+          <button
+            onClick={() => navigate("/learn-more")}
+            className="px-6 py-3 border border-white text-white text-lg font-semibold rounded-md hover:bg-white hover:text-black transition-all"
+          >
+            Learn More
+          </button>
+        </motion.div>
       </motion.div>
     </section>
   );
