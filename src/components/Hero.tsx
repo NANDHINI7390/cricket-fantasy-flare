@@ -37,7 +37,7 @@ const Hero = () => {
           transition={{ delay: 0.2, duration: 0.8 }}
           className="text-4xl sm:text-5xl font-extrabold uppercase tracking-wide"
         >
-          Fantasy Cricket Elite 🏏
+          Fantasy Cricket Elite 
         </motion.h1>
 
         {/* Subtitle */}
