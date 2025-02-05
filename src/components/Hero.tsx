@@ -14,7 +14,7 @@ const Hero = () => {
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src="https://upload.wikimedia.org/wikipedia/commons/5/5d/Melbourne_Cricket_Ground_panorama.jpg"
+          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQI3mmgz8dmTIBgcJQ1DCtw83vS2d9AhONs8w&s"
           alt="Cricket Stadium"
           className="w-full h-full min-h-[400px] md:min-h-[600px] object-cover filter contrast-110"
           loading="lazy"
