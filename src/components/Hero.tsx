@@ -6,12 +6,11 @@ const Hero = () => {
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    toast.info("Sign up functionality coming soon!");
+    navigate("/auth");
   };
 
   return (
     <section className="relative h-[80vh] flex flex-col items-center justify-center bg-gray-900 text-white px-6 md:px-12 overflow-hidden">
-
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
