@@ -51,7 +51,7 @@ const Navbar = () => {
             onClick={() => navigate("/")}
           >
             <img
-              src="https://images.pexels.com/photos/3621104/pexels-photo-3621104.jpeg?auto=compress&cs=tinysrgb&w=400"
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSFF8qxxTwvGkH5c8LzKl1BQZKqdp2CV3QV5nUEsqSg1ygegLmqRygjOUTpWK8UgsU&s"
               alt="Cricket Fantasy Elite"
               className="h-10 w-auto rounded-full shadow-md"
             />
