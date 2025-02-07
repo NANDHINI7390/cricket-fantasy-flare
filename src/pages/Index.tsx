@@ -1,6 +1,8 @@
+
 import Hero from "../components/Hero";
 import LiveMatches from "../components/LiveMatches";
 import CreateLeague from "../components/CreateLeague";
+import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 
 const Index = () => {
@@ -11,6 +13,7 @@ const Index = () => {
       transition={{ duration: 0.5 }}
       className="min-h-screen bg-white"
     >
+      <Navbar />
       <Hero />
       <LiveMatches />
       <CreateLeague />

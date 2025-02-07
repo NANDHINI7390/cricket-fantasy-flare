@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -10,7 +11,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative h-[80vh] flex flex-col items-center justify-center bg-gray-900 text-white px-6 md:px-12 overflow-hidden">
+    <section className="relative h-[80vh] flex flex-col items-center justify-center bg-gray-900 text-white px-6 md:px-12 overflow-hidden mt-16">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
