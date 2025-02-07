@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Home, Info } from "lucide-react";
+import { Menu, Home, Info, HelpCircle } from "lucide-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +13,7 @@ const Navbar = () => {
     { label: "Features", path: "/features" },
     { label: "Leagues", path: "/leagues" },
     { label: "About", icon: <Info className="w-5 h-5" />, path: "/about" },
-    { label: "FAQ", path: "/faq" },
+    { label: "FAQ", icon: <HelpCircle className="w-5 h-5" />, path: "/faq" },
   ];
 
   const toggleMenu = () => setIsOpen(!isOpen);
