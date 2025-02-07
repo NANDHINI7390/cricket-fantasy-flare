@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Home, Info } from "lucide-react";
+import { Menu, Home, Info, QuestionMarkCircle } from "lucide-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +12,7 @@ const Navbar = () => {
     { label: "Features", path: "/features" },
     { label: "Leagues", path: "/leagues" },
     { label: "About", icon: <Info className="w-5 h-5" />, path: "/about" },
-    { label: "FAQ", path: "/faq" },
+    { label: "FAQ", icon: <QuestionMarkCircle className="w-5 h-5" />, path: "/faq" },
   ];
 
   const toggleMenu = () => setIsOpen(!isOpen);
@@ -39,7 +38,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-900 to-blue-900 backdrop-blur-md border-b border-gray-700">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-gray-800 to-gray-900 backdrop-blur-md border-b border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand Name with animation on hover */}
@@ -107,7 +106,7 @@ const Navbar = () => {
             animate="visible"
             exit="exit"
             variants={mobileMenuVariants}
-            className="md:hidden bg-gradient-to-b from-purple-900 to-blue-900"
+            className="md:hidden bg-gradient-to-b from-gray-800 to-gray-900"
           >
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {menuItems.map((item) => (
