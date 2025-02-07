@@ -24,10 +24,16 @@ const Navbar = () => {
     hover: { scale: 1.1, rotate: 2, transition: { type: "spring", stiffness: 500 } },
   };
 
+  // Variants for desktop active underline on hover
+  const underlineVariants = {
+    hidden: { width: 0 },
+    visible: { width: "100%", transition: { duration: 0.3 } },
+  };
+
   // Animation variants for the mobile menu container
   const mobileMenuVariants = {
     hidden: { opacity: 0, height: 0 },
-    visible: { opacity: 1, height: "auto", transition: { duration: 0.4 } },
+    visible: { opacity: 1, height: "auto", transition: { duration: 0.4, when: "beforeChildren", staggerChildren: 0.1 } },
     exit: { opacity: 0, height: 0, transition: { duration: 0.3 } },
   };
 
@@ -63,10 +69,17 @@ const Navbar = () => {
                 initial="hidden"
                 animate="visible"
                 whileHover="hover"
-                className="text-white px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 transition-all"
+                className="relative text-white px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 transition-all"
               >
                 {item.icon && item.icon}
                 <span>{item.label}</span>
+                {/* Underline on hover for desktop */}
+                <motion.div
+                  variants={underlineVariants}
+                  initial="hidden"
+                  whileHover="visible"
+                  className="absolute -bottom-1 left-0 h-0.5 bg-white rounded-full"
+                />
               </motion.button>
             ))}
           </div>
@@ -85,7 +98,7 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}  
+      {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
