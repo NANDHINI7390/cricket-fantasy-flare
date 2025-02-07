@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Home, Info, QuestionMarkCircle } from "lucide-react";
+import { Menu, Home, Info } from "lucide-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,7 +13,7 @@ const Navbar = () => {
     { label: "Features", path: "/features" },
     { label: "Leagues", path: "/leagues" },
     { label: "About", icon: <Info className="w-5 h-5" />, path: "/about" },
-    { label: "FAQ", icon: <QuestionMarkCircle className="w-5 h-5" />, path: "/faq" },
+    { label: "FAQ", path: "/faq" },
   ];
 
   const toggleMenu = () => setIsOpen(!isOpen);
@@ -38,23 +39,23 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-900 backdrop-blur-md border-b border-gray-800">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1A1F2C] backdrop-blur-md border-b border-gray-800/50 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand Name with animation on hover */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0, transition: { type: "spring", stiffness: 100 } }}
-            whileHover={{ scale: 1.1, rotate: -2 }}
-            className="flex items-center cursor-pointer"
+            whileHover={{ scale: 1.05, rotate: -2 }}
+            className="flex items-center cursor-pointer group"
             onClick={() => navigate("/")}
           >
             <img
               src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSFF8qxxTwvGkH5c8LzKl1BQZKqdp2CV3QV5nUEsqSg1ygegLmqRygjOUTpWK8UgsU&s"
               alt="Cricket Fantasy Elite"
-              className="h-10 w-auto rounded-full shadow-md"
+              className="h-10 w-auto rounded-full shadow-md transition-transform group-hover:shadow-lg"
             />
-            <span className="ml-3 text-2xl font-extrabold text-white">
+            <span className="ml-3 text-2xl font-extrabold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
               Fantasy Cricket Elite
             </span>
           </motion.div>
@@ -69,7 +70,7 @@ const Navbar = () => {
                 initial="hidden"
                 animate="visible"
                 whileHover="hover"
-                className="relative text-white px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 transition-all"
+                className="relative text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 transition-all"
               >
                 {item.icon && item.icon}
                 <span>{item.label}</span>
@@ -78,7 +79,7 @@ const Navbar = () => {
                   variants={underlineVariants}
                   initial="hidden"
                   whileHover="visible"
-                  className="absolute -bottom-1 left-0 h-0.5 bg-white rounded-full"
+                  className="absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-white/80 to-white/20 rounded-full"
                 />
               </motion.button>
             ))}
@@ -88,9 +89,9 @@ const Navbar = () => {
           <div className="md:hidden">
             <motion.button
               onClick={toggleMenu}
-              whileHover={{ scale: 1.2, rotate: 5 }}
-              whileTap={{ scale: 0.9, rotate: -5 }}
-              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-white"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-white/20"
             >
               <Menu className="h-6 w-6" />
             </motion.button>
@@ -106,7 +107,7 @@ const Navbar = () => {
             animate="visible"
             exit="exit"
             variants={mobileMenuVariants}
-            className="md:hidden bg-gray-900"
+            className="md:hidden bg-[#1A1F2C]/95 backdrop-blur-lg border-b border-gray-800/50"
           >
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {menuItems.map((item) => (
@@ -120,7 +121,7 @@ const Navbar = () => {
                   initial="hidden"
                   animate="visible"
                   whileHover="hover"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-white transition-all flex items-center space-x-2 w-full text-left"
+                  className="block w-full px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 transition-all flex items-center space-x-2 text-left"
                 >
                   {item.icon && item.icon}
                   <span>{item.label}</span>
