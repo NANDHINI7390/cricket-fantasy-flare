@@ -24,8 +24,21 @@ const Navbar = () => {
     hover: { scale: 1.1, rotate: 2, transition: { type: "spring", stiffness: 500 } },
   };
 
+  // Variants for desktop active underline on hover
+  const underlineVariants = {
+    hidden: { width: 0 },
+    visible: { width: "100%", transition: { duration: 0.3 } },
+  };
+
+  // Animation variants for the mobile menu container
+  const mobileMenuVariants = {
+    hidden: { opacity: 0, height: 0 },
+    visible: { opacity: 1, height: "auto", transition: { duration: 0.4, when: "beforeChildren", staggerChildren: 0.1 } },
+    exit: { opacity: 0, height: 0, transition: { duration: 0.3 } },
+  };
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-900 backdrop-blur-md border-b border-gray-800">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-900 to-blue-900 backdrop-blur-md border-b border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand Name with animation on hover */}
@@ -56,10 +69,17 @@ const Navbar = () => {
                 initial="hidden"
                 animate="visible"
                 whileHover="hover"
-                className="text-white px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 transition-all"
+                className="relative text-white px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 transition-all"
               >
                 {item.icon && item.icon}
                 <span>{item.label}</span>
+                {/* Underline on hover for desktop */}
+                <motion.div
+                  variants={underlineVariants}
+                  initial="hidden"
+                  whileHover="visible"
+                  className="absolute -bottom-1 left-0 h-0.5 bg-white rounded-full"
+                />
               </motion.button>
             ))}
           </div>
@@ -70,7 +90,7 @@ const Navbar = () => {
               onClick={toggleMenu}
               whileHover={{ scale: 1.2, rotate: 5 }}
               whileTap={{ scale: 0.9, rotate: -5 }}
-              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-white"
+              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-white"
             >
               <Menu className="h-6 w-6" />
             </motion.button>
@@ -82,10 +102,11 @@ const Navbar = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-gray-900"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={mobileMenuVariants}
+            className="md:hidden bg-gradient-to-b from-purple-900 to-blue-900"
           >
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {menuItems.map((item) => (
