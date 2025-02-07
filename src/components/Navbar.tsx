@@ -38,7 +38,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-gray-800 to-gray-900 backdrop-blur-md border-b border-gray-700">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-900 backdrop-blur-md border-b border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand Name with animation on hover */}
@@ -90,7 +90,7 @@ const Navbar = () => {
               onClick={toggleMenu}
               whileHover={{ scale: 1.2, rotate: 5 }}
               whileTap={{ scale: 0.9, rotate: -5 }}
-              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-white"
+              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-white"
             >
               <Menu className="h-6 w-6" />
             </motion.button>
@@ -106,7 +106,7 @@ const Navbar = () => {
             animate="visible"
             exit="exit"
             variants={mobileMenuVariants}
-            className="md:hidden bg-gradient-to-b from-gray-800 to-gray-900"
+            className="md:hidden bg-gray-900"
           >
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {menuItems.map((item) => (
