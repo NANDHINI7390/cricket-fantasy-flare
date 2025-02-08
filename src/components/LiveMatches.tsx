@@ -39,10 +39,10 @@ const LiveMatches = () => {
   };
 
   return (
-    <section className="py-16 px-6 bg-gradient-to-b from-gray-50 to-gray-100">
+    <section className="py-16 px-6 bg-gradient-to-b from-purple-200 to-pink-100">
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-4xl font-extrabold text-gray-800 mb-10 text-center">
-          Live <span className="text-primary">Cricket Matches</span>
+        <h2 className="text-4xl font-extrabold text-gray-900 mb-10 text-center">
+          Live <span className="text-purple-600">Cricket Matches</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -52,16 +52,16 @@ const LiveMatches = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.15 }}
-              whileHover={{ scale: 1.02, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
-              className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-primary relative"
+              whileHover={{ scale: 1.03, boxShadow: "0px 10px 20px rgba(0,0,0,0.2)" }}
+              className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-purple-500 relative"
             >
               {/* Match Status Badge */}
               <div className="absolute top-4 right-4">
                 <span
                   className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
                     match.status === "LIVE"
-                      ? "bg-gradient-to-r from-red-500 to-orange-500"
-                      : "bg-gradient-to-r from-gray-400 to-gray-600"
+                      ? "bg-gradient-to-r from-red-500 to-pink-500"
+                      : "bg-gradient-to-r from-gray-500 to-gray-700"
                   }`}
                 >
                   {match.status}
@@ -75,7 +75,7 @@ const LiveMatches = () => {
                   <div key={i} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <img src={team.logo} alt={team.name} className="w-8 h-8 rounded-full" />
-                      <span className="text-lg font-semibold">{team.name}</span>
+                      <span className="text-lg font-semibold text-gray-800">{team.name}</span>
                     </div>
                     {match.status === "LIVE" && (
                       <span
@@ -91,7 +91,7 @@ const LiveMatches = () => {
               </div>
 
               {/* Time or Overs */}
-              <p className="text-gray-500 mt-4 text-sm">
+              <p className="text-gray-600 mt-4 text-sm">
                 {match.status === "LIVE" ? `${match.overs} overs` : match.time}
               </p>
 
@@ -99,7 +99,7 @@ const LiveMatches = () => {
               <motion.button
                 onClick={() => handleViewDetails(match.id)}
                 whileHover={{ scale: 1.05 }}
-                className="flex items-center justify-center w-full mt-6 bg-primary text-white font-medium py-2 rounded-lg hover:bg-primary-dark transition-all"
+                className="flex items-center justify-center w-full mt-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all"
               >
                 View Details <ChevronRight className="ml-2 w-5 h-5" />
               </motion.button>
@@ -114,7 +114,7 @@ const LiveMatches = () => {
             animate={{ opacity: 1, y: 0 }}
             className="mt-12 p-6 bg-white rounded-xl shadow-lg text-center"
           >
-            <h3 className="text-xl font-semibold text-gray-800">
+            <h3 className="text-xl font-semibold text-gray-900">
               Match {selectedMatch} details coming soon!
             </h3>
           </motion.div>
