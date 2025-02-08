@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 const matches = [
   {
     id: 1,
-    team1: { name: "India", logo: "https://via.placeholder.com/30?text=IND" },
+    team1: { name: "India", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8iD-oFluh_Uzf831rNAMcw1okMOUUJbwYww&s" },
     team2: { name: "Australia", logo: "https://via.placeholder.com/30?text=AUS" },
     score1: "285/4",
     score2: "240/6",
