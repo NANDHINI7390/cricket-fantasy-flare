@@ -7,7 +7,7 @@ const matches = [
   {
     id: 1,
     team1: { name: "India", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8iD-oFluh_Uzf831rNAMcw1okMOUUJbwYww&s" },
-    team2: { name: "Australia", logo: "https://via.placeholder.com/30?text=AUS" },
+    team2: { name: "Australia", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLVdU8NLPu6IR5ry9JOBz0fHvvuV-Bzd4liA&s" },
     score1: "285/4",
     score2: "240/6",
     overs: "45.2",
@@ -15,15 +15,15 @@ const matches = [
   },
   {
     id: 2,
-    team1: { name: "England", logo: "https://via.placeholder.com/30?text=ENG" },
-    team2: { name: "South Africa", logo: "https://via.placeholder.com/30?text=SA" },
+    team1: { name: "England", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTEOZRiCHiW1jsxr_sOtGi2seMi10sMRXsSxg&s" },
+    team2: { name: "South Africa", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT3yB7Qatkf9s_iiR021Itc8QtyJMFoDl15fQ&s" },
     time: "Tomorrow, 14:30",
     status: "UPCOMING",
   },
   {
     id: 3,
-    team1: { name: "New Zealand", logo: "https://via.placeholder.com/30?text=NZ" },
-    team2: { name: "Pakistan", logo: "https://via.placeholder.com/30?text=PAK" },
+    team1: { name: "New Zealand", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ16Ib0KU24YBV0dbyv8emQCZEn5lXam4TZZA&s" },
+    team2: { name: "Pakistan", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4XQMHezdQdXOgo0uIVaEKQqcJCRD0bsk03g&s" },
     time: "Today, 19:00",
     status: "UPCOMING",
   },
