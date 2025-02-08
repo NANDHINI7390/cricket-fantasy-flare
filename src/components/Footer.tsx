@@ -10,20 +10,7 @@ const Footer = () => {
     <footer className="bg-gray-900 text-gray-300 pt-12 pb-8 px-6 border-t border-gray-800">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Company Info */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <img
-                src="https://images.pexels.com/photos/3621104/pexels-photo-3621104.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                alt="Cricket Fantasy Elite"
-                className="h-8 w-8 rounded-full"
-              />
-              <h3 className="text-xl font-bold text-white">Fantasy Cricket Elite</h3>
-            </div>
-            <p className="text-sm text-gray-400">
-              Your ultimate destination for fantasy cricket. Build your dream team and compete with players worldwide.
-            </p>
-          </div>
+        
 
           {/* Quick Links */}
           <div>
