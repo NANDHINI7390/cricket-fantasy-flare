@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -66,6 +65,7 @@ const Auth = () => {
             prompt: 'consent',
           },
           redirectTo: `${window.location.origin}/`,
+          skipBrowserRedirect: true
         }
       });
 
@@ -74,11 +74,30 @@ const Auth = () => {
         throw error;
       }
 
-      if (data) {
-        console.log('Sign in successful:', data);
-        // The user will be automatically redirected to Google's sign-in page
-        // After successful authentication, they'll be redirected back to our app
-        // The auth state change listener in Navbar.tsx will handle the session update
+      if (data?.url) {
+        const width = 500;
+        const height = 600;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+
+        const popup = window.open(
+          data.url,
+          'Google Sign In',
+          `width=${width},height=${height},left=${left},top=${top}`
+        );
+
+        if (!popup) {
+          toast.error("Please allow popups for this website to sign in with Google");
+          return;
+        }
+
+        const checkPopup = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkPopup);
+            setIsLoading(false);
+            // The auth state change listener in Navbar.tsx will handle the session update
+          }
+        }, 1000);
       }
     } catch (error) {
       console.error('Detailed error:', error);
@@ -90,7 +109,6 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-[#1A1F2C] text-white flex">
-      {/* Welcome Section */}
       <div className="hidden lg:flex lg:w-1/2 p-12 items-center justify-center bg-gradient-to-br from-[#1A1F2C] to-[#2A2F3C]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -106,8 +124,6 @@ const Auth = () => {
           </p>
         </motion.div>
       </div>
-
-      {/* Auth Forms Section */}
       <div className="w-full lg:w-1/2 p-8 sm:p-12 flex items-center justify-center">
         <div className="w-full max-w-md">
           <AnimatePresence mode="wait">
@@ -129,8 +145,6 @@ const Auth = () => {
                     : "Sign in to continue"}
                 </p>
               </div>
-
-              {/* Google Sign In Button */}
               <Button
                 onClick={handleGoogleSignIn}
                 className="w-full bg-white hover:bg-gray-100 text-gray-900 flex items-center justify-center gap-2"
@@ -157,7 +171,6 @@ const Auth = () => {
                 </svg>
                 {isLoading ? "Signing in..." : "Continue with Google"}
               </Button>
-
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-gray-600" />
@@ -166,7 +179,6 @@ const Auth = () => {
                   <span className="px-2 bg-[#1A1F2C] text-gray-400">Or continue with email</span>
                 </div>
               </div>
-
               <form onSubmit={handleSubmit} className="space-y-6">
                 {isSignUp && (
                   <div className="space-y-2">
@@ -182,7 +194,6 @@ const Auth = () => {
                     />
                   </div>
                 )}
-
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -194,7 +205,6 @@ const Auth = () => {
                     required
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <Input
@@ -206,7 +216,6 @@ const Auth = () => {
                     minLength={6}
                   />
                 </div>
-
                 <Button
                   type="submit"
                   className="w-full bg-[#9b87f5] hover:bg-[#8b77e5] text-white transition-all duration-200"
@@ -214,7 +223,6 @@ const Auth = () => {
                 >
                   {isLoading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
                 </Button>
-
                 <div className="text-center mt-4">
                   <button
                     type="button"
