@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,18 @@ const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Listen for messages from the popup window
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'GOOGLE_SIGN_IN_SUCCESS') {
+        window.location.reload(); // Reload the main window to update the session
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -64,7 +77,7 @@ const Auth = () => {
             access_type: 'offline',
             prompt: 'consent',
           },
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/auth/callback`,
           skipBrowserRedirect: true
         }
       });
@@ -91,11 +104,18 @@ const Auth = () => {
           return;
         }
 
-        const checkPopup = setInterval(() => {
+        // Poll the popup to check when it closes and for the session
+        const checkPopup = setInterval(async () => {
           if (popup.closed) {
             clearInterval(checkPopup);
             setIsLoading(false);
-            // The auth state change listener in Navbar.tsx will handle the session update
+            
+            // Check if the session was established
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              toast.success("Successfully signed in with Google!");
+              navigate("/");
+            }
           }
         }, 1000);
       }
