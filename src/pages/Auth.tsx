@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -58,10 +57,10 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: window.location.origin,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -72,6 +71,10 @@ const Auth = () => {
       if (error) {
         console.error('Google sign in error:', error);
         throw error;
+      }
+
+      if (data) {
+        console.log('Sign in successful:', data);
       }
     } catch (error) {
       console.error('Detailed error:', error);
