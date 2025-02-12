@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
@@ -7,11 +6,16 @@ import { EmailPasswordForm } from "@/components/auth/EmailPasswordForm";
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
 
-  // Listen for messages from the popup window
+  // ✅ Google Sign-In message listener (correct placement)
   useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return; // Security check
       if (event.data?.type === 'GOOGLE_SIGN_IN_SUCCESS') {
-        window.location.reload(); // Reload the main window to update the session
+        window.location.reload(); // Refresh the main window to reflect the logged-in user
+      }
+      if (event.data?.type === 'GOOGLE_SIGN_IN_ERROR') {
+        console.error('Google Sign-In Error:', event.data.error);
+        // Optionally handle the error (e.g., show a toast)
       }
     };
 
@@ -21,6 +25,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-[#1A1F2C] text-white flex">
+      {/* Your authentication UI remains unchanged */}
       <div className="hidden lg:flex lg:w-1/2 p-12 items-center justify-center bg-gradient-to-br from-[#1A1F2C] to-[#2A2F3C]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
