@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cricket_matches: {
+        Row: {
+          created_at: string | null
+          id: string
+          match_id: string
+          overs: string | null
+          score1: string | null
+          score2: string | null
+          status: string
+          team1_logo: string | null
+          team1_name: string
+          team2_logo: string | null
+          team2_name: string
+          time: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          match_id: string
+          overs?: string | null
+          score1?: string | null
+          score2?: string | null
+          status: string
+          team1_logo?: string | null
+          team1_name: string
+          team2_logo?: string | null
+          team2_name: string
+          time?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          match_id?: string
+          overs?: string | null
+          score1?: string | null
+          score2?: string | null
+          status?: string
+          team1_logo?: string | null
+          team1_name?: string
+          team2_logo?: string | null
+          team2_name?: string
+          time?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
