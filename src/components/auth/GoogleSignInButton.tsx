@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -11,19 +10,14 @@ export const GoogleSignInButton = () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-          redirectTo: `${window.location.origin}/auth/callback`,
-          skipBrowserRedirect: true
-        }
+          redirectTo: `${window.location.origin}/auth/callback`, // ✅ Redirecting to callback
+        },
       });
 
       if (error) {
-        console.error('Google sign in error:', error);
+        console.error("Google sign in error:", error);
         throw error;
       }
 
@@ -35,7 +29,7 @@ export const GoogleSignInButton = () => {
 
         const popup = window.open(
           data.url,
-          'Google Sign In',
+          "Google Sign In",
           `width=${width},height=${height},left=${left},top=${top}`
         );
 
@@ -44,16 +38,33 @@ export const GoogleSignInButton = () => {
           return;
         }
 
+<<<<<<< HEAD
+        // Polling to detect when the popup closes
+        const checkPopup = setInterval(async () => {
+=======
         // Poll the popup to check when it closes
         const checkPopup = setInterval(() => {
+>>>>>>> 665f79e6f27ccbe7d05b913e79b095a73783bbac
           if (popup.closed) {
             clearInterval(checkPopup);
             setIsLoading(false);
+<<<<<<< HEAD
+
+            // Ensure session is established after pop-up closes
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              toast.success("Successfully signed in with Google!");
+              navigate("/dashboard"); // Redirect to your desired page
+            } else {
+              toast.error("Sign-in failed. Try again.");
+            }
+=======
+>>>>>>> 665f79e6f27ccbe7d05b913e79b095a73783bbac
           }
         }, 1000);
       }
     } catch (error) {
-      console.error('Detailed error:', error);
+      console.error("Detailed error:", error);
       toast.error(error instanceof Error ? error.message : "An error occurred with Google sign in");
       setIsLoading(false);
     }

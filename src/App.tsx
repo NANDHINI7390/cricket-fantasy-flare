@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +8,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
+import Dashboard from "./pages/Dashboard"; // ✅ Added Dashboard
+import { GoogleSignInButton } from "./components/auth/GoogleSignInButton"; // ✅ Corrected import path
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/dashboard" element={<Dashboard />} /> {/* ✅ Dashboard route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
