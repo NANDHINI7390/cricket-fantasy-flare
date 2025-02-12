@@ -11,7 +11,7 @@ const Auth = () => {
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'GOOGLE_SIGN_IN_SUCCESS') {
-        window.location.reload(); // Reload the main window to update the session
+        window.location.href = '/'; // Redirect the main window to home
       }
     };
 

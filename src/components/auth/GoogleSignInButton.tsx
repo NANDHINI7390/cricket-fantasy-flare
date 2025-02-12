@@ -3,11 +3,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 
 export const GoogleSignInButton = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
     try {
@@ -46,25 +44,17 @@ export const GoogleSignInButton = () => {
           return;
         }
 
-        // Poll the popup to check when it closes and for the session
-        const checkPopup = setInterval(async () => {
+        // Poll the popup to check when it closes
+        const checkPopup = setInterval(() => {
           if (popup.closed) {
             clearInterval(checkPopup);
             setIsLoading(false);
-            
-            // Check if the session was established
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              toast.success("Successfully signed in with Google!");
-              navigate("/");
-            }
           }
         }, 1000);
       }
     } catch (error) {
       console.error('Detailed error:', error);
       toast.error(error instanceof Error ? error.message : "An error occurred with Google sign in");
-    } finally {
       setIsLoading(false);
     }
   };
