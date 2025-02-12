@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -6,26 +5,46 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the session after OAuth sign in
+        // Attempt to get the session after OAuth sign in
         const { data: { session }, error } = await supabase.auth.getSession();
-        
         if (error) throw error;
-        
+
         if (session) {
-          // If we're in a popup, send message to parent window
+          // If we're in a popup (i.e. window.opener exists), notify the parent window
           if (window.opener) {
-            window.opener.postMessage({ type: 'GOOGLE_SIGN_IN_SUCCESS' }, window.location.origin);
+            window.opener.postMessage(
+              { type: 'GOOGLE_SIGN_IN_SUCCESS' },
+              window.location.origin
+            );
+            window.close(); // Close the popup
+          } else {
+            // If not in a popup, simply redirect to home
+            window.location.href = '/';
+          }
+        } else {
+          // If no session is found, handle the error appropriately
+          console.error('No session found after OAuth callback.');
+          if (window.opener) {
+            window.opener.postMessage(
+              { type: 'GOOGLE_SIGN_IN_ERROR', error: 'No session found' },
+              window.location.origin
+            );
             window.close();
           } else {
-            // If not in popup, redirect to home
-            window.location.href = '/';
+            window.location.href = '/error';
           }
         }
       } catch (error) {
         console.error('Error during auth callback:', error);
         if (window.opener) {
-          window.opener.postMessage({ type: 'GOOGLE_SIGN_IN_ERROR', error }, window.location.origin);
+          window.opener.postMessage(
+            { type: 'GOOGLE_SIGN_IN_ERROR', error },
+            window.location.origin
+          );
           window.close();
+        } else {
+          // Optionally, handle errors when not in a popup
+          window.location.href = '/error';
         }
       }
     };
