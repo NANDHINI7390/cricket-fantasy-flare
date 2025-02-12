@@ -3,21 +3,28 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { EmailPasswordForm } from "@/components/auth/EmailPasswordForm";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const navigate = useNavigate();
 
   // Listen for messages from the popup window
   useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
+    const handleMessage = (event: MessageEvent) => {
+      // Accept messages from any origin since the popup might be on a different domain
       if (event.data?.type === 'GOOGLE_SIGN_IN_SUCCESS') {
-        window.location.href = '/'; // Redirect the main window to home
+        toast.success("Successfully signed in!");
+        navigate('/');
+      } else if (event.data?.type === 'GOOGLE_SIGN_IN_ERROR') {
+        toast.error(event.data.error || "Failed to sign in with Google");
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-[#1A1F2C] text-white flex">

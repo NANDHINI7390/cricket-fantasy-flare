@@ -12,9 +12,14 @@ const AuthCallback = () => {
         if (error) throw error;
         
         if (session) {
-          // If we're in a popup, send message to parent window
+          // Check if this window is a popup
           if (window.opener) {
-            window.opener.postMessage({ type: 'GOOGLE_SIGN_IN_SUCCESS' }, window.location.origin);
+            // Send success message to parent window
+            window.opener.postMessage({ 
+              type: 'GOOGLE_SIGN_IN_SUCCESS',
+              session 
+            }, '*');
+            // Close the popup
             window.close();
           } else {
             // If not in popup, redirect to home
@@ -24,7 +29,10 @@ const AuthCallback = () => {
       } catch (error) {
         console.error('Error during auth callback:', error);
         if (window.opener) {
-          window.opener.postMessage({ type: 'GOOGLE_SIGN_IN_ERROR', error }, window.location.origin);
+          window.opener.postMessage({ 
+            type: 'GOOGLE_SIGN_IN_ERROR', 
+            error: error instanceof Error ? error.message : 'Authentication failed' 
+          }, '*');
           window.close();
         }
       }
