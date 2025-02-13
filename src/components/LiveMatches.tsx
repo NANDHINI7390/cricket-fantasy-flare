@@ -1,7 +1,7 @@
 
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -26,9 +26,24 @@ const LiveMatches = () => {
   const { data: matches, error, isLoading } = useQuery({
     queryKey: ['cricket-matches'],
     queryFn: async () => {
-      const { data: matches, error } = await supabase.functions.invoke<Match[]>('fetch-cricket-matches');
-      if (error) throw error;
-      return matches || [];
+      try {
+        const { data: matches, error } = await supabase.functions.invoke<Match[]>('fetch-cricket-matches', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (error) {
+          console.error('Error from edge function:', error);
+          throw error;
+        }
+        
+        return matches || [];
+      } catch (err) {
+        console.error('Error fetching matches:', err);
+        throw err;
+      }
     },
     refetchInterval: 30000, // Refetch every 30 seconds
   });
