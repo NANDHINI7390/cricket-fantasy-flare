@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface CricAPIMatch {
@@ -29,12 +30,17 @@ interface CricAPIMatch {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    console.log('Edge Function: Starting fetch-cricket-matches');
+    
     const CRICAPI_KEY = Deno.env.get('CRICAPI_KEY');
+    console.log('Edge Function: CRICAPI_KEY present:', !!CRICAPI_KEY);
+    
     if (!CRICAPI_KEY) {
       throw new Error('CRICAPI_KEY is not set');
     }
@@ -44,11 +50,16 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch matches from CricAPI
-    const response = await fetch('https://api.cricapi.com/v1/matches?apikey=' + CRICAPI_KEY);
+    console.log('Edge Function: Fetching matches from CricAPI');
+    const apiUrl = 'https://api.cricapi.com/v1/matches?apikey=' + CRICAPI_KEY;
+    console.log('Edge Function: Calling CricAPI URL:', apiUrl.replace(CRICAPI_KEY, '[HIDDEN]'));
+    
+    const response = await fetch(apiUrl);
     const data = await response.json();
+    console.log('Edge Function: CricAPI response status:', data.status);
 
     if (!data.status) {
+      console.error('Edge Function: CricAPI error:', data.message);
       throw new Error(data.message || 'Failed to fetch matches from CricAPI');
     }
 
@@ -98,7 +109,7 @@ serve(async (req) => {
         });
 
       if (upsertError) {
-        console.error('Error upserting match:', upsertError);
+        console.error('Edge Function: Error upserting match:', upsertError);
       }
     }
 
@@ -110,17 +121,22 @@ serve(async (req) => {
       .limit(10);
 
     if (fetchError) {
+      console.error('Edge Function: Error fetching matches:', fetchError);
       throw fetchError;
     }
+
+    console.log('Edge Function: Successfully completed');
 
     return new Response(JSON.stringify(matches), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Edge Function Error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   }
 });
