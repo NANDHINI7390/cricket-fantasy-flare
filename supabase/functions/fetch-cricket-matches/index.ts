@@ -51,10 +51,31 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log('Edge Function: Fetching matches from CricAPI');
-    const apiUrl = 'https://api.cricapi.com/v1/matches?apikey=' + CRICAPI_KEY;
-    console.log('Edge Function: Calling CricAPI URL:', apiUrl.replace(CRICAPI_KEY, '[HIDDEN]'));
+    const apiUrl = 'https://api.cricapi.com/v1/matches';
     
-    const response = await fetch(apiUrl);
+    // Add fetch options with timeout and proper headers
+    const fetchOptions = {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Supabase Edge Function'
+      },
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    };
+
+    // Make the API request with query parameters properly encoded
+    const urlWithParams = new URL(apiUrl);
+    urlWithParams.searchParams.append('apikey', CRICAPI_KEY);
+    
+    console.log('Edge Function: Calling CricAPI URL:', urlWithParams.toString().replace(CRICAPI_KEY, '[HIDDEN]'));
+    
+    const response = await fetch(urlWithParams, fetchOptions);
+    
+    if (!response.ok) {
+      console.error('Edge Function: CricAPI response not OK:', response.status, response.statusText);
+      throw new Error(`CricAPI returned status ${response.status}`);
+    }
+
     const data = await response.json();
     console.log('Edge Function: CricAPI response status:', data.status);
 
@@ -64,7 +85,7 @@ serve(async (req) => {
     }
 
     // Process and store matches
-    for (const match of data.data) {
+    for (const match of data.data || []) {
       const matchData = match as CricAPIMatch;
       if (!matchData.teams || matchData.teams.length !== 2) continue;
 
@@ -133,7 +154,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Edge Function Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }), {
+      JSON.stringify({ 
+        error: `Failed to fetch cricket matches: ${error.message}`,
+        details: error.stack
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
