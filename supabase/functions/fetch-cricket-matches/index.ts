@@ -19,6 +19,29 @@ function errorResponse(message: string, status = 500) {
   );
 }
 
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`Edge Function: Attempt ${i + 1} of ${retries}`);
+      const response = await fetch(url, options);
+      if (response.ok) {
+        return response;
+      }
+      if (response.status === 429) {
+        throw new Error('RATE_LIMIT');
+      }
+      console.log(`Edge Function: Attempt ${i + 1} failed with status ${response.status}`);
+    } catch (error) {
+      if (error.message === 'RATE_LIMIT' || i === retries - 1) {
+        throw error;
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+  throw new Error('All retry attempts failed');
+}
+
 serve(async (req) => {
   console.log('Edge Function: Starting execution');
   
@@ -65,29 +88,30 @@ serve(async (req) => {
     // If no cache, fetch from API
     console.log('Edge Function: Fetching fresh data');
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // Increased timeout to 5 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout to 8 seconds
 
     try {
-      const response = await fetch(
-        `https://api.cricapi.com/v1/matches?apikey=${CRICAPI_KEY}&offset=0&per_page=5`,
+      const apiUrl = `https://api.cricapi.com/v1/matches?apikey=${CRICAPI_KEY}&offset=0&per_page=5`;
+      console.log('Edge Function: Calling Cricket API');
+      
+      const response = await fetchWithRetry(
+        apiUrl,
         {
           method: 'GET',
-          signal: controller.signal
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Supabase Edge Function'
+          }
         }
       );
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          return errorResponse('Rate limit exceeded', 429);
-        }
-        return errorResponse(`API request failed with status ${response.status}`);
-      }
-
       const cricData = await response.json();
       
       if (!cricData.data || !Array.isArray(cricData.data)) {
+        console.error('Edge Function: Invalid API response:', cricData);
         return errorResponse('Invalid API response format');
       }
 
@@ -134,7 +158,6 @@ serve(async (req) => {
         }
       }
 
-      // Return processed matches directly instead of querying again
       console.log('Edge Function: Successfully completed');
       return new Response(
         JSON.stringify(processedMatches),
@@ -145,6 +168,9 @@ serve(async (req) => {
 
     } catch (fetchError) {
       clearTimeout(timeoutId);
+      if (fetchError.message === 'RATE_LIMIT') {
+        return errorResponse('Rate limit exceeded', 429);
+      }
       return errorResponse(`Failed to fetch from Cricket API: ${fetchError.message}`);
     }
 
