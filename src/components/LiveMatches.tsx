@@ -1,7 +1,6 @@
-
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -75,13 +74,7 @@ const LiveMatches = () => {
         throw err;
       }
     },
-    refetchInterval: (query) => {
-      // Adjust refetch interval based on errors
-      if (query.state.error?.message === 'RATE_LIMIT') {
-        return 60000; // 1 minute if rate limited
-      }
-      return 30000; // 30 seconds normally
-    },
+    refetchInterval: error?.message === 'RATE_LIMIT' ? 60000 : 30000, // Simplified refetch interval logic
     retry: (failureCount, error: any) => {
       // Don't retry on rate limit errors
       if (error?.message === 'RATE_LIMIT') {
