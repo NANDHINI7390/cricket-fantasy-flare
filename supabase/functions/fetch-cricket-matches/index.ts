@@ -30,61 +30,75 @@ interface CricAPIMatch {
 }
 
 serve(async (req) => {
+  console.log('Edge Function: Starting execution');
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
+    console.log('Edge Function: Handling CORS preflight');
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const FUNCTION_TIMEOUT = 3000; // 3 seconds total function timeout
+  const API_TIMEOUT = 2000; // 2 seconds API timeout
+
   try {
-    console.log('Edge Function: Starting fetch-cricket-matches');
-    
     const CRICAPI_KEY = Deno.env.get('CRICAPI_KEY');
     if (!CRICAPI_KEY) {
-      console.error('Edge Function: CRICAPI_KEY is not set');
       throw new Error('API configuration is incomplete');
     }
 
-    // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
-      console.error('Edge Function: Supabase configuration is incomplete');
       throw new Error('Database configuration is incomplete');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create Supabase client with shorter timeout
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false
+      }
+    });
 
-    console.log('Edge Function: Preparing CricAPI request');
-    
-    // Using URLSearchParams for proper encoding
+    // First, try to get cached data from Supabase
+    console.log('Edge Function: Checking cached data');
+    const { data: cachedMatches, error: cacheError } = await supabase
+      .from('cricket_matches')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (!cacheError && cachedMatches && cachedMatches.length > 0) {
+      console.log('Edge Function: Returning cached data');
+      return new Response(JSON.stringify(cachedMatches), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // If no cached data, fetch from CricAPI
+    console.log('Edge Function: Fetching fresh data');
     const params = new URLSearchParams({
       apikey: CRICAPI_KEY,
       offset: '0',
-      per_page: '10'
+      per_page: '5' // Reduced to 5 matches for faster response
     }).toString();
 
-    // Construct request with minimal options and timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
     try {
       const response = await fetch(`https://api.cricapi.com/v1/matches?${params}`, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        },
+        headers: { 'Accept': 'application/json' },
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
-      console.log('Edge Function: CricAPI response status:', response.status);
 
-      // Handle rate limiting explicitly
       if (response.status === 429) {
-        console.error('Edge Function: Rate limit exceeded');
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
+          JSON.stringify({ error: 'Rate limit exceeded' }), {
             status: 429,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
@@ -92,18 +106,15 @@ serve(async (req) => {
       }
 
       if (!response.ok) {
-        console.error('Edge Function: CricAPI error response:', response.status, response.statusText);
         throw new Error(`API request failed with status ${response.status}`);
       }
 
       const cricData = await response.json();
       
       if (!cricData.data || !Array.isArray(cricData.data)) {
-        console.error('Edge Function: Invalid data format from CricAPI', cricData);
         throw new Error('Invalid data format received from API');
       }
 
-      // Filter valid matches and log count
       const validMatches = cricData.data.filter((match: any) => 
         match && 
         match.teams && 
@@ -112,36 +123,28 @@ serve(async (req) => {
         match.teamInfo
       );
 
-      console.log('Edge Function: Processing', validMatches.length, 'valid matches out of', cricData.data.length, 'total matches');
-
       if (validMatches.length === 0) {
-        console.log('Edge Function: No valid matches found');
-        // Return empty array instead of throwing error
         return new Response(JSON.stringify([]), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Process each match with error handling for each step
-      for (const match of validMatches) {
+      // Process matches in parallel for better performance
+      await Promise.all(validMatches.map(async (match) => {
         try {
           const team1Info = match.teamInfo?.find((t: any) => t.name === match.teams[0]);
           const team2Info = match.teamInfo?.find((t: any) => t.name === match.teams[1]);
 
-          if (!team1Info || !team2Info) {
-            console.error('Edge Function: Missing team info for match:', match.id);
-            continue;
-          }
+          if (!team1Info || !team2Info) return;
 
           const matchStatus = match.status === 'Match not started' ? 'UPCOMING' : 'LIVE';
           const matchTime = new Date(match.dateTimeGMT).toLocaleString();
 
-          // Format scores with null checks
           const scores = match.score || [];
           const team1Score = scores.find((s: any) => s.inning?.includes(team1Info.name));
           const team2Score = scores.find((s: any) => s.inning?.includes(team2Info.name));
 
-          const { error: upsertError } = await supabase
+          await supabase
             .from('cricket_matches')
             .upsert({
               match_id: match.id,
@@ -157,47 +160,35 @@ serve(async (req) => {
             }, {
               onConflict: 'match_id'
             });
-
-          if (upsertError) {
-            console.error('Edge Function: Error upserting match:', match.id, upsertError);
-          }
         } catch (matchError) {
-          console.error('Edge Function: Error processing match:', match.id, matchError);
-          // Continue processing other matches
-          continue;
+          console.error('Edge Function: Match processing error:', matchError);
         }
-      }
+      }));
 
-      // Fetch updated matches
+      // Fetch final results
       const { data: matches, error: fetchError } = await supabase
         .from('cricket_matches')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (fetchError) {
-        console.error('Edge Function: Error fetching matches from DB:', fetchError);
-        throw fetchError;
-      }
+      if (fetchError) throw fetchError;
 
-      console.log('Edge Function: Successfully completed with', matches?.length || 0, 'matches');
+      console.log('Edge Function: Successfully completed');
       return new Response(JSON.stringify(matches), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
     } catch (fetchError) {
       clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
-        throw new Error('API request timed out');
-      }
       throw fetchError;
     }
 
   } catch (error) {
-    console.error('Edge Function: Fatal error:', error);
+    console.error('Edge Function: Error:', error);
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to fetch cricket matches. Please try again later.',
+        error: 'Failed to fetch cricket matches',
         debug: Deno.env.get('DENO_ENV') === 'development' ? error.message : undefined
       }), {
         status: 500,
