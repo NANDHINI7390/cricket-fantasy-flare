@@ -66,6 +66,17 @@ serve(async (req) => {
 
     console.log('Edge Function: CricAPI response status:', response.status);
 
+    // Handle rate limiting explicitly
+    if (response.status === 429) {
+      console.error('Edge Function: Rate limit exceeded');
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     if (!response.ok) {
       console.error('Edge Function: CricAPI error response:', response.status, response.statusText);
       throw new Error(`API request failed with status ${response.status}`);
