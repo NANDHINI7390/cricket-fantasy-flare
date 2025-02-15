@@ -1,3 +1,4 @@
+
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useState, useCallback } from "react";
@@ -22,10 +23,13 @@ interface Match {
 
 const RETRY_DELAY = 5000; // 5 seconds
 const MAX_RETRIES = 3;
+const RATE_LIMIT_INTERVAL = 60000; // 1 minute
+const NORMAL_INTERVAL = 30000; // 30 seconds
 
 const LiveMatches = () => {
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [isRateLimited, setIsRateLimited] = useState(false);
 
   // Reset retry count after successful fetch
   const resetRetryCount = useCallback(() => {
@@ -45,8 +49,11 @@ const LiveMatches = () => {
         if (error) {
           // Handle rate limiting
           if (error.message?.includes('429')) {
+            setIsRateLimited(true);
             toast.error('Rate limit exceeded. Please try again later.');
             throw new Error('RATE_LIMIT');
+          } else {
+            setIsRateLimited(false);
           }
           
           // Handle server errors
@@ -58,6 +65,7 @@ const LiveMatches = () => {
           throw error;
         }
 
+        setIsRateLimited(false);
         resetRetryCount();
         return matches || [];
       } catch (err) {
@@ -74,7 +82,7 @@ const LiveMatches = () => {
         throw err;
       }
     },
-    refetchInterval: error?.message === 'RATE_LIMIT' ? 60000 : 30000, // Simplified refetch interval logic
+    refetchInterval: isRateLimited ? RATE_LIMIT_INTERVAL : NORMAL_INTERVAL,
     retry: (failureCount, error: any) => {
       // Don't retry on rate limit errors
       if (error?.message === 'RATE_LIMIT') {
