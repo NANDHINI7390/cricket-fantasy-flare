@@ -75,7 +75,7 @@ const LiveMatches = () => {
         throw err;
       }
     },
-    refetchInterval: (data, query) => {
+    refetchInterval: (query) => {
       // Adjust refetch interval based on errors
       if (query.state.error?.message === 'RATE_LIMIT') {
         return 60000; // 1 minute if rate limited
