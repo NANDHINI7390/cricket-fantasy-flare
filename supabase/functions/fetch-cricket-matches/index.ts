@@ -23,7 +23,14 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
       console.log(`Edge Function: Attempt ${i + 1} of ${retries}`);
-      const response = await fetch(url, options);
+      const response = await fetch(url, {
+        ...options,
+        // Add these options to handle SSL/TLS issues
+        redirect: 'follow',
+        credentials: 'same-origin',
+        mode: 'cors',
+      });
+      
       if (response.ok) {
         return response;
       }
@@ -32,11 +39,16 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3) {
       }
       console.log(`Edge Function: Attempt ${i + 1} failed with status ${response.status}`);
     } catch (error) {
+      console.error(`Edge Function: Fetch error on attempt ${i + 1}:`, error.message);
+      
       if (error.message === 'RATE_LIMIT' || i === retries - 1) {
         throw error;
       }
+      
       // Wait before retrying (exponential backoff)
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+      const delay = Math.pow(2, i) * 1000;
+      console.log(`Edge Function: Waiting ${delay}ms before retry`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
   throw new Error('All retry attempts failed');
@@ -88,7 +100,7 @@ serve(async (req) => {
     // If no cache, fetch from API
     console.log('Edge Function: Fetching fresh data');
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout to 8 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
     try {
       const apiUrl = `https://api.cricapi.com/v1/matches?apikey=${CRICAPI_KEY}&offset=0&per_page=5`;
@@ -101,7 +113,8 @@ serve(async (req) => {
           signal: controller.signal,
           headers: {
             'Accept': 'application/json',
-            'User-Agent': 'Supabase Edge Function'
+            'User-Agent': 'Supabase Edge Function',
+            'Cache-Control': 'no-cache'
           }
         }
       );
@@ -109,6 +122,7 @@ serve(async (req) => {
       clearTimeout(timeoutId);
 
       const cricData = await response.json();
+      console.log('Edge Function: Received API response');
       
       if (!cricData.data || !Array.isArray(cricData.data)) {
         console.error('Edge Function: Invalid API response:', cricData);
