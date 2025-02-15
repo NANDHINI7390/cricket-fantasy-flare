@@ -19,41 +19,6 @@ function errorResponse(message: string, status = 500) {
   );
 }
 
-async function fetchWithRetry(url: string, options: RequestInit, retries = 3) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log(`Edge Function: Attempt ${i + 1} of ${retries}`);
-      const response = await fetch(url, {
-        ...options,
-        // Add these options to handle SSL/TLS issues
-        redirect: 'follow',
-        credentials: 'same-origin',
-        mode: 'cors',
-      });
-      
-      if (response.ok) {
-        return response;
-      }
-      if (response.status === 429) {
-        throw new Error('RATE_LIMIT');
-      }
-      console.log(`Edge Function: Attempt ${i + 1} failed with status ${response.status}`);
-    } catch (error) {
-      console.error(`Edge Function: Fetch error on attempt ${i + 1}:`, error.message);
-      
-      if (error.message === 'RATE_LIMIT' || i === retries - 1) {
-        throw error;
-      }
-      
-      // Wait before retrying (exponential backoff)
-      const delay = Math.pow(2, i) * 1000;
-      console.log(`Edge Function: Waiting ${delay}ms before retry`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  throw new Error('All retry attempts failed');
-}
-
 serve(async (req) => {
   console.log('Edge Function: Starting execution');
   
@@ -97,29 +62,36 @@ serve(async (req) => {
       );
     }
 
-    // If no cache, fetch from API
+    // If no cache, fetch from API using native HTTP client
     console.log('Edge Function: Fetching fresh data');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-
+    
     try {
       const apiUrl = `https://api.cricapi.com/v1/matches?apikey=${CRICAPI_KEY}&offset=0&per_page=5`;
       console.log('Edge Function: Calling Cricket API');
-      
-      const response = await fetchWithRetry(
-        apiUrl,
-        {
-          method: 'GET',
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Supabase Edge Function',
-            'Cache-Control': 'no-cache'
-          }
+
+      // Create a custom request with specific headers
+      const request = new Request(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Supabase Edge Function'
         }
-      );
+      });
+
+      // Use Response constructor with a custom timeout
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => timeoutController.abort(), 10000);
+
+      const response = await fetch(request, {
+        signal: timeoutController.signal
+      });
 
       clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.error('Edge Function: API response not ok:', response.status, response.statusText);
+        throw new Error(`API response not ok: ${response.status}`);
+      }
 
       const cricData = await response.json();
       console.log('Edge Function: Received API response');
@@ -181,14 +153,12 @@ serve(async (req) => {
       );
 
     } catch (fetchError) {
-      clearTimeout(timeoutId);
-      if (fetchError.message === 'RATE_LIMIT') {
-        return errorResponse('Rate limit exceeded', 429);
-      }
+      console.error('Edge Function: Fetch error:', fetchError);
       return errorResponse(`Failed to fetch from Cricket API: ${fetchError.message}`);
     }
 
   } catch (error) {
+    console.error('Edge Function: Unexpected error:', error);
     return errorResponse(`Unexpected error: ${error.message}`);
   }
 });
