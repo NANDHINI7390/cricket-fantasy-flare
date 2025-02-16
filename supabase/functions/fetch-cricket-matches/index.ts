@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
@@ -8,7 +7,20 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-function errorResponse(message: string, status = 500) {
+const CRICAPI_KEY = Deno.env.get('CRICAPI_KEY') || 'a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae';
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://yefrdovbporfjdhfojyx.supabase.co';
+
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllZnJkb3ZicG9yZmpkaGZvanl4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczOTcyMTEyMiwiZXhwIjoyMDU1Mjk3MTIyfQ.tL7zkXPLRawQramWG97vRAdO8vQz8R283rWhr3IhRew';
+
+
+if (!supabaseKey) {
+  console.error('Supabase key is missing. Ensure you set it as an environment variable.');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+function errorResponse(message, status = 500) {
   console.error(`Edge Function Error: ${message}`);
   return new Response(
     JSON.stringify({ error: message }),
@@ -26,20 +38,11 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  if (!CRICAPI_KEY || !supabaseUrl || !supabaseKey) {
+    return errorResponse('Configuration is incomplete');
+  }
+
   try {
-    // Get environment variables
-    const CRICAPI_KEY = Deno.env.get('CRICAPI_KEY');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!CRICAPI_KEY || !supabaseUrl || !supabaseKey) {
-      return errorResponse('Configuration is incomplete');
-    }
-
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // First try to get cached data
     console.log('Edge Function: Checking cache');
     const { data: cachedMatches, error: cacheError } = await supabase
       .from('cricket_matches')
@@ -48,125 +51,78 @@ serve(async (req) => {
       .limit(5);
 
     if (cacheError) {
-      console.error('Edge Function: Cache error:', cacheError);
+      console.error('Cache error:', cacheError);
       return errorResponse('Failed to fetch cached matches');
     }
 
-    if (cachedMatches && cachedMatches.length > 0) {
-      console.log('Edge Function: Returning cached data');
-      return new Response(
-        JSON.stringify(cachedMatches),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+    if (cachedMatches?.length) {
+      console.log('Returning cached data');
+      return new Response(JSON.stringify(cachedMatches), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // If no cache, fetch from API using native HTTP client
-    console.log('Edge Function: Fetching fresh data');
+    console.log('Fetching fresh data');
+const apiUrl = `https://api.cricapi.com/v1/matches?apikey=a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae&offset=0&per_page=5`;
+
     
-    try {
-      // Using HTTPS explicitly and encoding the API key
-      const apiKey = encodeURIComponent(CRICAPI_KEY);
-      const apiUrl = `https://api.cricapi.com/v1/matches`;
-      const params = new URLSearchParams({
-        apikey: apiKey,
-        offset: '0',
-        per_page: '5'
-      });
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0',
+        'Origin': 'https://api.cricapi.com'
+      },
+    });
 
-      console.log('Edge Function: Calling Cricket API');
+    if (!response.ok) {
+      throw new Error(`API response error: ${response.status} - ${await response.text()}`);
+    }
 
-      const response = await fetch(`${apiUrl}?${params}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0',
-          'Origin': 'https://api.cricapi.com'
-        },
-      });
+    const cricData = await response.json();
+    console.log('API response received:', JSON.stringify(cricData));
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Edge Function: API response not ok:', response.status, errorText);
-        throw new Error(`API response not ok: ${response.status} - ${errorText}`);
-      }
+    if (!Array.isArray(cricData.data)) {
+      return errorResponse('Invalid API response format');
+    }
 
-      const cricData = await response.json();
-      console.log('Edge Function: Received API response:', JSON.stringify(cricData));
-      
-      if (!cricData.data || !Array.isArray(cricData.data)) {
-        console.error('Edge Function: Invalid API response:', cricData);
-        return errorResponse('Invalid API response format');
-      }
-
-      // Process and store matches
-      const processedMatches = [];
-      
-      for (const match of cricData.data) {
-        if (!match?.teams?.length || !match?.teamInfo?.length) {
-          console.log('Edge Function: Skipping match due to missing data:', match.id);
-          continue;
-        }
-
-        const team1Info = match.teamInfo.find((t: any) => t.name === match.teams[0]);
-        const team2Info = match.teamInfo.find((t: any) => t.name === match.teams[1]);
-
-        if (!team1Info || !team2Info) {
-          console.log('Edge Function: Skipping match due to missing team info:', match.id);
-          continue;
-        }
-
+    const processedMatches = cricData.data
+      .filter(match => match?.teams?.length && match?.teamInfo?.length)
+      .map(match => {
+        const team1 = match.teamInfo.find(t => t.name === match.teams[0]) || {};
+        const team2 = match.teamInfo.find(t => t.name === match.teams[1]) || {};
         const matchStatus = match.status === 'Match not started' ? 'UPCOMING' : 'LIVE';
-        const scores = match.score || [];
-        const team1Score = scores.find((s: any) => s.inning?.includes(team1Info.name));
-        const team2Score = scores.find((s: any) => s.inning?.includes(team2Info.name));
+        const team1Score = match.score?.find(s => s.inning?.includes(team1.name)) || {};
+        const team2Score = match.score?.find(s => s.inning?.includes(team2.name)) || {};
 
-        const matchData = {
+        return {
           match_id: match.id,
-          team1_name: team1Info.name,
-          team1_logo: team1Info.img || '',
-          team2_name: team2Info.name,
-          team2_logo: team2Info.img || '',
-          score1: team1Score ? `${team1Score.r}/${team1Score.w}` : null,
-          score2: team2Score ? `${team2Score.r}/${team2Score.w}` : null,
-          overs: team1Score ? `${team1Score.o}` : null,
+          team1_name: team1.name || 'Unknown',
+          team1_logo: team1.img || '',
+          team2_name: team2.name || 'Unknown',
+          team2_logo: team2.img || '',
+          score1: team1Score.r ? `${team1Score.r}/${team1Score.w}` : null,
+          score2: team2Score.r ? `${team2Score.r}/${team2Score.w}` : null,
+          overs: team1Score.o || null,
           status: matchStatus,
           time: matchStatus === 'UPCOMING' ? new Date(match.dateTimeGMT).toLocaleString() : null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
+      });
 
-        processedMatches.push(matchData);
-
-        const { error: upsertError } = await supabase
-          .from('cricket_matches')
-          .upsert(matchData, {
-            onConflict: 'match_id'
-          });
-
-        if (upsertError) {
-          console.error('Edge Function: Upsert error:', upsertError);
-          continue;
-        }
+    for (const match of processedMatches) {
+      const { error: upsertError } = await supabase
+        .from('cricket_matches')
+        .upsert(match, { onConflict: 'match_id' });
+      if (upsertError) {
+        console.error('Upsert error:', upsertError);
       }
-
-      console.log('Edge Function: Successfully completed');
-      return new Response(
-        JSON.stringify(processedMatches),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-
-    } catch (fetchError) {
-      console.error('Edge Function: Fetch error:', fetchError);
-      return errorResponse(`Failed to fetch from Cricket API: ${fetchError.message}`);
     }
 
+    console.log('Successfully completed');
+    return new Response(JSON.stringify(processedMatches), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
-    console.error('Edge Function: Unexpected error:', error);
+    console.error('Unexpected error:', error);
     return errorResponse(`Unexpected error: ${error.message}`);
   }
 });
