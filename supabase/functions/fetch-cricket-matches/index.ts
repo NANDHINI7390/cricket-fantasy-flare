@@ -66,35 +66,35 @@ serve(async (req) => {
     console.log('Edge Function: Fetching fresh data');
     
     try {
-      const apiUrl = `https://api.cricapi.com/v1/matches?apikey=${CRICAPI_KEY}&offset=0&per_page=5`;
+      // Using HTTPS explicitly and encoding the API key
+      const apiKey = encodeURIComponent(CRICAPI_KEY);
+      const apiUrl = `https://api.cricapi.com/v1/matches`;
+      const params = new URLSearchParams({
+        apikey: apiKey,
+        offset: '0',
+        per_page: '5'
+      });
+
       console.log('Edge Function: Calling Cricket API');
 
-      // Create a custom request with specific headers
-      const request = new Request(apiUrl, {
+      const response = await fetch(`${apiUrl}?${params}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Supabase Edge Function'
-        }
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0',
+          'Origin': 'https://api.cricapi.com'
+        },
       });
-
-      // Use Response constructor with a custom timeout
-      const timeoutController = new AbortController();
-      const timeoutId = setTimeout(() => timeoutController.abort(), 10000);
-
-      const response = await fetch(request, {
-        signal: timeoutController.signal
-      });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.error('Edge Function: API response not ok:', response.status, response.statusText);
-        throw new Error(`API response not ok: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Edge Function: API response not ok:', response.status, errorText);
+        throw new Error(`API response not ok: ${response.status} - ${errorText}`);
       }
 
       const cricData = await response.json();
-      console.log('Edge Function: Received API response');
+      console.log('Edge Function: Received API response:', JSON.stringify(cricData));
       
       if (!cricData.data || !Array.isArray(cricData.data)) {
         console.error('Edge Function: Invalid API response:', cricData);
@@ -105,12 +105,18 @@ serve(async (req) => {
       const processedMatches = [];
       
       for (const match of cricData.data) {
-        if (!match?.teams?.length || !match?.teamInfo?.length) continue;
+        if (!match?.teams?.length || !match?.teamInfo?.length) {
+          console.log('Edge Function: Skipping match due to missing data:', match.id);
+          continue;
+        }
 
         const team1Info = match.teamInfo.find((t: any) => t.name === match.teams[0]);
         const team2Info = match.teamInfo.find((t: any) => t.name === match.teams[1]);
 
-        if (!team1Info || !team2Info) continue;
+        if (!team1Info || !team2Info) {
+          console.log('Edge Function: Skipping match due to missing team info:', match.id);
+          continue;
+        }
 
         const matchStatus = match.status === 'Match not started' ? 'UPCOMING' : 'LIVE';
         const scores = match.score || [];
@@ -128,6 +134,8 @@ serve(async (req) => {
           overs: team1Score ? `${team1Score.o}` : null,
           status: matchStatus,
           time: matchStatus === 'UPCOMING' ? new Date(match.dateTimeGMT).toLocaleString() : null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
 
         processedMatches.push(matchData);
