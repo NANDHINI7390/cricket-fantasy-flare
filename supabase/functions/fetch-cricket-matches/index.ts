@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,9 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-serve(async (req) => {
-  console.log('Edge Function: Starting execution');
-  
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -55,8 +52,6 @@ serve(async (req) => {
           overs: team1Score.o || null,
           status: matchStatus,
           time: matchStatus === 'UPCOMING' ? new Date(match.dateTimeGMT).toLocaleString() : null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
         };
     });
 
