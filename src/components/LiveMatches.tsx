@@ -1,4 +1,6 @@
+
 import React, { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const LiveMatch = () => {
   const [matches, setMatches] = useState([]);
@@ -7,12 +9,15 @@ const LiveMatch = () => {
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        const response = await fetch("https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-matches");
-        if (!response.ok) {
-          throw new Error("Failed to fetch matches");
+        const { data, error } = await supabase.functions.invoke('fetch-cricket-matches', {
+          method: 'POST'
+        });
+
+        if (error) {
+          throw error;
         }
-        const data = await response.json();
-        setMatches(data);
+
+        setMatches(data || []);
       } catch (error) {
         console.error("Error fetching matches:", error);
       } finally {
