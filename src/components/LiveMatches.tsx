@@ -1,7 +1,7 @@
-
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const API_URL = "https://api.cricapi.com/v1/matches?apikey=a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae&offset=0&per_page=5"; // Replace with your actual API URL
 
 const LiveMatch = () => {
   const [matches, setMatches] = useState([]);
@@ -11,20 +11,29 @@ const LiveMatch = () => {
     const fetchMatches = async () => {
       try {
         console.log("Fetching matches...");
-        const { data, error } = await supabase.functions.invoke('fetch-cricket-matches', {
-          method: 'POST'
+
+        const response = await fetch(API_URL, {
+          method: "GET", // Ensure you're using the correct HTTP method
+          headers: {
+            "Content-Type": "application/json",
+          },
         });
 
-        if (error) {
-          console.error("Supabase function error:", error);
-          toast.error("Failed to fetch matches");
-          throw error;
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid data format received");
         }
 
         console.log("Received matches:", data);
-        setMatches(data || []);
+        setMatches(data);
       } catch (error) {
         console.error("Error fetching matches:", error);
+        toast.error("Failed to fetch matches");
       } finally {
         setLoading(false);
       }
