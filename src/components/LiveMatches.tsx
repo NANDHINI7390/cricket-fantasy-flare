@@ -89,7 +89,7 @@ const LiveMatches = () => {
         const data: CricketApiResponse = await response.json();
         console.info("API Response:", data);
         
-        if (data.status === "success") {
+        if (data.status) {
           return data.data;
         }
         console.info("Using mock data due to API status:", data.status);
@@ -111,7 +111,7 @@ const LiveMatches = () => {
           "https://api.cricapi.com/v1/upcoming?apikey=YOUR_API_KEY&offset=0&per_page=5"
         );
         const data: CricketApiResponse = await response.json();
-        if (data.status === "success") {
+        if (data.status) {
           return data.data;
         }
         return mockUpcomingMatches;
@@ -124,8 +124,14 @@ const LiveMatches = () => {
   });
 
   const getTeamLogo = (match: Match, teamName: string): string => {
+    // First try to get logo from teamInfo
     const teamInfo = match.teamInfo?.find(t => t.name === teamName);
-    return teamInfo?.img || "/placeholder.svg";
+    if (teamInfo?.img) {
+      return teamInfo.img;
+    }
+
+    // If no logo found in teamInfo, return placeholder
+    return "/placeholder.svg";
   };
 
   const renderMatchCard = (match: Match, isLive: boolean) => (
