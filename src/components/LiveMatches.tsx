@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,51 +7,125 @@ import { useQuery } from "@tanstack/react-query";
 import type { Match, Team, CricketApiResponse, TeamsApiResponse } from "@/types/cricket";
 import { Loader2 } from "lucide-react";
 
-const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
-const BASE_URL = "https://api.cricapi.com/v1";
+// Mock data for when API is unavailable
+const mockLiveMatches: Match[] = [
+  {
+    id: "1",
+    name: "India vs Australia",
+    status: "Live",
+    venue: "Melbourne Cricket Ground",
+    date: "2024-02-22",
+    dateTimeGMT: "2024-02-22T09:00:00.000Z",
+    teams: ["India", "Australia"],
+    teamInfo: [
+      { id: "1", name: "India", img: "https://media.crictracker.com/media/teams/5d81d08309d172c6c956b604_teams.jpg" },
+      { id: "2", name: "Australia", img: "https://media.crictracker.com/media/teams/5d81d08309d172c6c956b605_teams.jpg" }
+    ],
+    score: [
+      { r: 245, w: 4, o: 35.2 },
+      { r: 189, w: 3, o: 28.4 }
+    ]
+  },
+  {
+    id: "2",
+    name: "England vs South Africa",
+    status: "Live",
+    venue: "Lords Cricket Ground",
+    date: "2024-02-22",
+    dateTimeGMT: "2024-02-22T10:00:00.000Z",
+    teams: ["England", "South Africa"],
+    teamInfo: [
+      { id: "3", name: "England", img: "https://media.crictracker.com/media/teams/5d81d08309d172c6c956b607_teams.jpg" },
+      { id: "4", name: "South Africa", img: "https://media.crictracker.com/media/teams/5d81d08309d172c6c956b608_teams.jpg" }
+    ],
+    score: [
+      { r: 156, w: 2, o: 25.3 },
+      { r: 120, w: 4, o: 20.1 }
+    ]
+  }
+];
+
+const mockUpcomingMatches: Match[] = [
+  {
+    id: "3",
+    name: "New Zealand vs Pakistan",
+    status: "Upcoming",
+    venue: "Eden Park",
+    date: "2024-02-23",
+    dateTimeGMT: "2024-02-23T03:00:00.000Z",
+    teams: ["New Zealand", "Pakistan"],
+    teamInfo: [
+      { id: "5", name: "New Zealand", img: "https://media.crictracker.com/media/teams/5d81d08309d172c6c956b609_teams.jpg" },
+      { id: "6", name: "Pakistan", img: "https://media.crictracker.com/media/teams/5d81d08309d172c6c956b610_teams.jpg" }
+    ],
+    score: []
+  },
+  {
+    id: "4",
+    name: "Sri Lanka vs Bangladesh",
+    status: "Upcoming",
+    venue: "R. Premadasa Stadium",
+    date: "2024-02-23",
+    dateTimeGMT: "2024-02-23T05:00:00.000Z",
+    teams: ["Sri Lanka", "Bangladesh"],
+    teamInfo: [
+      { id: "7", name: "Sri Lanka", img: "https://media.crictracker.com/media/teams/5d81d08309d172c6c956b611_teams.jpg" },
+      { id: "8", name: "Bangladesh", img: "https://media.crictracker.com/media/teams/5d81d08309d172c6c956b612_teams.jpg" }
+    ],
+    score: []
+  }
+];
 
 const LiveMatches = () => {
-  // Use React Query for efficient data fetching and caching
   const { data: liveMatches, isLoading: loadingLive } = useQuery({
     queryKey: ["liveMatches"],
     queryFn: async (): Promise<Match[]> => {
-      const response = await fetch(
-        `${BASE_URL}/matches?apikey=${API_KEY}&offset=0&per_page=5`
-      );
-      if (!response.ok) throw new Error("Failed to fetch live matches");
-      const data: CricketApiResponse = await response.json();
-      return data.data || [];
+      try {
+        console.info("Fetching matches...");
+        const response = await fetch(
+          `${import.meta.env.VITE_CRICKET_API_URL}/matches` || 
+          "https://api.cricapi.com/v1/matches?apikey=YOUR_API_KEY&offset=0&per_page=5"
+        );
+        const data: CricketApiResponse = await response.json();
+        console.info("API Response:", data);
+        
+        if (data.status === "success") {
+          return data.data;
+        }
+        console.info("Using mock data due to API status:", data.status);
+        return mockLiveMatches;
+      } catch (error) {
+        console.error("Error fetching matches:", error);
+        return mockLiveMatches;
+      }
     },
-    refetchInterval: 60000, // Refetch every 60 seconds
+    refetchInterval: 60000,
   });
 
   const { data: upcomingMatches, isLoading: loadingUpcoming } = useQuery({
     queryKey: ["upcomingMatches"],
     queryFn: async (): Promise<Match[]> => {
-      const response = await fetch(
-        `${BASE_URL}/upcoming?apikey=${API_KEY}&offset=0&per_page=5`
-      );
-      if (!response.ok) throw new Error("Failed to fetch upcoming matches");
-      const data: CricketApiResponse = await response.json();
-      return data.data || [];
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_CRICKET_API_URL}/upcoming` ||
+          "https://api.cricapi.com/v1/upcoming?apikey=YOUR_API_KEY&offset=0&per_page=5"
+        );
+        const data: CricketApiResponse = await response.json();
+        if (data.status === "success") {
+          return data.data;
+        }
+        return mockUpcomingMatches;
+      } catch (error) {
+        console.error("Error fetching upcoming matches:", error);
+        return mockUpcomingMatches;
+      }
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    refetchInterval: 300000,
   });
 
-  const { data: teams } = useQuery({
-    queryKey: ["teams"],
-    queryFn: async (): Promise<Team[]> => {
-      const response = await fetch(`${BASE_URL}/teams?apikey=${API_KEY}`);
-      if (!response.ok) throw new Error("Failed to fetch teams");
-      const data: TeamsApiResponse = await response.json();
-      return data.data || [];
-    },
-    staleTime: Infinity, // Cache team data indefinitely as it rarely changes
-  });
-
-  const getTeamLogo = (teamName: string) => {
-    const team = teams?.find((t) => t.name === teamName);
-    return team?.img || "/placeholder.svg";
+  const getTeamLogo = (match: Match, teamName: string): string => {
+    const teamInfo = match.teamInfo?.find(t => t.name === teamName);
+    return teamInfo?.img || "/placeholder.svg";
   };
 
   const renderMatchCard = (match: Match, isLive: boolean) => (
@@ -60,14 +134,18 @@ const LiveMatches = () => {
         <div className="grid grid-cols-3 gap-4 items-center">
           <div className="text-center">
             <img
-              src={getTeamLogo(match.teams[0])}
+              src={getTeamLogo(match, match.teams[0])}
               alt={match.teams[0]}
               className="w-16 h-16 mx-auto mb-2 object-contain"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement;
+                img.src = "/placeholder.svg";
+              }}
             />
             <h3 className="font-semibold text-sm">{match.teams[0]}</h3>
-            {isLive && (
+            {isLive && match.score?.[0] && (
               <p className="text-sm text-gray-600">
-                {match.score?.[0]?.r}/{match.score?.[0]?.w} ({match.score?.[0]?.o})
+                {match.score[0].r}/{match.score[0].w} ({match.score[0].o})
               </p>
             )}
           </div>
@@ -89,14 +167,18 @@ const LiveMatches = () => {
 
           <div className="text-center">
             <img
-              src={getTeamLogo(match.teams[1])}
+              src={getTeamLogo(match, match.teams[1])}
               alt={match.teams[1]}
               className="w-16 h-16 mx-auto mb-2 object-contain"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement;
+                img.src = "/placeholder.svg";
+              }}
             />
             <h3 className="font-semibold text-sm">{match.teams[1]}</h3>
-            {isLive && (
+            {isLive && match.score?.[1] && (
               <p className="text-sm text-gray-600">
-                {match.score?.[1]?.r}/{match.score?.[1]?.w} ({match.score?.[1]?.o})
+                {match.score[1].r}/{match.score[1].w} ({match.score[1].o})
               </p>
             )}
           </div>
