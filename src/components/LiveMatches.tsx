@@ -1,52 +1,74 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import type { Match, Team, CricketApiResponse, TeamsApiResponse } from "@/types/cricket";
 import { Loader2 } from "lucide-react";
 
-interface MatchData {
-  match_id: string;
-  team1_name: string;
-  team1_logo: string;
-  team2_name: string;
-  team2_logo: string;
-  score1: string | null;
-  score2: string | null;
-  overs: string | null;
-  status: 'LIVE' | 'UPCOMING';
-  time: string | null;
-}
+const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
+const BASE_URL = "https://api.cricapi.com/v1";
 
 const LiveMatches = () => {
-  const { data: matches, isLoading } = useQuery({
-    queryKey: ["matches"],
-    queryFn: async (): Promise<MatchData[]> => {
-      const { data, error } = await supabase.functions.invoke('fetch-cricket-matches');
-      if (error) throw error;
-      return data;
+  // Use React Query for efficient data fetching and caching
+  const { data: liveMatches, isLoading: loadingLive } = useQuery({
+    queryKey: ["liveMatches"],
+    queryFn: async (): Promise<Match[]> => {
+      const response = await fetch(
+        `${BASE_URL}/matches?apikey=${API_KEY}&offset=0&per_page=5`
+      );
+      if (!response.ok) throw new Error("Failed to fetch live matches");
+      const data: CricketApiResponse = await response.json();
+      return data.data || [];
     },
     refetchInterval: 60000, // Refetch every 60 seconds
   });
 
-  const liveMatches = matches?.filter(match => match.status === 'LIVE') || [];
-  const upcomingMatches = matches?.filter(match => match.status === 'UPCOMING') || [];
+  const { data: upcomingMatches, isLoading: loadingUpcoming } = useQuery({
+    queryKey: ["upcomingMatches"],
+    queryFn: async (): Promise<Match[]> => {
+      const response = await fetch(
+        `${BASE_URL}/upcoming?apikey=${API_KEY}&offset=0&per_page=5`
+      );
+      if (!response.ok) throw new Error("Failed to fetch upcoming matches");
+      const data: CricketApiResponse = await response.json();
+      return data.data || [];
+    },
+    refetchInterval: 300000, // Refetch every 5 minutes
+  });
 
-  const renderMatchCard = (match: MatchData) => (
-    <Card key={match.match_id} className="overflow-hidden hover:shadow-lg transition-shadow">
+  const { data: teams } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async (): Promise<Team[]> => {
+      const response = await fetch(`${BASE_URL}/teams?apikey=${API_KEY}`);
+      if (!response.ok) throw new Error("Failed to fetch teams");
+      const data: TeamsApiResponse = await response.json();
+      return data.data || [];
+    },
+    staleTime: Infinity, // Cache team data indefinitely as it rarely changes
+  });
+
+  const getTeamLogo = (teamName: string) => {
+    const team = teams?.find((t) => t.name === teamName);
+    return team?.img || "/placeholder.svg";
+  };
+
+  const renderMatchCard = (match: Match, isLive: boolean) => (
+    <Card key={match.id} className="overflow-hidden hover:shadow-lg transition-shadow">
       <CardContent className="p-6">
         <div className="grid grid-cols-3 gap-4 items-center">
           <div className="text-center">
             <img
-              src={match.team1_logo || "/placeholder.svg"}
-              alt={match.team1_name}
+              src={getTeamLogo(match.teams[0])}
+              alt={match.teams[0]}
               className="w-16 h-16 mx-auto mb-2 object-contain"
             />
-            <h3 className="font-semibold text-sm">{match.team1_name}</h3>
-            {match.status === 'LIVE' && match.score1 && (
-              <p className="text-sm text-gray-600">{match.score1}</p>
+            <h3 className="font-semibold text-sm">{match.teams[0]}</h3>
+            {isLive && (
+              <p className="text-sm text-gray-600">
+                {match.score?.[0]?.r}/{match.score?.[0]?.w} ({match.score?.[0]?.o})
+              </p>
             )}
           </div>
 
@@ -55,34 +77,36 @@ const LiveMatches = () => {
             <div className="mt-2">
               <span
                 className={`px-2 py-1 rounded text-xs ${
-                  match.status === 'LIVE'
+                  isLive
                     ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                     : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                 }`}
               >
-                {match.status}
+                {isLive ? "LIVE" : "Upcoming"}
               </span>
             </div>
           </div>
 
           <div className="text-center">
             <img
-              src={match.team2_logo || "/placeholder.svg"}
-              alt={match.team2_name}
+              src={getTeamLogo(match.teams[1])}
+              alt={match.teams[1]}
               className="w-16 h-16 mx-auto mb-2 object-contain"
             />
-            <h3 className="font-semibold text-sm">{match.team2_name}</h3>
-            {match.status === 'LIVE' && match.score2 && (
-              <p className="text-sm text-gray-600">{match.score2}</p>
+            <h3 className="font-semibold text-sm">{match.teams[1]}</h3>
+            {isLive && (
+              <p className="text-sm text-gray-600">
+                {match.score?.[1]?.r}/{match.score?.[1]?.w} ({match.score?.[1]?.o})
+              </p>
             )}
           </div>
         </div>
 
         <div className="mt-4 text-center text-sm text-gray-600">
-          {match.status === 'LIVE' ? (
-            <p>Overs: {match.overs || 'N/A'}</p>
+          {isLive ? (
+            <p>Venue: {match.venue}</p>
           ) : (
-            <p>Starts at: {match.time}</p>
+            <p>Starts at: {new Date(match.dateTimeGMT).toLocaleString()}</p>
           )}
         </div>
 
@@ -101,8 +125,9 @@ const LiveMatches = () => {
 
   const renderMatchSection = (
     title: string,
-    matches: MatchData[],
-    isLoading: boolean
+    matches: Match[] | undefined,
+    isLoading: boolean,
+    isLive: boolean
   ) => (
     <section className="mb-8">
       <CardHeader className="text-center mb-6">
@@ -113,9 +138,9 @@ const LiveMatches = () => {
         <div className="flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
-      ) : matches.length > 0 ? (
+      ) : matches?.length ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {matches.map(renderMatchCard)}
+          {matches.map((match) => renderMatchCard(match, isLive))}
         </div>
       ) : (
         <div className="text-center text-gray-500">No matches available</div>
@@ -125,8 +150,8 @@ const LiveMatches = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {renderMatchSection("Live Matches", liveMatches, isLoading)}
-      {renderMatchSection("Upcoming Matches", upcomingMatches, isLoading)}
+      {renderMatchSection("Live Matches", liveMatches, loadingLive, true)}
+      {renderMatchSection("Upcoming Matches", upcomingMatches, loadingUpcoming, false)}
     </div>
   );
 };
