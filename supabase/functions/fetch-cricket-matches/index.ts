@@ -13,7 +13,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const apiUrl = `https://api.cricapi.com/v1/matches?apikey=${Deno.env.get('CRICAPI_KEY')}&offset=0&per_page=5`;
+    const apiUrl = `https://api.cricapi.com/v1/matches?apikey=a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae&offset=0&per_page=5`;
     
     console.log('Edge Function: Fetching from Cricket API');
     const response = await fetch(apiUrl);
