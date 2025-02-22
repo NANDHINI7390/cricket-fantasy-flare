@@ -1,5 +1,5 @@
 
-import React, { useCallback, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,35 +11,7 @@ const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 const BASE_URL = "https://api.cricapi.com/v1";
 
 const LiveMatches = () => {
-  // Optimize team logo fetching with useQuery and proper caching
-  const { data: teams } = useQuery({
-    queryKey: ["teams"],
-    queryFn: async (): Promise<Team[]> => {
-      const response = await fetch(`${BASE_URL}/teams?apikey=${API_KEY}`);
-      if (!response.ok) throw new Error("Failed to fetch teams");
-      const data: TeamsApiResponse = await response.json();
-      return data.data || [];
-    },
-    staleTime: Infinity, // Cache team data indefinitely
-    retry: 3,
-    onError: (error) => {
-      console.error("Failed to fetch team data:", error);
-    }
-  });
-
-  // Memoize team logos mapping for better performance
-  const teamLogosMap = useMemo(() => {
-    if (!teams) return new Map();
-    return new Map(teams.map(team => [team.name, team.img]));
-  }, [teams]);
-
-  // Optimize logo lookup with a memoized function
-  const getTeamLogo = useCallback((teamName: string): string => {
-    // First try to get logo from teamInfo in match data
-    const logo = teamLogosMap.get(teamName);
-    return logo || "/placeholder.svg";
-  }, [teamLogosMap]);
-
+  // Use React Query for efficient data fetching and caching
   const { data: liveMatches, isLoading: loadingLive } = useQuery({
     queryKey: ["liveMatches"],
     queryFn: async (): Promise<Match[]> => {
@@ -48,19 +20,9 @@ const LiveMatches = () => {
       );
       if (!response.ok) throw new Error("Failed to fetch live matches");
       const data: CricketApiResponse = await response.json();
-
-      // Process and validate match data
-      return (data.data || []).filter(match => 
-        match.teams && 
-        Array.isArray(match.teams) && 
-        match.teams.length >= 2
-      );
+      return data.data || [];
     },
-    refetchInterval: 60000,
-    retry: 2,
-    onError: (error) => {
-      console.error("Failed to fetch live matches:", error);
-    }
+    refetchInterval: 60000, // Refetch every 60 seconds
   });
 
   const { data: upcomingMatches, isLoading: loadingUpcoming } = useQuery({
@@ -71,23 +33,28 @@ const LiveMatches = () => {
       );
       if (!response.ok) throw new Error("Failed to fetch upcoming matches");
       const data: CricketApiResponse = await response.json();
-      
-      // Process and validate match data
-      return (data.data || []).filter(match => 
-        match.teams && 
-        Array.isArray(match.teams) && 
-        match.teams.length >= 2
-      );
+      return data.data || [];
     },
-    refetchInterval: 300000,
-    retry: 2,
-    onError: (error) => {
-      console.error("Failed to fetch upcoming matches:", error);
-    }
+    refetchInterval: 300000, // Refetch every 5 minutes
   });
 
-  // Memoize the match card render function
-  const renderMatchCard = useCallback((match: Match, isLive: boolean) => (
+  const { data: teams } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async (): Promise<Team[]> => {
+      const response = await fetch(`${BASE_URL}/teams?apikey=${API_KEY}`);
+      if (!response.ok) throw new Error("Failed to fetch teams");
+      const data: TeamsApiResponse = await response.json();
+      return data.data || [];
+    },
+    staleTime: Infinity, // Cache team data indefinitely as it rarely changes
+  });
+
+  const getTeamLogo = (teamName: string) => {
+    const team = teams?.find((t) => t.name === teamName);
+    return team?.img || "/placeholder.svg";
+  };
+
+  const renderMatchCard = (match: Match, isLive: boolean) => (
     <Card key={match.id} className="overflow-hidden hover:shadow-lg transition-shadow">
       <CardContent className="p-6">
         <div className="grid grid-cols-3 gap-4 items-center">
@@ -96,15 +63,11 @@ const LiveMatches = () => {
               src={getTeamLogo(match.teams[0])}
               alt={match.teams[0]}
               className="w-16 h-16 mx-auto mb-2 object-contain"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                img.src = "/placeholder.svg";
-              }}
             />
             <h3 className="font-semibold text-sm">{match.teams[0]}</h3>
-            {isLive && match.score?.[0] && (
+            {isLive && (
               <p className="text-sm text-gray-600">
-                {match.score[0].r}/{match.score[0].w} ({match.score[0].o})
+                {match.score?.[0]?.r}/{match.score?.[0]?.w} ({match.score?.[0]?.o})
               </p>
             )}
           </div>
@@ -129,15 +92,11 @@ const LiveMatches = () => {
               src={getTeamLogo(match.teams[1])}
               alt={match.teams[1]}
               className="w-16 h-16 mx-auto mb-2 object-contain"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                img.src = "/placeholder.svg";
-              }}
             />
             <h3 className="font-semibold text-sm">{match.teams[1]}</h3>
-            {isLive && match.score?.[1] && (
+            {isLive && (
               <p className="text-sm text-gray-600">
-                {match.score[1].r}/{match.score[1].w} ({match.score[1].o})
+                {match.score?.[1]?.r}/{match.score?.[1]?.w} ({match.score?.[1]?.o})
               </p>
             )}
           </div>
@@ -162,10 +121,9 @@ const LiveMatches = () => {
         </div>
       </CardContent>
     </Card>
-  ), [getTeamLogo]);
+  );
 
-  // Memoize the section render function
-  const renderMatchSection = useCallback((
+  const renderMatchSection = (
     title: string,
     matches: Match[] | undefined,
     isLoading: boolean,
@@ -188,7 +146,7 @@ const LiveMatches = () => {
         <div className="text-center text-gray-500">No matches available</div>
       )}
     </section>
-  ), [renderMatchCard]);
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
