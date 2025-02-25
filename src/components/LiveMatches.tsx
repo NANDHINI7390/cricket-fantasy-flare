@@ -56,27 +56,29 @@ const LiveMatches = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 80, damping: 12 }}
     >
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-white/10 backdrop-blur-lg border border-white/20">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-gradient-to-br from-blue-600/30 to-indigo-900/40 backdrop-blur-lg border border-blue-300/20">
         <CardContent className="p-4">
           <div className="grid grid-cols-3 gap-2 items-center">
             {/* Home Team */}
             <div className="text-center">
-              <img
-                src={match.strHomeTeamBadge || teamLogos[match.strHomeTeam] || "/placeholder.svg"}
-                alt={match.strHomeTeam}
-                className="w-12 h-12 mx-auto mb-1 object-contain"
-              />
-              <h3 className="font-semibold text-xs text-white">{match.strHomeTeam}</h3>
+              <div className="bg-white/10 rounded-full p-2 mb-1">
+                <img
+                  src={match.strHomeTeamBadge || teamLogos[match.strHomeTeam] || "/placeholder.svg"}
+                  alt={match.strHomeTeam}
+                  className="w-12 h-12 mx-auto object-contain"
+                />
+              </div>
+              <h3 className="font-semibold text-xs text-blue-100">{match.strHomeTeam}</h3>
             </div>
 
             {/* VS + Match Status */}
             <div className="text-center">
-              <div className="text-lg font-bold text-white">VS</div>
+              <div className="text-lg font-bold text-blue-100">VS</div>
               <motion.span 
                 className={`px-2 py-0.5 rounded text-xs ${
                   match.strStatus === "Live" 
-                    ? "bg-red-500/20 text-red-200 backdrop-blur-sm" 
-                    : "bg-blue-500/20 text-blue-200 backdrop-blur-sm"
+                    ? "bg-green-500/30 text-green-100 backdrop-blur-sm border border-green-400/20" 
+                    : "bg-orange-500/20 text-orange-100 backdrop-blur-sm border border-orange-400/20"
                 }`}
                 animate={{ scale: match.strStatus === "Live" ? [1, 1.1, 1] : 1 }}
                 transition={{ duration: 2, repeat: match.strStatus === "Live" ? Infinity : 0 }}
@@ -87,17 +89,19 @@ const LiveMatches = () => {
 
             {/* Away Team */}
             <div className="text-center">
-              <img
-                src={match.strAwayTeamBadge || teamLogos[match.strAwayTeam] || "/placeholder.svg"}
-                alt={match.strAwayTeam}
-                className="w-12 h-12 mx-auto mb-1 object-contain"
-              />
-              <h3 className="font-semibold text-xs text-white">{match.strAwayTeam}</h3>
+              <div className="bg-white/10 rounded-full p-2 mb-1">
+                <img
+                  src={match.strAwayTeamBadge || teamLogos[match.strAwayTeam] || "/placeholder.svg"}
+                  alt={match.strAwayTeam}
+                  className="w-12 h-12 mx-auto object-contain"
+                />
+              </div>
+              <h3 className="font-semibold text-xs text-blue-100">{match.strAwayTeam}</h3>
             </div>
           </div>
 
           {/* Match Date / Stadium */}
-          <div className="mt-2 text-center text-xs text-gray-300">
+          <div className="mt-2 text-center text-xs text-blue-200/80">
             <p>{match.strStatus === "Live" ? `${match.strVenue}` : `${match.dateEvent}`}</p>
           </div>
         </CardContent>
@@ -108,7 +112,10 @@ const LiveMatches = () => {
   return (
     <section
       className="py-8 px-4"
-      style={{ background: "linear-gradient(135deg, #8E44AD, #E91E63)" }}
+      style={{ 
+        background: "linear-gradient(135deg, #1E3A8A, #312E81)",
+        boxShadow: "inset 0 0 100px rgba(59, 130, 246, 0.1)"
+      }}
     >
       <div className="container mx-auto">
         <motion.div
@@ -118,13 +125,15 @@ const LiveMatches = () => {
           className="text-center mb-6"
         >
           <CardHeader className="text-center mb-4">
-            <CardTitle className="text-2xl sm:text-3xl font-bold text-white">ICC Champions Trophy 2025</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-blue-100">
+              ICC Champions Trophy 2025
+            </CardTitle>
           </CardHeader>
         </motion.div>
 
         {isLoading ? (
           <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-white" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-200" />
           </div>
         ) : matches?.length ? (
           <>
@@ -136,7 +145,7 @@ const LiveMatches = () => {
                 <Button
                   variant="outline"
                   onClick={() => setShowAll(!showAll)}
-                  className="bg-white/10 text-white hover:bg-white/20 border-white/20"
+                  className="bg-blue-600/20 text-blue-100 hover:bg-blue-600/30 border-blue-400/20"
                 >
                   {showAll ? (
                     <><ChevronUp className="w-4 h-4 mr-2" /> Show Less</>
@@ -148,7 +157,7 @@ const LiveMatches = () => {
             )}
           </>
         ) : (
-          <div className="text-center text-gray-200">No matches available</div>
+          <div className="text-center text-blue-200">No matches available</div>
         )}
       </div>
     </section>
