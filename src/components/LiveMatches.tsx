@@ -9,11 +9,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // API URL for ICC Champions Trophy 2025
 const API_URL = "https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=5587&s=2025";
 
+// Static flag URLs for cricket teams
+const TEAM_FLAGS = {
+  "India": "https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
+  "Australia": "https://upload.wikimedia.org/wikipedia/commons/b/b9/Flag_of_Australia.svg",
+  "England": "https://upload.wikimedia.org/wikipedia/en/b/be/Flag_of_England.svg",
+  "Pakistan": "https://upload.wikimedia.org/wikipedia/commons/3/32/Flag_of_Pakistan.svg",
+  "South Africa": "https://upload.wikimedia.org/wikipedia/commons/a/af/Flag_of_South_Africa.svg",
+  "New Zealand": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Flag_of_New_Zealand.svg",
+  "Sri Lanka": "https://upload.wikimedia.org/wikipedia/commons/1/11/Flag_of_Sri_Lanka.svg",
+  "Bangladesh": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Flag_of_Bangladesh.svg"
+};
+
 // Function to extract only country names from team names
 const getCountryName = (team) => team.replace(" Cricket", "");
 
 // Function to get country flag URL
-const getCountryFlagUrl = (country) => `https://countryflagsapi.com/png/${country}`;
+const getCountryFlagUrl = (country) => TEAM_FLAGS[country] || "/placeholder.svg";
 
 // Fetch ICC Champions Trophy 2025 Matches
 const fetchChampionsTrophyMatches = async () => {
