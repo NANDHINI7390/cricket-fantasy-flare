@@ -1,26 +1,19 @@
 
 import React, { useState } from "react";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { motion } from "framer-motion";
 
 // API URL for ICC Champions Trophy 2025
 const API_URL = "https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=5587&s=2025";
 
-// Predefined team logos (fallback if API doesn't return logos)
-const teamLogos = {
-  India: "https://upload.wikimedia.org/wikipedia/en/7/77/India_national_cricket_team_logo.svg",
-  Australia: "https://upload.wikimedia.org/wikipedia/en/b/b3/Australia_national_cricket_team_logo.svg",
-  England: "https://upload.wikimedia.org/wikipedia/en/2/2a/England_cricket_team_logo.svg",
-  Pakistan: "https://upload.wikimedia.org/wikipedia/en/c/c4/Pakistan_cricket_team_logo.svg",
-  SouthAfrica: "https://upload.wikimedia.org/wikipedia/en/1/19/Cricket_South_Africa_logo.svg",
-  NewZealand: "https://upload.wikimedia.org/wikipedia/en/3/3a/New_Zealand_Cricket_logo.svg",
-  SriLanka: "https://upload.wikimedia.org/wikipedia/en/a/a3/Sri_Lanka_Cricket_logo.svg",
-  Bangladesh: "https://upload.wikimedia.org/wikipedia/en/4/4a/Bangladesh_Cricket_Board_Logo.svg",
-};
+// Function to extract only country names from team names
+const getCountryName = (team) => team.replace(" Cricket", "");
+
+// Function to get country flag URL
+const getCountryFlagUrl = (country) => `https://countryflagsapi.com/png/${country}`;
 
 // Fetch ICC Champions Trophy 2025 Matches
 const fetchChampionsTrophyMatches = async () => {
@@ -48,73 +41,96 @@ const LiveMatches = () => {
     refetchInterval: 300000, // Refresh every 5 minutes
   });
 
-  const visibleMatches = showAll ? matches : matches?.slice(0, 5);
-
-  const renderMatchCard = (match) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 80, damping: 12 }}
-    >
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-lg border border-slate-700/30">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-3 gap-2 items-center">
-            {/* Home Team */}
-            <div className="text-center">
-              <div className="bg-slate-700/20 rounded-full p-2 mb-1">
-                <img
-                  src={match.strHomeTeamBadge || teamLogos[match.strHomeTeam] || "/placeholder.svg"}
-                  alt={match.strHomeTeam}
-                  className="w-12 h-12 mx-auto object-contain"
-                />
-              </div>
-              <h3 className="font-semibold text-xs text-slate-200">{match.strHomeTeam}</h3>
-            </div>
-
-            {/* VS + Match Status */}
-            <div className="text-center">
-              <div className="text-lg font-bold text-slate-200">VS</div>
-              <motion.span 
-                className={`px-2 py-0.5 rounded text-xs ${
-                  match.strStatus === "Live" 
-                    ? "bg-emerald-500/20 text-emerald-200 backdrop-blur-sm border border-emerald-400/20" 
-                    : "bg-amber-500/10 text-amber-200 backdrop-blur-sm border border-amber-400/10"
-                }`}
-                animate={{ scale: match.strStatus === "Live" ? [1, 1.1, 1] : 1 }}
-                transition={{ duration: 2, repeat: match.strStatus === "Live" ? Infinity : 0 }}
-              >
-                {match.strStatus === "Live" ? "LIVE" : "Upcoming"}
-              </motion.span>
-            </div>
-
-            {/* Away Team */}
-            <div className="text-center">
-              <div className="bg-slate-700/20 rounded-full p-2 mb-1">
-                <img
-                  src={match.strAwayTeamBadge || teamLogos[match.strAwayTeam] || "/placeholder.svg"}
-                  alt={match.strAwayTeam}
-                  className="w-12 h-12 mx-auto object-contain"
-                />
-              </div>
-              <h3 className="font-semibold text-xs text-slate-200">{match.strAwayTeam}</h3>
-            </div>
-          </div>
-
-          {/* Match Date / Stadium */}
-          <div className="mt-2 text-center text-xs text-slate-400">
-            <p>{match.strStatus === "Live" ? `${match.strVenue}` : `${match.dateEvent}`}</p>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+  // Filter live and upcoming matches
+  const liveAndUpcomingMatches = matches?.filter(
+    (match) => match.strStatus === "Live" || new Date(match.dateEvent) >= new Date()
   );
+
+  const visibleMatches = showAll ? liveAndUpcomingMatches : liveAndUpcomingMatches?.slice(0, 5);
+
+  const renderMatchCard = (match) => {
+    const homeTeam = getCountryName(match.strHomeTeam);
+    const awayTeam = getCountryName(match.strAwayTeam);
+
+    return (
+      <motion.div
+        key={match.idEvent}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 80, damping: 12 }}
+      >
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-lg border border-slate-700/30">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-3 gap-2 items-center">
+              {/* Home Team */}
+              <div className="text-center">
+                <div className="bg-slate-700/20 rounded-full p-2 mb-1">
+                  <img
+                    src={getCountryFlagUrl(homeTeam)}
+                    alt={homeTeam}
+                    className="w-12 h-12 mx-auto object-contain"
+                  />
+                </div>
+                <h3 className="font-semibold text-xs text-slate-200">{homeTeam}</h3>
+              </div>
+
+              {/* VS + Match Status */}
+              <div className="text-center">
+                <div className="text-lg font-bold text-slate-200">VS</div>
+                <motion.span
+                  className={`px-2 py-0.5 rounded text-xs ${
+                    match.strStatus === "Live"
+                      ? "bg-emerald-500/20 text-emerald-200 backdrop-blur-sm border border-emerald-400/20"
+                      : "bg-amber-500/10 text-amber-200 backdrop-blur-sm border border-amber-400/10"
+                  }`}
+                  animate={{ scale: match.strStatus === "Live" ? [1, 1.1, 1] : 1 }}
+                  transition={{ duration: 2, repeat: match.strStatus === "Live" ? Infinity : 0 }}
+                >
+                  {match.strStatus === "Live" ? "LIVE" : "Upcoming"}
+                </motion.span>
+              </div>
+
+              {/* Away Team */}
+              <div className="text-center">
+                <div className="bg-slate-700/20 rounded-full p-2 mb-1">
+                  <img
+                    src={getCountryFlagUrl(awayTeam)}
+                    alt={awayTeam}
+                    className="w-12 h-12 mx-auto object-contain"
+                  />
+                </div>
+                <h3 className="font-semibold text-xs text-slate-200">{awayTeam}</h3>
+              </div>
+            </div>
+
+            {/* Match Date / Stadium */}
+            <div className="mt-2 text-center text-xs text-slate-400">
+              {match.strStatus === "Live" ? (
+                <>
+                  <p>{match.strVenue}</p>
+                  {/* Display live score if available */}
+                  {match.intHomeScore && match.intAwayScore && (
+                    <p>
+                      {homeTeam}: {match.intHomeScore}/{match.intHomeWickets} vs {awayTeam}: {match.intAwayScore}/{match.intAwayWickets}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p>{new Date(match.dateEvent).toLocaleDateString()}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
 
   return (
     <section
       className="py-8 px-4"
-      style={{ 
+      style={{
         background: "linear-gradient(135deg, #1a1f2e, #2d364d)",
-        boxShadow: "inset 0 0 100px rgba(148, 163, 184, 0.05)"
+        boxShadow: "inset 0 0 100px rgba(148, 163, 184, 0.05)",
       }}
     >
       <div className="container mx-auto">
@@ -132,32 +148,27 @@ const LiveMatches = () => {
         </motion.div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+          <div className="flex justify-center">
+            <Loader2 className="animate-spin text-slate-400" size={28} />
           </div>
-        ) : matches?.length ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {visibleMatches?.map((match) => renderMatchCard(match))}
-            </div>
-            {matches.length > 5 && (
-              <div className="text-center mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAll(!showAll)}
-                  className="bg-slate-700/20 text-slate-200 hover:bg-slate-600/30 border-slate-600/30"
-                >
-                  {showAll ? (
-                    <><ChevronUp className="w-4 h-4 mr-2" /> Show Less</>
-                  ) : (
-                    <><ChevronDown className="w-4 h-4 mr-2" /> Show More ({matches.length - 5} matches)</>
-                  )}
-                </Button>
-              </div>
-            )}
-          </>
         ) : (
-          <div className="text-center text-slate-300">No matches available</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {visibleMatches?.map(renderMatchCard)}
+          </div>
+        )}
+
+        {/* Show More / Show Less Button */}
+        {liveAndUpcomingMatches?.length > 5 && (
+          <div className="flex justify-center mt-6">
+            <Button
+              onClick={() => setShowAll(!showAll)}
+              variant="outline"
+              className="flex items-center space-x-2 text-slate-300 border-slate-700 hover:bg-slate-800"
+            >
+              {showAll ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <span>{showAll ? "Show Less" : "Show More"}</span>
+            </Button>
+          </div>
         )}
       </div>
     </section>
