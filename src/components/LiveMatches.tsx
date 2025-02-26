@@ -1,12 +1,10 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, ChevronRight } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
-// API URLs
+// API URLs and team flags setup
 const SPORTS_DB_API_URL =
   "https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=5587&s=2025";
 const CRICK_API_URL = "https://api.cricapi.com/v1/currentMatches?apikey=YOUR_API_KEY";
@@ -102,32 +100,32 @@ const LiveMatches = () => {
 
   return (
     <section 
-      className="py-8 px-4"
+      className="min-h-screen py-8 px-4"
       style={{
-        background: "linear-gradient(135deg, #1a1f2e, #2d364d)",
-        boxShadow: "inset 0 0 100px rgba(148, 163, 184, 0.05)",
+        background: "linear-gradient(135deg, #f3e7ff 0%, #e9d5ff 100%)",
       }}
     >
-      <div className="container mx-auto">
+      <div className="container mx-auto max-w-2xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 100, damping: 10 }}
-          className="text-center mb-6"
+          transition={{ duration: 0.5 }}
+          className="text-center mb-8"
         >
-          <CardHeader className="text-center mb-4">
-            <CardTitle className="text-2xl sm:text-3xl font-bold text-slate-200">
-              ICC Champions Trophy 2025
-            </CardTitle>
-          </CardHeader>
+          <h1 className="text-4xl font-bold mb-2">
+            <span className="text-gray-900">Live</span>{" "}
+            <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+              Cricket Matches
+            </span>
+          </h1>
         </motion.div>
 
         {isMatchesLoading || isScoresLoading ? (
           <div className="flex justify-center">
-            <Loader2 className="animate-spin text-slate-400" size={28} />
+            <Loader2 className="animate-spin text-purple-600" size={28} />
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
             {visibleMatches.map((match) => (
               <motion.div
                 key={match.idEvent}
@@ -135,78 +133,81 @@ const LiveMatches = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 80, damping: 12 }}
               >
-                <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-lg border border-slate-700/30">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-3 gap-2 items-center">
-                      {/* Home Team */}
-                      <div className="text-center">
-                        <div className="bg-slate-700/20 rounded-full p-2 mb-1">
-                          <img
-                            src={getCountryFlagUrl(match.strHomeTeam)}
-                            alt={match.strHomeTeam}
-                            className="w-12 h-12 mx-auto object-contain"
-                          />
+                <Card className="overflow-hidden bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow">
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      {/* Teams */}
+                      <div className="space-y-3">
+                        {/* Home Team */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={getCountryFlagUrl(match.strHomeTeam)}
+                              alt={match.strHomeTeam}
+                              className="w-8 h-8 rounded-full object-cover border-2 border-gray-100"
+                            />
+                            <span className="text-lg font-semibold text-gray-800">
+                              {match.strHomeTeam.replace(" Cricket", "")}
+                            </span>
+                          </div>
+                          {match.liveScore?.status === "Live" && (
+                            <span className="text-lg font-bold text-gray-800">
+                              {match.liveScore.homeScore}/{match.liveScore.homeWickets}
+                            </span>
+                          )}
                         </div>
-                        <h3 className="font-semibold text-xs text-slate-200">{match.strHomeTeam.replace(" Cricket", "")}</h3>
+
+                        {/* Away Team */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={getCountryFlagUrl(match.strAwayTeam)}
+                              alt={match.strAwayTeam}
+                              className="w-8 h-8 rounded-full object-cover border-2 border-gray-100"
+                            />
+                            <span className="text-lg font-semibold text-gray-800">
+                              {match.strAwayTeam.replace(" Cricket", "")}
+                            </span>
+                          </div>
+                          {match.liveScore?.status === "Live" && (
+                            <span className="text-lg font-bold text-gray-800">
+                              {match.liveScore.awayScore}/{match.liveScore.awayWickets}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* VS + Match Status */}
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-slate-200">VS</div>
-                        <motion.span
-                          className={`px-2 py-0.5 rounded text-xs ${
-                            match.liveScore?.status === "Live"
-                              ? "bg-emerald-500/20 text-emerald-200 backdrop-blur-sm border border-emerald-400/20"
-                              : "bg-amber-500/10 text-amber-200 backdrop-blur-sm border border-amber-400/10"
-                          }`}
-                          animate={{ scale: match.liveScore?.status === "Live" ? [1, 1.1, 1] : 1 }}
-                          transition={{ duration: 2, repeat: match.liveScore?.status === "Live" ? Infinity : 0 }}
-                        >
-                          {match.liveScore?.status === "Live" ? "LIVE" : "Upcoming"}
-                        </motion.span>
+                      {/* Match Info */}
+                      <div className="flex items-center justify-between text-sm text-gray-600">
+                        <span>
+                          {match.liveScore?.status === "Live" 
+                            ? `${match.strVenue}`
+                            : new Date(match.dateEvent).toLocaleDateString(undefined, {
+                                weekday: 'long',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                          }
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-sm ${
+                          match.liveScore?.status === "Live"
+                            ? "bg-red-500 text-white"
+                            : "bg-gray-600 text-white"
+                        }`}>
+                          {match.liveScore?.status === "Live" ? "LIVE" : "UPCOMING"}
+                        </span>
                       </div>
 
-                      {/* Away Team */}
-                      <div className="text-center">
-                        <div className="bg-slate-700/20 rounded-full p-2 mb-1">
-                          <img
-                            src={getCountryFlagUrl(match.strAwayTeam)}
-                            alt={match.strAwayTeam}
-                            className="w-12 h-12 mx-auto object-contain"
-                          />
-                        </div>
-                        <h3 className="font-semibold text-xs text-slate-200">{match.strAwayTeam.replace(" Cricket", "")}</h3>
-                      </div>
+                      {/* View Details Button */}
+                      <button className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold flex items-center justify-center space-x-2 hover:opacity-90 transition-opacity">
+                        <span>View Details</span>
+                        <ChevronRight size={20} />
+                      </button>
                     </div>
-
-                    {/* Live Score Display */}
-                    {match.liveScore?.status === "Live" && (
-                      <div className="mt-2 text-center text-xs text-slate-400">
-                        <p>{match.strVenue}</p>
-                        <p>
-                          {match.strHomeTeam.replace(" Cricket", "")}: {match.liveScore.homeScore}/{match.liveScore.homeWickets} vs{" "}
-                          {match.strAwayTeam.replace(" Cricket", "")}: {match.liveScore.awayScore}/{match.liveScore.awayWickets}
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
+                  </div>
                 </Card>
               </motion.div>
             ))}
-          </div>
-        )}
-
-        {/* Show More / Show Less Button */}
-        {allMatches.length > 5 && (
-          <div className="flex justify-center mt-6">
-            <Button
-              onClick={() => setShowAll(!showAll)}
-              variant="outline"
-              className="flex items-center space-x-2 text-slate-300 border-slate-700 hover:bg-slate-800"
-            >
-              {showAll ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              <span>{showAll ? "Show Less" : "Show More"}</span>
-            </Button>
           </div>
         )}
       </div>
