@@ -1,7 +1,8 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Loader2, ChevronRight } from "lucide-react";
+import { Loader2, ChevronRight, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 // API URLs and team flags setup
@@ -18,7 +19,8 @@ const TEAM_FLAGS = {
   "South Africa": "https://upload.wikimedia.org/wikipedia/commons/a/af/Flag_of_South_Africa.svg",
   "New Zealand": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Flag_of_New_Zealand.svg",
   "Sri Lanka": "https://upload.wikimedia.org/wikipedia/commons/1/11/Flag_of_Sri_Lanka.svg",
-  "Bangladesh": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Flag_of_Bangladesh.svg"
+  "Bangladesh": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Flag_of_Bangladesh.svg",
+  "Afghanistan": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Flag_of_Afghanistan.svg"
 };
 
 // Function to get country flag URL
@@ -53,6 +55,7 @@ const fetchLiveScores = async () => {
 
 const LiveMatches = () => {
   const [showAll, setShowAll] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState(null);
 
   // Fetch matches from TheSportsDB
   const { data: matches, isLoading: isMatchesLoading } = useQuery({
@@ -134,8 +137,19 @@ const LiveMatches = () => {
                 transition={{ type: "spring", stiffness: 80, damping: 12 }}
               >
                 <Card className="overflow-hidden bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow">
-                  <div className="p-6">
-                    <div className="space-y-4">
+                  <div className="p-6 relative">
+                    {/* Status Label - Moved to top right */}
+                    <div className="absolute top-2 right-2">
+                      <span className={`px-3 py-1 rounded-full text-sm ${
+                        match.liveScore?.status === "Live"
+                          ? "bg-red-500 text-white"
+                          : "bg-gray-600 text-white"
+                      }`}>
+                        {match.liveScore?.status === "Live" ? "LIVE" : "UPCOMING"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-4 mt-4">
                       {/* Teams */}
                       <div className="space-y-3">
                         {/* Home Team */}
@@ -179,27 +193,14 @@ const LiveMatches = () => {
 
                       {/* Match Info */}
                       <div className="flex items-center justify-between text-sm text-gray-600">
-                        <span>
-                          {match.liveScore?.status === "Live" 
-                            ? `${match.strVenue}`
-                            : new Date(match.dateEvent).toLocaleDateString(undefined, {
-                                weekday: 'long',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
-                          }
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-sm ${
-                          match.liveScore?.status === "Live"
-                            ? "bg-red-500 text-white"
-                            : "bg-gray-600 text-white"
-                        }`}>
-                          {match.liveScore?.status === "Live" ? "LIVE" : "UPCOMING"}
-                        </span>
+                        <span>{match.strVenue}</span>
                       </div>
 
                       {/* View Details Button */}
-                      <button className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold flex items-center justify-center space-x-2 hover:opacity-90 transition-opacity">
+                      <button 
+                        className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold flex items-center justify-center space-x-2 hover:opacity-90 transition-opacity"
+                        onClick={() => setSelectedMatch(match)}
+                      >
                         <span>View Details</span>
                         <ChevronRight size={20} />
                       </button>
@@ -211,6 +212,40 @@ const LiveMatches = () => {
           </div>
         )}
       </div>
+
+      {/* Match Details Modal */}
+      {selectedMatch && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full m-4"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Match Details</h2>
+              <button 
+                onClick={() => setSelectedMatch(null)}
+                className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <p><strong>Venue:</strong> {selectedMatch.strVenue}</p>
+              <p><strong>League:</strong> {selectedMatch.strLeague}</p>
+              <p><strong>Season:</strong> {selectedMatch.strSeason}</p>
+              {selectedMatch.liveScore?.status === "Live" && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold mb-2">Live Score</h3>
+                  <p>{selectedMatch.strHomeTeam}: {selectedMatch.liveScore.homeScore}/{selectedMatch.liveScore.homeWickets}</p>
+                  <p>{selectedMatch.strAwayTeam}: {selectedMatch.liveScore.awayScore}/{selectedMatch.liveScore.awayWickets}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </section>
   );
 };
