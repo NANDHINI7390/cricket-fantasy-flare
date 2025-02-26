@@ -120,32 +120,38 @@ const LiveMatches = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 80, damping: 12 }}
               >
-                <Card className="p-6 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow">
-                  <div className="space-y-4">
-                    {/* Teams */}
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-lg">{match.strHomeTeam}</span>
-                        <span className="font-semibold text-lg">{match.strAwayTeam}</span>
-                      </div>
-                    </div>
-
-                    {/* Match Info */}
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>{match.strVenue}</span>
-                      <span className="px-3 py-1 rounded-full text-white text-sm bg-red-500">
+                <Card className="bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow">
+                  <div className="relative">
+                    {/* Status Label - Now at the top */}
+                    <div className="absolute -top-3 right-6">
+                      <span className="px-4 py-1 rounded-full text-white text-sm bg-red-500 shadow-md">
                         {match.liveScore?.status === "Live" ? "LIVE" : "UPCOMING"}
                       </span>
                     </div>
 
-                    {/* View Details Button */}
-                    <button
-                      className="w-full py-3 px-4 bg-purple-600 text-white rounded-xl font-semibold flex justify-center items-center space-x-2 hover:opacity-90 transition-opacity"
-                      onClick={() => setSelectedMatch(match)}
-                    >
-                      <span>View Details</span>
-                      <ChevronRight size={20} />
-                    </button>
+                    <div className="p-6 space-y-4">
+                      {/* Teams */}
+                      <div className="space-y-3 mt-2">
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-lg">{match.strHomeTeam}</span>
+                          <span className="font-semibold text-lg">{match.strAwayTeam}</span>
+                        </div>
+                      </div>
+
+                      {/* Match Info */}
+                      <div className="text-sm text-gray-600">
+                        <span>{match.strVenue}</span>
+                      </div>
+
+                      {/* View Details Button */}
+                      <button
+                        className="w-full py-3 px-4 bg-purple-600 text-white rounded-xl font-semibold flex justify-center items-center space-x-2 hover:opacity-90 transition-opacity"
+                        onClick={() => setSelectedMatch(match)}
+                      >
+                        <span>View Details</span>
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
                   </div>
                 </Card>
               </motion.div>
