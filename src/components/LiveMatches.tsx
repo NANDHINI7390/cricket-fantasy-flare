@@ -48,8 +48,12 @@ const fetchLiveScores = async () => {
   }
 };
 
-const formatMatchTime = (date, time) => {
-  return date && time ? `${date} ${time}` : "TBA";
+// Convert UTC match time to user's local time
+const convertToLocalTime = (date, time) => {
+  if (!date || !time) return "TBA";
+
+  const utcDateTime = new Date(`${date}T${time}Z`);
+  return utcDateTime.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 };
 
 const LiveMatches = () => {
@@ -65,12 +69,10 @@ const LiveMatches = () => {
   const { data: liveScores, isLoading: isScoresLoading } = useQuery({
     queryKey: ["liveScores"],
     queryFn: fetchLiveScores,
-    refetchInterval: 30000,
+    refetchInterval: 60000, // Now fetching every 60 seconds
   });
 
-  const liveMatches = matches?.filter((match) => match.strStatus === "Live") || [];
-
-  const mergedLiveMatches = liveMatches.map((match) => {
+  const allMatches = matches?.map((match) => {
     const liveMatchData = liveScores?.find(
       (score) =>
         score.teamInfo.some((team) => match.strHomeTeam.includes(team.name)) &&
@@ -79,7 +81,7 @@ const LiveMatches = () => {
 
     return {
       ...match,
-      matchTime: formatMatchTime(match.dateEvent, match.strTime),
+      matchTime: convertToLocalTime(match.dateEvent, match.strTime),
       liveScore: liveMatchData
         ? {
             homeScore: liveMatchData.score[0]?.r || "N/A",
@@ -88,13 +90,11 @@ const LiveMatches = () => {
             awayWickets: liveMatchData.score[1]?.w || "N/A",
             status: "Live",
           }
-        : { status: "Live" },
+        : { status: "Not Started" },
     };
   });
 
-  const allMatches = [...mergedLiveMatches, ...(matches?.filter((match) => match.strStatus !== "Live") || [])];
-
-  const visibleMatches = showAll ? allMatches : allMatches.slice(0, 5);
+  const visibleMatches = showAll ? allMatches : allMatches?.slice(0, 5);
 
   return (
     <section className="min-h-screen py-8 px-4 bg-gradient-to-r from-purple-100 to-pink-100">
@@ -114,7 +114,7 @@ const LiveMatches = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {visibleMatches.map((match) => (
+            {visibleMatches?.map((match) => (
               <motion.div key={match.idEvent} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 80, damping: 12 }}>
                 <Card className="overflow-hidden bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow">
                   <div className="p-6 relative">
@@ -122,31 +122,27 @@ const LiveMatches = () => {
                       <span className={`px-3 py-1 rounded-full text-sm ${
                         match.liveScore?.status === "Live" ? "bg-red-500 text-white" : "bg-gray-600 text-white"
                       }`}>
-                        {match.liveScore?.status === "Live" ? "LIVE" : "UPCOMING"}
+                        {match.liveScore?.status}
                       </span>
                     </div>
 
                     <div className="space-y-4 mt-4">
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <img src={getCountryFlagUrl(match.strHomeTeam)} alt={match.strHomeTeam} className="w-8 h-8 rounded-full object-cover border-2 border-gray-100" />
-                            <span className="text-lg font-semibold text-gray-800">{match.strHomeTeam.replace(" Cricket", "")}</span>
+                        {[match.strHomeTeam, match.strAwayTeam].map((team, index) => (
+                          <div className="flex items-center justify-between" key={index}>
+                            <div className="flex items-center space-x-3">
+                              <img src={getCountryFlagUrl(team)} alt={team} className="w-8 h-8 rounded-full object-cover border-2 border-gray-100" />
+                              <span className="text-lg font-semibold text-gray-800">{team.replace(" Cricket", "")}</span>
+                            </div>
+                            {match.liveScore?.status === "Live" && (
+                              <span className="text-lg font-bold text-gray-800">
+                                {index === 0
+                                  ? `${match.liveScore.homeScore}/${match.liveScore.homeWickets}`
+                                  : `${match.liveScore.awayScore}/${match.liveScore.awayWickets}`}
+                              </span>
+                            )}
                           </div>
-                          {match.liveScore?.status === "Live" && (
-                            <span className="text-lg font-bold text-gray-800">{match.liveScore.homeScore}/{match.liveScore.homeWickets}</span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <img src={getCountryFlagUrl(match.strAwayTeam)} alt={match.strAwayTeam} className="w-8 h-8 rounded-full object-cover border-2 border-gray-100" />
-                            <span className="text-lg font-semibold text-gray-800">{match.strAwayTeam.replace(" Cricket", "")}</span>
-                          </div>
-                          {match.liveScore?.status === "Live" && (
-                            <span className="text-lg font-bold text-gray-800">{match.liveScore.awayScore}/{match.liveScore.awayWickets}</span>
-                          )}
-                        </div>
+                        ))}
                       </div>
 
                       <div className="flex items-center justify-between">
