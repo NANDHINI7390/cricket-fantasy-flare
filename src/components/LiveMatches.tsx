@@ -1,6 +1,7 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion }  "framer-motion";
+import { motion } from "framer-motion";
 import { Loader2, ChevronRight, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
@@ -143,6 +144,11 @@ const LiveMatches = () => {
                         </div>
                       </div>
 
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">{match.strVenue}</span>
+                        <span className="text-sm text-gray-600">{match.strTime || "TBA"}</span>
+                      </div>
+
                       <button className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold flex items-center justify-center space-x-2 hover:opacity-90 transition-opacity" onClick={() => setSelectedMatch(match)}>
                         <span>View Details</span>
                         <ChevronRight size={20} />
@@ -155,8 +161,43 @@ const LiveMatches = () => {
           </div>
         )}
       </div>
+
+      {/* Match Details Modal */}
+      {selectedMatch && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full m-4"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Match Details</h2>
+              <button 
+                onClick={() => setSelectedMatch(null)}
+                className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <p><strong>Venue:</strong> {selectedMatch.strVenue}</p>
+              <p><strong>League:</strong> {selectedMatch.strLeague}</p>
+              <p><strong>Season:</strong> {selectedMatch.strSeason}</p>
+              <p><strong>Time:</strong> {selectedMatch.strTime || "TBA"}</p>
+              {selectedMatch.liveScore?.status === "Live" && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold mb-2">Live Score</h3>
+                  <p>{selectedMatch.strHomeTeam}: {selectedMatch.liveScore.homeScore}/{selectedMatch.liveScore.homeWickets}</p>
+                  <p>{selectedMatch.strAwayTeam}: {selectedMatch.liveScore.awayScore}/{selectedMatch.liveScore.awayWickets}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </section>
   );
 };
 
-export default LiveMatches; 
+export default LiveMatches;
