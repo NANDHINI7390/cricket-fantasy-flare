@@ -48,6 +48,10 @@ const fetchLiveScores = async () => {
   }
 };
 
+const formatMatchTime = (date, time) => {
+  return date && time ? `${date} ${time}` : "TBA";
+};
+
 const LiveMatches = () => {
   const [showAll, setShowAll] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
@@ -75,6 +79,7 @@ const LiveMatches = () => {
 
     return {
       ...match,
+      matchTime: formatMatchTime(match.dateEvent, match.strTime),
       liveScore: liveMatchData
         ? {
             homeScore: liveMatchData.score[0]?.r || "N/A",
@@ -146,7 +151,7 @@ const LiveMatches = () => {
 
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">{match.strVenue}</span>
-                        <span className="text-sm text-gray-600">{match.strTime || "TBA"}</span>
+                        <span className="text-sm text-gray-600">{match.matchTime}</span>
                       </div>
 
                       <button className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold flex items-center justify-center space-x-2 hover:opacity-90 transition-opacity" onClick={() => setSelectedMatch(match)}>
@@ -184,7 +189,7 @@ const LiveMatches = () => {
               <p><strong>Venue:</strong> {selectedMatch.strVenue}</p>
               <p><strong>League:</strong> {selectedMatch.strLeague}</p>
               <p><strong>Season:</strong> {selectedMatch.strSeason}</p>
-              <p><strong>Time:</strong> {selectedMatch.strTime || "TBA"}</p>
+              <p><strong>Time:</strong> {selectedMatch.matchTime}</p>
               {selectedMatch.liveScore?.status === "Live" && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                   <h3 className="font-semibold mb-2">Live Score</h3>
