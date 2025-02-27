@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -30,6 +29,7 @@ const fetchMatches = async () => {
   try {
     const response = await fetch(SPORTS_DB_API_URL);
     const data = await response.json();
+    console.log("Fetched matches:", data); // Debug log
     return data?.events || [];
   } catch (error) {
     console.error("Error fetching matches:", error);
@@ -41,6 +41,13 @@ const fetchLiveScores = async () => {
   try {
     const response = await fetch(CRICK_API_URL);
     const data = await response.json();
+    console.log("Fetched live scores:", data); // Debug log
+    
+    if (data.status === "failure") {
+      console.error("CricAPI Error:", data.reason);
+      return [];
+    }
+    
     return data?.data || [];
   } catch (error) {
     console.error("Error fetching live scores:", error);
@@ -48,7 +55,6 @@ const fetchLiveScores = async () => {
   }
 };
 
-// Convert UTC match time to user's local time
 const convertToLocalTime = (date, time) => {
   if (!date || !time) return "TBA";
 
@@ -63,34 +69,39 @@ const LiveMatches = () => {
   const { data: matches, isLoading: isMatchesLoading } = useQuery({
     queryKey: ["matches"],
     queryFn: fetchMatches,
-    refetchInterval: 300000,
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 
   const { data: liveScores, isLoading: isScoresLoading } = useQuery({
     queryKey: ["liveScores"],
     queryFn: fetchLiveScores,
-    refetchInterval: 60000, // Now fetching every 60 seconds
+    refetchInterval: 30000, // More frequent updates for live scores (30 seconds)
+    retry: 2, // Retry failed requests twice
   });
 
   const allMatches = matches?.map((match) => {
     const liveMatchData = liveScores?.find(
       (score) =>
-        score.teamInfo.some((team) => match.strHomeTeam.includes(team.name)) &&
-        score.teamInfo.some((team) => match.strAwayTeam.includes(team.name))
+        score.teamInfo?.some((team) => match.strHomeTeam.includes(team.name)) &&
+        score.teamInfo?.some((team) => match.strAwayTeam.includes(team.name))
     );
+
+    const isLive = match.strStatus === "Live" || liveMatchData;
 
     return {
       ...match,
       matchTime: convertToLocalTime(match.dateEvent, match.strTime),
       liveScore: liveMatchData
         ? {
-            homeScore: liveMatchData.score[0]?.r || "N/A",
-            homeWickets: liveMatchData.score[0]?.w || "N/A",
-            awayScore: liveMatchData.score[1]?.r || "N/A",
-            awayWickets: liveMatchData.score[1]?.w || "N/A",
+            homeScore: liveMatchData.score[0]?.r || "0",
+            homeWickets: liveMatchData.score[0]?.w || "0",
+            awayScore: liveMatchData.score[1]?.r || "0",
+            awayWickets: liveMatchData.score[1]?.w || "0",
             status: "Live",
           }
-        : { status: "Not Started" },
+        : { 
+            status: isLive ? "Live" : "Upcoming"
+          },
     };
   });
 
@@ -163,7 +174,6 @@ const LiveMatches = () => {
         )}
       </div>
 
-      {/* Match Details Modal */}
       {selectedMatch && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <motion.div
