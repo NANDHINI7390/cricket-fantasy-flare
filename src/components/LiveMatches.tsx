@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Loader2, ChevronRight, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
 
 const SPORTS_DB_API_URL =
   "https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=5587&s=2025";
-const CRICK_API_URL = "https://api.cricapi.com/v1/currentMatches?apikey=YOUR_API_KEY";
+const CRICK_API_URL = "https://api.cricapi.com/v1/currentMatches?apikey=a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 
 const TEAM_FLAGS = {
   India: "https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
@@ -25,14 +26,34 @@ const getCountryFlagUrl = (country) => {
   return TEAM_FLAGS[cleanedCountry] || "/placeholder.svg";
 };
 
+const isMatchLiveOrUpcoming = (matchDate: string, matchTime: string) => {
+  if (!matchDate || !matchTime) return false;
+  const matchDateTime = new Date(`${matchDate}T${matchTime}Z`);
+  const now = new Date();
+  return matchDateTime >= now;
+};
+
 const fetchMatches = async () => {
   try {
     const response = await fetch(SPORTS_DB_API_URL);
     const data = await response.json();
-    console.log("Fetched matches:", data); // Debug log
-    return data?.events || [];
+    console.log("Fetched matches:", data);
+    
+    if (!data?.events) {
+      throw new Error("No matches data received");
+    }
+    
+    const filteredMatches = data.events
+      .filter((match) => 
+        match.strStatus !== "Match Finished" && 
+        isMatchLiveOrUpcoming(match.dateEvent, match.strTime)
+      )
+      .sort((a, b) => new Date(a.dateEvent).getTime() - new Date(b.dateEvent).getTime());
+    
+    return filteredMatches;
   } catch (error) {
     console.error("Error fetching matches:", error);
+    toast.error("Failed to fetch matches");
     return [];
   }
 };
@@ -41,23 +62,22 @@ const fetchLiveScores = async () => {
   try {
     const response = await fetch(CRICK_API_URL);
     const data = await response.json();
-    console.log("Fetched live scores:", data); // Debug log
+    console.log("Fetched live scores:", data);
     
     if (data.status === "failure") {
-      console.error("CricAPI Error:", data.reason);
-      return [];
+      throw new Error(data.reason || "Failed to fetch live scores");
     }
     
     return data?.data || [];
   } catch (error) {
     console.error("Error fetching live scores:", error);
+    toast.error("Failed to fetch live scores");
     return [];
   }
 };
 
 const convertToLocalTime = (date, time) => {
   if (!date || !time) return "TBA";
-
   const utcDateTime = new Date(`${date}T${time}Z`);
   return utcDateTime.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 };
@@ -69,24 +89,36 @@ const LiveMatches = () => {
   const { data: matches, isLoading: isMatchesLoading } = useQuery({
     queryKey: ["matches"],
     queryFn: fetchMatches,
-    refetchInterval: 300000, // Refresh every 5 minutes
+    refetchInterval: 300000,
+    onError: (error) => {
+      console.error("Matches query error:", error);
+      toast.error("Failed to fetch matches");
+    }
   });
 
   const { data: liveScores, isLoading: isScoresLoading } = useQuery({
     queryKey: ["liveScores"],
     queryFn: fetchLiveScores,
-    refetchInterval: 30000, // More frequent updates for live scores (30 seconds)
-    retry: 2, // Retry failed requests twice
+    refetchInterval: 30000,
+    retry: 2,
+    onError: (error) => {
+      console.error("Live scores query error:", error);
+      toast.error("Failed to fetch live scores");
+    }
   });
 
   const allMatches = matches?.map((match) => {
+    const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
+    const now = new Date();
+    
     const liveMatchData = liveScores?.find(
       (score) =>
         score.teamInfo?.some((team) => match.strHomeTeam.includes(team.name)) &&
         score.teamInfo?.some((team) => match.strAwayTeam.includes(team.name))
     );
 
-    const isLive = match.strStatus === "Live" || liveMatchData;
+    const isLive = liveMatchData || 
+      (matchDateTime <= now && match.strStatus !== "Match Finished");
 
     return {
       ...match,
@@ -97,11 +129,11 @@ const LiveMatches = () => {
             homeWickets: liveMatchData.score[0]?.w || "0",
             awayScore: liveMatchData.score[1]?.r || "0",
             awayWickets: liveMatchData.score[1]?.w || "0",
-            status: "Live",
+            status: "Live"
           }
-        : { 
+        : {
             status: isLive ? "Live" : "Upcoming"
-          },
+          }
     };
   });
 
@@ -112,9 +144,9 @@ const LiveMatches = () => {
       <div className="container mx-auto max-w-2xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2">
-            <span className="text-gray-900">Live</span>{" "}
+            <span className="text-gray-900">Cricket</span>{" "}
             <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-              Cricket Matches
+              Matches
             </span>
           </h1>
         </motion.div>
@@ -122,6 +154,10 @@ const LiveMatches = () => {
         {isMatchesLoading || isScoresLoading ? (
           <div className="flex justify-center">
             <Loader2 className="animate-spin text-purple-600" size={28} />
+          </div>
+        ) : visibleMatches?.length === 0 ? (
+          <div className="text-center text-gray-600">
+            No upcoming or live matches found
           </div>
         ) : (
           <div className="space-y-4">
@@ -170,6 +206,17 @@ const LiveMatches = () => {
                 </Card>
               </motion.div>
             ))}
+          </div>
+        )}
+
+        {visibleMatches?.length > 5 && !showAll && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowAll(true)}
+              className="text-purple-600 hover:text-purple-700 font-semibold"
+            >
+              Show More Matches
+            </button>
           </div>
         )}
       </div>
