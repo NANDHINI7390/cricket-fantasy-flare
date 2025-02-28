@@ -1,86 +1,11 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Loader2, ChevronRight, X } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
-
-const SPORTS_DB_API_URL =
-  "https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=5587&s=2025";
-const CRICK_API_URL = "https://api.cricapi.com/v1/currentMatches?apikey=a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
-
-const TEAM_FLAGS = {
-  India: "https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
-  Australia: "https://upload.wikimedia.org/wikipedia/commons/b/b9/Flag_of_Australia.svg",
-  England: "https://upload.wikimedia.org/wikipedia/en/b/be/Flag_of_England.svg",
-  Pakistan: "https://upload.wikimedia.org/wikipedia/commons/3/32/Flag_of_Pakistan.svg",
-  "South Africa": "https://upload.wikimedia.org/wikipedia/commons/a/af/Flag_of_South_Africa.svg",
-  "New Zealand": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Flag_of_New_Zealand.svg",
-  "Sri Lanka": "https://upload.wikimedia.org/wikipedia/commons/1/11/Flag_of_Sri_Lanka.svg",
-  Bangladesh: "https://upload.wikimedia.org/wikipedia/commons/f/f9/Flag_of_Bangladesh.svg",
-  Afghanistan: "https://upload.wikimedia.org/wikipedia/commons/9/9a/Flag_of_Afghanistan.svg",
-};
-
-const getCountryFlagUrl = (country) => {
-  const cleanedCountry = country.replace(/ Cricket| National Team/gi, "").trim();
-  return TEAM_FLAGS[cleanedCountry] || "/placeholder.svg";
-};
-
-const isMatchLiveOrUpcoming = (matchDate: string, matchTime: string) => {
-  if (!matchDate || !matchTime) return false;
-  const matchDateTime = new Date(`${matchDate}T${matchTime}Z`);
-  const now = new Date();
-  return matchDateTime >= now;
-};
-
-const fetchMatches = async () => {
-  try {
-    const response = await fetch(SPORTS_DB_API_URL);
-    const data = await response.json();
-    console.log("Fetched matches:", data);
-    
-    if (!data?.events) {
-      throw new Error("No matches data received");
-    }
-    
-    const filteredMatches = data.events
-      .filter((match) => 
-        match.strStatus !== "Match Finished" && 
-        isMatchLiveOrUpcoming(match.dateEvent, match.strTime)
-      )
-      .sort((a, b) => new Date(a.dateEvent).getTime() - new Date(b.dateEvent).getTime());
-    
-    return filteredMatches;
-  } catch (error) {
-    console.error("Error fetching matches:", error);
-    toast.error("Failed to fetch matches");
-    return [];
-  }
-};
-
-const fetchLiveScores = async () => {
-  try {
-    const response = await fetch(CRICK_API_URL);
-    const data = await response.json();
-    console.log("Fetched live scores:", data);
-    
-    if (data.status === "failure") {
-      throw new Error(data.reason || "Failed to fetch live scores");
-    }
-    
-    return data?.data || [];
-  } catch (error) {
-    console.error("Error fetching live scores:", error);
-    toast.error("Failed to fetch live scores");
-    return [];
-  }
-};
-
-const convertToLocalTime = (date, time) => {
-  if (!date || !time) return "TBA";
-  const utcDateTime = new Date(`${date}T${time}Z`);
-  return utcDateTime.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-};
+import { Loader2 } from "lucide-react";
+import MatchCard from "@/components/MatchCard";
+import MatchDetailsModal from "@/components/MatchDetailsModal";
+import { fetchMatches, fetchLiveScores, convertToLocalTime } from "@/utils/cricket-api";
 
 const LiveMatches = () => {
   const [showAll, setShowAll] = useState(false);
@@ -89,34 +14,28 @@ const LiveMatches = () => {
   const { data: matches, isLoading: isMatchesLoading } = useQuery({
     queryKey: ["matches"],
     queryFn: fetchMatches,
-    refetchInterval: 300000,
-    onError: (error) => {
-      console.error("Matches query error:", error);
-      toast.error("Failed to fetch matches");
-    }
+    refetchInterval: 300000, // 5 minutes
   });
 
   const { data: liveScores, isLoading: isScoresLoading } = useQuery({
     queryKey: ["liveScores"],
     queryFn: fetchLiveScores,
-    refetchInterval: 30000,
+    refetchInterval: 30000, // 30 seconds
     retry: 2,
-    onError: (error) => {
-      console.error("Live scores query error:", error);
-      toast.error("Failed to fetch live scores");
-    }
   });
 
-  const allMatches = matches?.map((match) => {
+  const processMatchData = (match) => {
     const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
     const now = new Date();
     
+    // Find corresponding live score data
     const liveMatchData = liveScores?.find(
       (score) =>
         score.teamInfo?.some((team) => match.strHomeTeam.includes(team.name)) &&
         score.teamInfo?.some((team) => match.strAwayTeam.includes(team.name))
     );
 
+    // Determine if match is live based on time and live score data
     const isLive = liveMatchData || 
       (matchDateTime <= now && match.strStatus !== "Match Finished");
 
@@ -135,8 +54,9 @@ const LiveMatches = () => {
             status: isLive ? "Live" : "Upcoming"
           }
     };
-  });
+  };
 
+  const allMatches = matches?.map(processMatchData);
   const visibleMatches = showAll ? allMatches : allMatches?.slice(0, 5);
 
   return (
@@ -162,49 +82,11 @@ const LiveMatches = () => {
         ) : (
           <div className="space-y-4">
             {visibleMatches?.map((match) => (
-              <motion.div key={match.idEvent} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 80, damping: 12 }}>
-                <Card className="overflow-hidden bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow">
-                  <div className="p-6 relative">
-                    <div className="absolute top-2 right-2">
-                      <span className={`px-3 py-1 rounded-full text-sm ${
-                        match.liveScore?.status === "Live" ? "bg-red-500 text-white" : "bg-gray-600 text-white"
-                      }`}>
-                        {match.liveScore?.status}
-                      </span>
-                    </div>
-
-                    <div className="space-y-4 mt-4">
-                      <div className="space-y-3">
-                        {[match.strHomeTeam, match.strAwayTeam].map((team, index) => (
-                          <div className="flex items-center justify-between" key={index}>
-                            <div className="flex items-center space-x-3">
-                              <img src={getCountryFlagUrl(team)} alt={team} className="w-8 h-8 rounded-full object-cover border-2 border-gray-100" />
-                              <span className="text-lg font-semibold text-gray-800">{team.replace(" Cricket", "")}</span>
-                            </div>
-                            {match.liveScore?.status === "Live" && (
-                              <span className="text-lg font-bold text-gray-800">
-                                {index === 0
-                                  ? `${match.liveScore.homeScore}/${match.liveScore.homeWickets}`
-                                  : `${match.liveScore.awayScore}/${match.liveScore.awayWickets}`}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">{match.strVenue}</span>
-                        <span className="text-sm text-gray-600">{match.matchTime}</span>
-                      </div>
-
-                      <button className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold flex items-center justify-center space-x-2 hover:opacity-90 transition-opacity" onClick={() => setSelectedMatch(match)}>
-                        <span>View Details</span>
-                        <ChevronRight size={20} />
-                      </button>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
+              <MatchCard 
+                key={match.idEvent} 
+                match={match} 
+                onViewDetails={setSelectedMatch} 
+              />
             ))}
           </div>
         )}
@@ -222,37 +104,10 @@ const LiveMatches = () => {
       </div>
 
       {selectedMatch && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full m-4"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">Match Details</h2>
-              <button 
-                onClick={() => setSelectedMatch(null)}
-                className="hover:bg-gray-100 p-1 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-2">
-              <p><strong>Venue:</strong> {selectedMatch.strVenue}</p>
-              <p><strong>League:</strong> {selectedMatch.strLeague}</p>
-              <p><strong>Season:</strong> {selectedMatch.strSeason}</p>
-              <p><strong>Time:</strong> {selectedMatch.matchTime}</p>
-              {selectedMatch.liveScore?.status === "Live" && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-semibold mb-2">Live Score</h3>
-                  <p>{selectedMatch.strHomeTeam}: {selectedMatch.liveScore.homeScore}/{selectedMatch.liveScore.homeWickets}</p>
-                  <p>{selectedMatch.strAwayTeam}: {selectedMatch.liveScore.awayScore}/{selectedMatch.liveScore.awayWickets}</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
+        <MatchDetailsModal
+          match={selectedMatch}
+          onClose={() => setSelectedMatch(null)}
+        />
       )}
     </section>
   );
