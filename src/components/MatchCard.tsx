@@ -1,4 +1,3 @@
-
 import React from "react";
 import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
@@ -11,6 +10,29 @@ interface MatchCardProps {
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
+  const isLive = match.liveScore?.status === "Live" || 
+    (match.liveScore?.matchDetails?.matchStarted && !match.liveScore?.matchDetails?.matchEnded);
+  
+  const isFinished = match.liveScore?.status.includes("won") || 
+    match.liveScore?.matchDetails?.matchEnded;
+
+  const getBadgeColor = () => {
+    if (isLive) return "bg-red-500 text-white";
+    if (isFinished) return "bg-gray-600 text-white";
+    return "bg-green-500 text-white";
+  };
+
+  const getDisplayStatus = () => {
+    if (match.liveScore?.matchDetails?.status) {
+      const status = match.liveScore.matchDetails.status;
+      return status.length > 20 ? status.substring(0, 20) + "..." : status;
+    }
+    
+    if (isLive) return "Live";
+    if (isFinished) return "Finished";
+    return "Upcoming";
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }} 
@@ -20,10 +42,8 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
       <Card className="overflow-hidden bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow">
         <div className="p-6 relative">
           <div className="absolute top-2 right-2">
-            <span className={`px-3 py-1 rounded-full text-sm ${
-              match.liveScore?.status === "Live" ? "bg-red-500 text-white" : "bg-gray-600 text-white"
-            }`}>
-              {match.liveScore?.status}
+            <span className={`px-3 py-1 rounded-full text-sm ${getBadgeColor()}`}>
+              {getDisplayStatus()}
             </span>
           </div>
 
@@ -32,10 +52,16 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
               {[match.strHomeTeam, match.strAwayTeam].map((team, index) => (
                 <div className="flex items-center justify-between" key={index}>
                   <div className="flex items-center space-x-3">
-                    <img src={getCountryFlagUrl(team)} alt={team} className="w-8 h-8 rounded-full object-cover border-2 border-gray-100" />
-                    <span className="text-lg font-semibold text-gray-800">{team.replace(" Cricket", "")}</span>
+                    <img 
+                      src={getCountryFlagUrl(team)} 
+                      alt={team} 
+                      className="w-8 h-8 rounded-full object-cover border-2 border-gray-100" 
+                    />
+                    <span className="text-lg font-semibold text-gray-800">
+                      {team.replace(" Cricket", "")}
+                    </span>
                   </div>
-                  {match.liveScore?.status === "Live" && (
+                  {(isLive || isFinished) && (
                     <span className="text-lg font-bold text-gray-800">
                       {index === 0
                         ? `${match.liveScore.homeScore}/${match.liveScore.homeWickets}`

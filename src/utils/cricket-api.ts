@@ -36,6 +36,16 @@ export const convertToLocalTime = (date: string, time: string): string => {
   return utcDateTime.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 };
 
+// Helper function to check if team names match
+export const teamsMatch = (team1: string, team2: string): boolean => {
+  // Clean both team names by removing common suffixes and converting to lowercase
+  const cleanName1 = team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
+  const cleanName2 = team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
+  
+  // Return true if cleaned names match or one is a substring of the other
+  return cleanName1 === cleanName2 || cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1);
+};
+
 export const fetchMatches = async () => {
   try {
     const response = await fetch(SPORTS_DB_API_URL);
