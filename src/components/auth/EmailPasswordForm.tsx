@@ -52,6 +52,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
         navigate("/");
       }
     } catch (error) {
+      console.error("Authentication error:", error);
       toast.error(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setIsLoading(false);

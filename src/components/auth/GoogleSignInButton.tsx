@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export const GoogleSignInButton = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
     try {
@@ -18,7 +20,6 @@ export const GoogleSignInButton = () => {
             prompt: 'consent',
           },
           redirectTo: `${window.location.origin}/auth/callback`,
-          skipBrowserRedirect: true
         }
       });
 
@@ -28,29 +29,7 @@ export const GoogleSignInButton = () => {
       }
 
       if (data?.url) {
-        const width = 500;
-        const height = 600;
-        const left = window.screenX + (window.outerWidth - width) / 2;
-        const top = window.screenY + (window.outerHeight - height) / 2;
-
-        const popup = window.open(
-          data.url,
-          'Google Sign In',
-          `width=${width},height=${height},left=${left},top=${top}`
-        );
-
-        if (!popup) {
-          toast.error("Please allow popups for this website to sign in with Google");
-          return;
-        }
-
-        // Poll the popup to check when it closes
-        const checkPopup = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkPopup);
-            setIsLoading(false);
-          }
-        }, 1000);
+        window.location.href = data.url;
       }
     } catch (error) {
       console.error('Detailed error:', error);

@@ -1,37 +1,42 @@
 
 import { useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from 'react-router-dom';
+import { toast } from "sonner";
 
 const AuthCallback = () => {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const handleCallback = async () => {
       try {
         // Get the session after OAuth sign in
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Auth callback error:', error);
+          toast.error(error.message || "Authentication failed");
+          navigate('/auth');
+          return;
+        }
         
         if (session) {
-          // If we're in a popup, send message to parent window
-          if (window.opener) {
-            window.opener.postMessage({ type: 'GOOGLE_SIGN_IN_SUCCESS' }, window.location.origin);
-            window.close();
-          } else {
-            // If not in popup, redirect to home
-            window.location.href = '/';
-          }
+          toast.success("Successfully signed in!");
+          navigate('/');
+        } else {
+          console.error('No session found after authentication');
+          toast.error("Authentication failed. Please try again.");
+          navigate('/auth');
         }
       } catch (error) {
         console.error('Error during auth callback:', error);
-        if (window.opener) {
-          window.opener.postMessage({ type: 'GOOGLE_SIGN_IN_ERROR', error }, window.location.origin);
-          window.close();
-        }
+        toast.error("Authentication failed. Please try again.");
+        navigate('/auth');
       }
     };
 
     handleCallback();
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-[#1A1F2C] flex items-center justify-center">
