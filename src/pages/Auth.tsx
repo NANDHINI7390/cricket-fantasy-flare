@@ -3,21 +3,24 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { EmailPasswordForm } from "@/components/auth/EmailPasswordForm";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const navigate = useNavigate();
 
-  // Listen for messages from the popup window
+  // Check if user is already logged in
   useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.data?.type === 'GOOGLE_SIGN_IN_SUCCESS') {
-        window.location.href = '/'; // Redirect the main window to home
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate('/');
       }
     };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+    checkAuth();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-[#1A1F2C] text-white flex">

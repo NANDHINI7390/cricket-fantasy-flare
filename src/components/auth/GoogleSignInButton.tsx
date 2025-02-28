@@ -3,15 +3,17 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 
 export const GoogleSignInButton = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
+      
+      // Clear any existing sessions that might be causing conflicts
+      await supabase.auth.signOut();
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -29,11 +31,15 @@ export const GoogleSignInButton = () => {
       }
 
       if (data?.url) {
+        // Using window.location.href for direct redirect
         window.location.href = data.url;
+      } else {
+        throw new Error("No redirect URL returned from Supabase");
       }
     } catch (error) {
-      console.error('Detailed error:', error);
+      console.error('Detailed Google sign in error:', error);
       toast.error(error instanceof Error ? error.message : "An error occurred with Google sign in");
+    } finally {
       setIsLoading(false);
     }
   };

@@ -26,8 +26,11 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
     const username = formData.get("username") as string;
 
     try {
+      // First sign out to clear any potential conflicting sessions
+      await supabase.auth.signOut();
+      
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -39,21 +42,30 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
 
         if (error) throw error;
 
-        toast.success("Sign up successful! Please check your email to verify your account.");
+        if (data.user && data.session) {
+          toast.success("Sign up successful and signed in!");
+          navigate("/");
+        } else {
+          toast.success("Sign up successful! Please check your email to verify your account.");
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
 
-        toast.success("Successfully signed in!");
-        navigate("/");
+        if (data.session) {
+          toast.success("Successfully signed in!");
+          navigate("/");
+        } else {
+          throw new Error("No session returned after sign in");
+        }
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      toast.error(error instanceof Error ? error.message : "An error occurred");
+      toast.error(error instanceof Error ? error.message : "An error occurred during authentication");
     } finally {
       setIsLoading(false);
     }
