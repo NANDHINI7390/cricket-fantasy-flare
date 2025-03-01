@@ -1,3 +1,4 @@
+
 import React from "react";
 import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
@@ -10,10 +11,12 @@ interface MatchCardProps {
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
-  const isLive = match.liveScore?.status === "Live" || 
-    (match.liveScore?.matchDetails?.matchStarted && !match.liveScore?.matchDetails?.matchEnded);
+  const isLive = match.isLive || 
+    (match.liveScore?.status === "Live" || 
+    (match.liveScore?.matchDetails?.matchStarted && !match.liveScore?.matchDetails?.matchEnded));
   
-  const isFinished = match.liveScore?.status.includes("won") || 
+  const isFinished = match.isFinished || 
+    match.liveScore?.status?.includes("won") || 
     match.liveScore?.matchDetails?.matchEnded;
 
   const getBadgeColor = () => {

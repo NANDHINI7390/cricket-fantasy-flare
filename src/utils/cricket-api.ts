@@ -39,8 +39,8 @@ export const convertToLocalTime = (date: string, time: string): string => {
 // Helper function to check if team names match
 export const teamsMatch = (team1: string, team2: string): boolean => {
   // Clean both team names by removing common suffixes and converting to lowercase
-  const cleanName1 = team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
-  const cleanName2 = team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
+  const cleanName1 = team1 ? team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim() : "";
+  const cleanName2 = team2 ? team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim() : "";
   
   // Return true if cleaned names match or one is a substring of the other
   return cleanName1 === cleanName2 || cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1);
@@ -48,22 +48,44 @@ export const teamsMatch = (team1: string, team2: string): boolean => {
 
 export const fetchMatches = async () => {
   try {
-    const response = await fetch(SPORTS_DB_API_URL);
-    const data = await response.json();
-    console.log("Fetched matches:", data);
+    // Fetch upcoming matches from SPORTS_DB_API_URL
+    const upcomingResponse = await fetch(SPORTS_DB_API_URL);
+    const upcomingData = await upcomingResponse.json();
     
-    if (!data?.events) {
-      throw new Error("No matches data received");
-    }
+    if (!upcomingData?.events) throw new Error("No upcoming matches data received");
+
+    // Fetch live & completed match scores from QuickAPI
+    const liveResponse = await fetch(CRICK_API_URL);
+    const liveData = await liveResponse.json();
     
-    const filteredMatches = data.events
-      .filter((match) => 
-        match.strStatus !== "Match Finished" && 
-        isMatchLiveOrUpcoming(match.dateEvent, match.strTime)
-      )
-      .sort((a, b) => new Date(a.dateEvent).getTime() - new Date(b.dateEvent).getTime());
-    
-    return filteredMatches;
+    if (liveData.status === "failure") throw new Error(liveData.reason || "Failed to fetch live scores");
+
+    const liveMatches = liveData?.data || [];
+
+    // Get current time and time 24 hours ago
+    const now = new Date();
+    const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Process matches
+    const processedMatches = upcomingData.events.map((match) => {
+      const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
+
+      // Find if match is live
+      const liveMatch = liveMatches.find((live) =>
+        teamsMatch(live.team1, match.strHomeTeam) &&
+        teamsMatch(live.team2, match.strAwayTeam)
+      );
+
+      return {
+        ...match,
+        isLive: !!liveMatch, // Mark as live if found in QuickAPI
+        liveScore: liveMatch?.score || null,
+        isFinished: matchDateTime < now && matchDateTime > last24Hours, // Mark finished matches (within 24 hours)
+        finalScore: liveMatch && !liveMatch.status.includes("Live") ? liveMatch?.score : null,
+      };
+    });
+
+    return processedMatches;
   } catch (error) {
     console.error("Error fetching matches:", error);
     toast.error("Failed to fetch matches");

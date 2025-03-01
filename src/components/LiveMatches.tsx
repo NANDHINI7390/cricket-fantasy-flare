@@ -11,118 +11,73 @@ const LiveMatches = () => {
   const [showAll, setShowAll] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
 
+  // Fetch upcoming/live matches from SportsDB
   const { data: matches, isLoading: isMatchesLoading } = useQuery({
     queryKey: ["matches"],
     queryFn: fetchMatches,
-    refetchInterval: 300000, // 5 minutes
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 
+  // Fetch real-time scores from CrickAPI
   const { data: liveScores, isLoading: isScoresLoading } = useQuery({
     queryKey: ["liveScores"],
     queryFn: fetchLiveScores,
-    refetchInterval: 30000, // 30 seconds
+    refetchInterval: 30000, // Refresh every 30 seconds
     retry: 2,
   });
 
+  // Debugging: Check if liveScores data is available
+  console.log("Fetched Live Scores:", liveScores);
+
+  // Process match data to combine SportsDB matches with CrickAPI scores
   const processMatchData = (match) => {
     const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
     const now = new Date();
-    
-    // Find corresponding live score data with improved team name matching
-    const liveMatchData = liveScores?.find(
-      (score) => {
-        // First try to match using teamInfo if available
-        if (score.teamInfo && score.teamInfo.length >= 2) {
-          return (
-            teamsMatch(match.strHomeTeam, score.teamInfo[0].name) && 
-            teamsMatch(match.strAwayTeam, score.teamInfo[1].name)
-          ) || (
-            teamsMatch(match.strHomeTeam, score.teamInfo[1].name) && 
-            teamsMatch(match.strAwayTeam, score.teamInfo[0].name)
-          );
-        }
 
-        // Fall back to matching with teams array
-        if (score.teams && score.teams.length >= 2) {
-          return (
-            teamsMatch(match.strHomeTeam, score.teams[0]) && 
-            teamsMatch(match.strAwayTeam, score.teams[1])
-          ) || (
-            teamsMatch(match.strHomeTeam, score.teams[1]) && 
-            teamsMatch(match.strAwayTeam, score.teams[0])
-          );
-        }
-
-        return false;
+    // Find corresponding live score data
+    const liveMatchData = liveScores?.find((score) => {
+      if (score.teamInfo?.length >= 2) {
+        return (
+          (teamsMatch(match.strHomeTeam, score.teamInfo[0].name) && teamsMatch(match.strAwayTeam, score.teamInfo[1].name)) ||
+          (teamsMatch(match.strHomeTeam, score.teamInfo[1].name) && teamsMatch(match.strAwayTeam, score.teamInfo[0].name))
+        );
       }
-    );
+      return false;
+    });
 
-    // Determine if match is live based on time and live score data
-    const isLive = liveMatchData || 
-      (matchDateTime <= now && match.strStatus !== "Match Finished");
+    // Determine if the match is live
+    const isLive = liveMatchData || (matchDateTime <= now && match.strStatus !== "Match Finished");
 
-    // Find the correct score entries for home and away teams
-    let homeScore = "0";
-    let homeWickets = "0";
-    let awayScore = "0";
-    let awayWickets = "0";
+    // Default score values
+    let homeScore = "0", homeWickets = "0";
+    let awayScore = "0", awayWickets = "0";
     let matchStatus = isLive ? "Live" : "Upcoming";
 
-    if (liveMatchData) {
-      if (liveMatchData.score && liveMatchData.score.length > 0) {
-        // Try to match home team with the inning string
-        const homeScoreEntry = liveMatchData.score.find(s => 
-          s.inning && (
-            s.inning.includes(match.strHomeTeam.replace(" Cricket", "")) ||
-            teamsMatch(s.inning, match.strHomeTeam)
-          )
-        );
-        
-        if (homeScoreEntry) {
-          homeScore = homeScoreEntry.r?.toString() || "0";
-          homeWickets = homeScoreEntry.w?.toString() || "0";
-        } else if (liveMatchData.score[0]) {
-          // If no direct match, use the first score entry for home team
-          homeScore = liveMatchData.score[0].r?.toString() || "0";
-          homeWickets = liveMatchData.score[0].w?.toString() || "0";
-        }
+    // Extract score if match is live
+    if (liveMatchData?.score?.length > 0) {
+      const homeScoreEntry = liveMatchData.score.find((s) => teamsMatch(s.inning, match.strHomeTeam));
+      const awayScoreEntry = liveMatchData.score.find((s) => teamsMatch(s.inning, match.strAwayTeam));
 
-        // Try to match away team with the inning string
-        const awayScoreEntry = liveMatchData.score.find(s => 
-          s.inning && (
-            s.inning.includes(match.strAwayTeam.replace(" Cricket", "")) ||
-            teamsMatch(s.inning, match.strAwayTeam)
-          )
-        );
-        
-        if (awayScoreEntry) {
-          awayScore = awayScoreEntry.r?.toString() || "0";
-          awayWickets = awayScoreEntry.w?.toString() || "0";
-        } else if (liveMatchData.score[1]) {
-          // If no direct match, use the second score entry for away team
-          awayScore = liveMatchData.score[1].r?.toString() || "0";
-          awayWickets = liveMatchData.score[1].w?.toString() || "0";
-        }
+      if (homeScoreEntry) {
+        homeScore = homeScoreEntry.r?.toString() || "0";
+        homeWickets = homeScoreEntry.w?.toString() || "0";
       }
-      
-      // Use the status from cricAPI if available
+      if (awayScoreEntry) {
+        awayScore = awayScoreEntry.r?.toString() || "0";
+        awayWickets = awayScoreEntry.w?.toString() || "0";
+      }
+
       matchStatus = liveMatchData.status || "Live";
     }
 
     return {
       ...match,
       matchTime: convertToLocalTime(match.dateEvent, match.strTime),
-      liveScore: {
-        homeScore,
-        homeWickets,
-        awayScore,
-        awayWickets,
-        status: matchStatus,
-        matchDetails: liveMatchData // Pass the full match data for detail view
-      }
+      liveScore: { homeScore, homeWickets, awayScore, awayWickets, status: matchStatus, matchDetails: liveMatchData }
     };
   };
 
+  // Process all matches
   const allMatches = matches?.map(processMatchData);
   const visibleMatches = showAll ? allMatches : allMatches?.slice(0, 5);
 
@@ -138,6 +93,7 @@ const LiveMatches = () => {
           </h1>
         </motion.div>
 
+        {/* Show loading spinner */}
         {isMatchesLoading || isScoresLoading ? (
           <div className="flex justify-center">
             <Loader2 className="animate-spin text-purple-600" size={28} />
@@ -148,16 +104,20 @@ const LiveMatches = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {visibleMatches?.map((match) => (
-              <MatchCard 
-                key={match.idEvent} 
-                match={match} 
-                onViewDetails={setSelectedMatch} 
-              />
-            ))}
+            {visibleMatches?.map((match) => {
+              console.log("Rendering MatchCard:", match);
+              return (
+                <MatchCard 
+                  key={match.idEvent} 
+                  match={match} 
+                  onViewDetails={setSelectedMatch} 
+                />
+              );
+            })}
           </div>
         )}
 
+        {/* Show "Show More Matches" button if there are more than 5 matches */}
         {allMatches?.length > 5 && !showAll && (
           <div className="mt-4 text-center">
             <button
@@ -170,6 +130,7 @@ const LiveMatches = () => {
         )}
       </div>
 
+      {/* Match Details Modal */}
       {selectedMatch && (
         <MatchDetailsModal
           match={selectedMatch}
