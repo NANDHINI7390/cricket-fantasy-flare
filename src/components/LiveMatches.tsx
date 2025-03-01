@@ -11,14 +11,14 @@ const LiveMatches = () => {
   const [showAll, setShowAll] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
 
-  // Fetch upcoming/live matches from SportsDB
+  // Fetch upcoming matches from SportsDB
   const { data: matches, isLoading: isMatchesLoading } = useQuery({
     queryKey: ["matches"],
     queryFn: fetchMatches,
     refetchInterval: 300000, // Refresh every 5 minutes
   });
 
-  // Fetch real-time scores from CrickAPI
+  // Fetch live scores from CrickAPI
   const { data: liveScores, isLoading: isScoresLoading } = useQuery({
     queryKey: ["liveScores"],
     queryFn: fetchLiveScores,
@@ -26,46 +26,46 @@ const LiveMatches = () => {
     retry: 2,
   });
 
-  // Debugging: Check if liveScores data is available
-  console.log("Fetched Live Scores:", liveScores);
-
-  // Process match data to combine SportsDB matches with CrickAPI scores
   const processMatchData = (match) => {
-    const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
+    if (!match || !match.strEvent) return null;
+
     const now = new Date();
+    const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
+    const hoursSinceMatch = (now - matchDateTime) / (1000 * 60 * 60);
+
+    // **Filter only ICC Champions Trophy matches**
+    if (!match.strEvent.includes("ICC Champions Trophy")) return null;
+
+    // **Filter past matches older than 24 hours**
+    const isFinishedWithin24Hours = match.strStatus === "Match Finished" && hoursSinceMatch <= 24;
+    if (!isFinishedWithin24Hours && matchDateTime < now) return null;
 
     // Find corresponding live score data
-    const liveMatchData = liveScores?.find((score) => {
-      if (score.teamInfo?.length >= 2) {
-        return (
-          (teamsMatch(match.strHomeTeam, score.teamInfo[0].name) && teamsMatch(match.strAwayTeam, score.teamInfo[1].name)) ||
-          (teamsMatch(match.strHomeTeam, score.teamInfo[1].name) && teamsMatch(match.strAwayTeam, score.teamInfo[0].name))
-        );
-      }
-      return false;
-    });
+    const liveMatchData = liveScores?.find((score) => 
+      teamsMatch(match.strHomeTeam, score?.teams?.[0]) &&
+      teamsMatch(match.strAwayTeam, score?.teams?.[1])
+    );
 
     // Determine if the match is live
-    const isLive = liveMatchData || (matchDateTime <= now && match.strStatus !== "Match Finished");
+    const isLive = liveMatchData && match.strStatus !== "Match Finished";
 
-    // Default score values
+    // Extract match scores
     let homeScore = "0", homeWickets = "0";
     let awayScore = "0", awayWickets = "0";
-    let matchStatus = isLive ? "Live" : "Upcoming";
+    let matchStatus = isLive ? "Live" : match.strStatus;
 
-    // Extract score if match is live
-    if (liveMatchData?.score?.length > 0) {
-      const homeScoreEntry = liveMatchData.score.find((s) => teamsMatch(s.inning, match.strHomeTeam));
-      const awayScoreEntry = liveMatchData.score.find((s) => teamsMatch(s.inning, match.strAwayTeam));
+    if (liveMatchData) {
+      const homeScoreEntry = liveMatchData.score?.find((s) =>
+        teamsMatch(s.inning, match.strHomeTeam)
+      );
+      const awayScoreEntry = liveMatchData.score?.find((s) =>
+        teamsMatch(s.inning, match.strAwayTeam)
+      );
 
-      if (homeScoreEntry) {
-        homeScore = homeScoreEntry.r?.toString() || "0";
-        homeWickets = homeScoreEntry.w?.toString() || "0";
-      }
-      if (awayScoreEntry) {
-        awayScore = awayScoreEntry.r?.toString() || "0";
-        awayWickets = awayScoreEntry.w?.toString() || "0";
-      }
+      homeScore = homeScoreEntry?.r?.toString() || "0";
+      homeWickets = homeScoreEntry?.w?.toString() || "0";
+      awayScore = awayScoreEntry?.r?.toString() || "0";
+      awayWickets = awayScoreEntry?.w?.toString() || "0";
 
       matchStatus = liveMatchData.status || "Live";
     }
@@ -73,13 +73,20 @@ const LiveMatches = () => {
     return {
       ...match,
       matchTime: convertToLocalTime(match.dateEvent, match.strTime),
-      liveScore: { homeScore, homeWickets, awayScore, awayWickets, status: matchStatus, matchDetails: liveMatchData }
+      liveScore: { 
+        homeScore, 
+        homeWickets, 
+        awayScore, 
+        awayWickets, 
+        status: matchStatus,
+        matchDetails: liveMatchData 
+      },
     };
   };
 
-  // Process all matches
-  const allMatches = matches?.map(processMatchData);
-  const visibleMatches = showAll ? allMatches : allMatches?.slice(0, 5);
+  // Process and filter matches
+  const filteredMatches = matches?.map(processMatchData).filter(Boolean);
+  const visibleMatches = showAll ? filteredMatches : filteredMatches?.slice(0, 5);
 
   return (
     <section className="min-h-screen py-8 px-4 bg-gradient-to-r from-purple-100 to-pink-100">
@@ -93,50 +100,32 @@ const LiveMatches = () => {
           </h1>
         </motion.div>
 
-        {/* Show loading spinner */}
         {isMatchesLoading || isScoresLoading ? (
           <div className="flex justify-center">
             <Loader2 className="animate-spin text-purple-600" size={28} />
           </div>
         ) : visibleMatches?.length === 0 ? (
           <div className="text-center text-gray-600">
-            No upcoming or live matches found
+            No upcoming or live matches found for ICC Champions Trophy
           </div>
         ) : (
           <div className="space-y-4">
-            {visibleMatches?.map((match) => {
-              console.log("Rendering MatchCard:", match);
-              return (
-                <MatchCard 
-                  key={match.idEvent} 
-                  match={match} 
-                  onViewDetails={setSelectedMatch} 
-                />
-              );
-            })}
+            {visibleMatches?.map((match) => (
+              <MatchCard key={match.idEvent} match={match} onViewDetails={setSelectedMatch} />
+            ))}
           </div>
         )}
 
-        {/* Show "Show More Matches" button if there are more than 5 matches */}
-        {allMatches?.length > 5 && !showAll && (
+        {filteredMatches?.length > 5 && !showAll && (
           <div className="mt-4 text-center">
-            <button
-              onClick={() => setShowAll(true)}
-              className="text-purple-600 hover:text-purple-700 font-semibold"
-            >
+            <button onClick={() => setShowAll(true)} className="text-purple-600 hover:text-purple-700 font-semibold">
               Show More Matches
             </button>
           </div>
         )}
       </div>
 
-      {/* Match Details Modal */}
-      {selectedMatch && (
-        <MatchDetailsModal
-          match={selectedMatch}
-          onClose={() => setSelectedMatch(null)}
-        />
-      )}
+      {selectedMatch && <MatchDetailsModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />}
     </section>
   );
 };
