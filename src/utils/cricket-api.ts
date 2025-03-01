@@ -39,11 +39,12 @@ export const convertToLocalTime = (date: string, time: string): string => {
 // Helper function to check if team names match
 export const teamsMatch = (team1: string, team2: string): boolean => {
   // Clean both team names by removing common suffixes and converting to lowercase
-  const cleanName1 = team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
-  const cleanName2 = team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
+  const cleanName1 = team1 ? team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim() : "";
+  const cleanName2 = team2 ? team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim() : "";
   
   // Return true if cleaned names match or one is a substring of the other
-  return cleanName1 === cleanName2 || cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1);
+  return cleanName1 === cleanName2 || 
+         (cleanName1 && cleanName2 && (cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1)));
 };
 
 export const fetchMatches = async () => {
@@ -56,14 +57,12 @@ export const fetchMatches = async () => {
       throw new Error("No matches data received");
     }
     
-    const filteredMatches = data.events
-      .filter((match) => 
-        match.strStatus !== "Match Finished" && 
-        isMatchLiveOrUpcoming(match.dateEvent, match.strTime)
-      )
-      .sort((a, b) => new Date(a.dateEvent).getTime() - new Date(b.dateEvent).getTime());
+    // Filter only ICC Champions Trophy matches
+    const championsTrophyMatches = data.events.filter(match => 
+      match.strEvent && match.strEvent.includes("ICC Champions Trophy")
+    );
     
-    return filteredMatches;
+    return championsTrophyMatches;
   } catch (error) {
     console.error("Error fetching matches:", error);
     toast.error("Failed to fetch matches");
