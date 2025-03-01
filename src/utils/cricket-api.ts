@@ -1,10 +1,10 @@
 
+// Cricket data fetching utilities
 import { toast } from "sonner";
 
 export const SPORTS_DB_API_URL =
   "https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=5587&s=2025";
-export const CRICK_API_URL =
-  "https://api.cricapi.com/v1/currentMatches?apikey=a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
+export const CRICK_API_URL = "https://api.cricapi.com/v1/currentMatches?apikey=a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 
 export const TEAM_FLAGS = {
   India: "https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
@@ -23,17 +23,47 @@ export const getCountryFlagUrl = (country: string): string => {
   return TEAM_FLAGS[cleanedCountry] || "/placeholder.svg";
 };
 
-// Fetch match data from SportsDB (upcoming matches)
+export const isMatchLiveOrUpcoming = (matchDate: string, matchTime: string): boolean => {
+  if (!matchDate || !matchTime) return false;
+  const matchDateTime = new Date(`${matchDate}T${matchTime}Z`);
+  const now = new Date();
+  return matchDateTime >= now;
+};
+
+export const convertToLocalTime = (date: string, time: string): string => {
+  if (!date || !time) return "TBA";
+  const utcDateTime = new Date(`${date}T${time}Z`);
+  return utcDateTime.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+};
+
+// Helper function to check if team names match
+export const teamsMatch = (team1: string, team2: string): boolean => {
+  // Clean both team names by removing common suffixes and converting to lowercase
+  const cleanName1 = team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
+  const cleanName2 = team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
+  
+  // Return true if cleaned names match or one is a substring of the other
+  return cleanName1 === cleanName2 || cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1);
+};
+
 export const fetchMatches = async () => {
   try {
     const response = await fetch(SPORTS_DB_API_URL);
     const data = await response.json();
-
-    if (!data?.events) throw new Error("No upcoming matches found");
-
-    return data.events.filter((match) =>
-      match.strEvent.includes("ICC Champions Trophy")
-    );
+    console.log("Fetched matches:", data);
+    
+    if (!data?.events) {
+      throw new Error("No matches data received");
+    }
+    
+    const filteredMatches = data.events
+      .filter((match) => 
+        match.strStatus !== "Match Finished" && 
+        isMatchLiveOrUpcoming(match.dateEvent, match.strTime)
+      )
+      .sort((a, b) => new Date(a.dateEvent).getTime() - new Date(b.dateEvent).getTime());
+    
+    return filteredMatches;
   } catch (error) {
     console.error("Error fetching matches:", error);
     toast.error("Failed to fetch matches");
@@ -41,7 +71,6 @@ export const fetchMatches = async () => {
   }
 };
 
-// Fetch live and completed match scores from CrickAPI
 export const fetchLiveScores = async () => {
   try {
     const response = await fetch(CRICK_API_URL);
@@ -58,28 +87,4 @@ export const fetchLiveScores = async () => {
     toast.error("Failed to fetch live scores");
     return [];
   }
-};
-
-// Convert UTC match time to local time
-export const convertToLocalTime = (date: string, time: string): string => {
-  if (!date || !time) return "TBA";
-  const utcDateTime = new Date(`${date}T${time}Z`);
-  return utcDateTime.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-};
-
-// Check if two team names match
-export const teamsMatch = (team1: string, team2: string): boolean => {
-  const cleanName1 = team1?.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
-  const cleanName2 = team2?.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
-  return cleanName1 === cleanName2 || cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1);
-};
-
-export const isMatchLiveOrUpcoming = (matchDate: string, matchTime: string): boolean => {
-  if (!matchDate || !matchTime) return false;
-  const matchDateTime = new Date(`${matchDate}T${matchTime}Z`);
-  const now = new Date();
-  return matchDateTime >= now;
 };
