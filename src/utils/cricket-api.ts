@@ -1,4 +1,3 @@
-
 // Cricket data fetching utilities
 import { toast } from "sonner";
 
@@ -71,10 +70,11 @@ export const fetchMatches = async () => {
     // Process matches
     const processedMatches = championsTrophyMatches.map((match: any) => {
       const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
-      const isWithin24Hours = matchDateTime > last24Hours;
+      const isFinishedWithin24Hours = matchDateTime < now && matchDateTime > last24Hours;
+      const isUpcoming = matchDateTime > now;
       
-      // Only include upcoming matches and those from the last 24 hours
-      if (matchDateTime > now || isWithin24Hours) {
+      // Only include matches that are upcoming or finished within the last 24 hours
+      if (isUpcoming || isFinishedWithin24Hours) {
         // Find if match is live in CrickAPI data
         const liveMatch = liveScores.find((live: any) => 
           (live.teams && live.teams.length >= 2 && 
@@ -90,9 +90,17 @@ export const fetchMatches = async () => {
         let homeWickets = "0";
         let awayScore = "0";
         let awayWickets = "0";
-        let matchStatus = matchDateTime <= now ? "Live" : "Upcoming";
+        let matchStatus = "Upcoming";
 
-        if (liveMatch) {
+        // Determine match status based on time and live data
+        if (isFinishedWithin24Hours) {
+          matchStatus = "Finished";
+        } else if (liveMatch && liveMatch.matchStarted && !liveMatch.matchEnded) {
+          matchStatus = "Live";
+        }
+
+        // Fetch scores for both live and recently finished matches
+        if (liveMatch && (matchStatus === "Live" || matchStatus === "Finished")) {
           // Extract scores if available
           if (liveMatch.score && liveMatch.score.length > 0) {
             // Try to match home team with the inning string
@@ -122,8 +130,14 @@ export const fetchMatches = async () => {
             }
           }
           
-          // Use the status from cricAPI if available
-          matchStatus = liveMatch.status || matchStatus;
+          // If we have a status from CrickAPI, use it for more details
+          if (liveMatch.status) {
+            // Keep the basic status type (Live, Finished, Upcoming) but add detailed status
+            const detailedStatus = liveMatch.status;
+            if (detailedStatus.includes("won") || liveMatch.matchEnded) {
+              matchStatus = "Finished";
+            }
+          }
         }
 
         return {
@@ -141,6 +155,15 @@ export const fetchMatches = async () => {
       }
       return null;
     }).filter(Boolean); // Remove null entries
+
+    // Sort matches: Live first, then Upcoming, then Finished
+    processedMatches.sort((a, b) => {
+      const statusOrder = { "Live": 0, "Upcoming": 1, "Finished": 2 };
+      const statusA = a.liveScore.status;
+      const statusB = b.liveScore.status;
+      
+      return statusOrder[statusA] - statusOrder[statusB];
+    });
 
     console.log("Processed matches:", processedMatches);
     return processedMatches;
