@@ -11,113 +11,102 @@ const LiveMatches = () => {
   const [showAll, setShowAll] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
 
-  // Fetch upcoming and live matches from SportsDB
   const { data: matches, isLoading: isMatchesLoading } = useQuery({
     queryKey: ["matches"],
     queryFn: fetchMatches,
-    refetchInterval: 300000, // Refresh every 5 minutes
+    refetchInterval: 300000, // 5 minutes
   });
 
-  // Fetch live scores from CrickAPI
   const { data: liveScores, isLoading: isScoresLoading } = useQuery({
     queryKey: ["liveScores"],
     queryFn: fetchLiveScores,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000, // 30 seconds
     retry: 2,
   });
 
   const processMatchData = (match) => {
-    if (!match || !match.strEvent) return null;
-
-    const now = new Date();
     const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
-    const hoursSinceMatch = (now - matchDateTime) / (1000 * 60 * 60);
-
-    // Check if match is within the relevant timeframe
-    const isUpcoming = matchDateTime > now;
-    const isFinishedWithin24Hours = match.strStatus === "Match Finished" && hoursSinceMatch <= 24;
+    const now = new Date();
     
-    // Skip matches that are finished more than 24 hours ago
-    if (!isUpcoming && !isFinishedWithin24Hours && matchDateTime < now) return null;
+    // Find corresponding live score data with improved team name matching
+    const liveMatchData = liveScores?.find(
+      (score) => {
+        // First try to match using teamInfo if available
+        if (score.teamInfo && score.teamInfo.length >= 2) {
+          return (
+            teamsMatch(match.strHomeTeam, score.teamInfo[0].name) && 
+            teamsMatch(match.strAwayTeam, score.teamInfo[1].name)
+          ) || (
+            teamsMatch(match.strHomeTeam, score.teamInfo[1].name) && 
+            teamsMatch(match.strAwayTeam, score.teamInfo[0].name)
+          );
+        }
 
-    // Find corresponding live score data with improved matching
-    const liveMatchData = liveScores?.find((score) => {
-      // Try matching with teamInfo first
-      if (score.teamInfo && score.teamInfo.length >= 2) {
-        return (
-          (teamsMatch(match.strHomeTeam, score.teamInfo[0].name) && 
-           teamsMatch(match.strAwayTeam, score.teamInfo[1].name)) ||
-          (teamsMatch(match.strHomeTeam, score.teamInfo[1].name) && 
-           teamsMatch(match.strAwayTeam, score.teamInfo[0].name))
+        // Fall back to matching with teams array
+        if (score.teams && score.teams.length >= 2) {
+          return (
+            teamsMatch(match.strHomeTeam, score.teams[0]) && 
+            teamsMatch(match.strAwayTeam, score.teams[1])
+          ) || (
+            teamsMatch(match.strHomeTeam, score.teams[1]) && 
+            teamsMatch(match.strAwayTeam, score.teams[0])
+          );
+        }
+
+        return false;
+      }
+    );
+
+    // Determine if match is live based on time and live score data
+    const isLive = liveMatchData || 
+      (matchDateTime <= now && match.strStatus !== "Match Finished");
+
+    // Find the correct score entries for home and away teams
+    let homeScore = "0";
+    let homeWickets = "0";
+    let awayScore = "0";
+    let awayWickets = "0";
+    let matchStatus = isLive ? "Live" : "Upcoming";
+
+    if (liveMatchData) {
+      if (liveMatchData.score && liveMatchData.score.length > 0) {
+        // Try to match home team with the inning string
+        const homeScoreEntry = liveMatchData.score.find(s => 
+          s.inning && (
+            s.inning.includes(match.strHomeTeam.replace(" Cricket", "")) ||
+            teamsMatch(s.inning, match.strHomeTeam)
+          )
         );
-      }
-      
-      // Fall back to matching with teams array
-      if (score.teams && score.teams.length >= 2) {
-        return (
-          (teamsMatch(match.strHomeTeam, score.teams[0]) && 
-           teamsMatch(match.strAwayTeam, score.teams[1])) ||
-          (teamsMatch(match.strHomeTeam, score.teams[1]) && 
-           teamsMatch(match.strAwayTeam, score.teams[0]))
+        
+        if (homeScoreEntry) {
+          homeScore = homeScoreEntry.r?.toString() || "0";
+          homeWickets = homeScoreEntry.w?.toString() || "0";
+        } else if (liveMatchData.score[0]) {
+          // If no direct match, use the first score entry for home team
+          homeScore = liveMatchData.score[0].r?.toString() || "0";
+          homeWickets = liveMatchData.score[0].w?.toString() || "0";
+        }
+
+        // Try to match away team with the inning string
+        const awayScoreEntry = liveMatchData.score.find(s => 
+          s.inning && (
+            s.inning.includes(match.strAwayTeam.replace(" Cricket", "")) ||
+            teamsMatch(s.inning, match.strAwayTeam)
+          )
         );
+        
+        if (awayScoreEntry) {
+          awayScore = awayScoreEntry.r?.toString() || "0";
+          awayWickets = awayScoreEntry.w?.toString() || "0";
+        } else if (liveMatchData.score[1]) {
+          // If no direct match, use the second score entry for away team
+          awayScore = liveMatchData.score[1].r?.toString() || "0";
+          awayWickets = liveMatchData.score[1].w?.toString() || "0";
+        }
       }
       
-      return false;
-    });
-
-    // Determine match status
-    let matchStatus;
-    if (liveMatchData && liveMatchData.matchStarted && !liveMatchData.matchEnded) {
-      matchStatus = "Live";
-    } else if (isFinishedWithin24Hours || (liveMatchData && liveMatchData.matchEnded)) {
-      matchStatus = "Finished";
-    } else {
-      matchStatus = "Upcoming";
-    }
-
-    // Extract and process scores
-    let homeScore = "0", homeWickets = "0";
-    let awayScore = "0", awayWickets = "0";
-
-    if (liveMatchData && liveMatchData.score && liveMatchData.score.length > 0) {
-      // Try to find home team score
-      const homeScoreEntry = liveMatchData.score.find(s => 
-        s.inning && (
-          s.inning.includes(match.strHomeTeam.replace(" Cricket", "")) ||
-          teamsMatch(s.inning, match.strHomeTeam)
-        )
-      );
-      
-      if (homeScoreEntry) {
-        homeScore = homeScoreEntry.r?.toString() || "0";
-        homeWickets = homeScoreEntry.w?.toString() || "0";
-      } else if (liveMatchData.score[0]) {
-        // If no direct match, use the first score entry for home team
-        homeScore = liveMatchData.score[0].r?.toString() || "0";
-        homeWickets = liveMatchData.score[0].w?.toString() || "0";
-      }
-
-      // Try to find away team score
-      const awayScoreEntry = liveMatchData.score.find(s => 
-        s.inning && (
-          s.inning.includes(match.strAwayTeam.replace(" Cricket", "")) ||
-          teamsMatch(s.inning, match.strAwayTeam)
-        )
-      );
-      
-      if (awayScoreEntry) {
-        awayScore = awayScoreEntry.r?.toString() || "0";
-        awayWickets = awayScoreEntry.w?.toString() || "0";
-      } else if (liveMatchData.score[1]) {
-        // If no direct match, use the second score entry for away team
-        awayScore = liveMatchData.score[1].r?.toString() || "0";
-        awayWickets = liveMatchData.score[1].w?.toString() || "0";
-      }
-      
-      // Use the detailed status from cricAPI if available
-      if (liveMatchData.status) {
-        matchStatus = liveMatchData.matchStarted && !liveMatchData.matchEnded ? "Live" : matchStatus;
-      }
+      // Use the status from cricAPI if available
+      matchStatus = liveMatchData.status || "Live";
     }
 
     return {
@@ -134,23 +123,8 @@ const LiveMatches = () => {
     };
   };
 
-  // Process matches and sort them (Live first, then Upcoming, then Finished)
-  const processedMatches = matches?.map(processMatchData).filter(Boolean) || [];
-  
-  const sortedMatches = [...processedMatches].sort((a, b) => {
-    const statusOrder = { Live: 0, Upcoming: 1, Finished: 2 };
-    const statusA = statusOrder[a.liveScore.status] || 1;
-    const statusB = statusOrder[b.liveScore.status] || 1;
-    
-    // First sort by status priority
-    if (statusA !== statusB) return statusA - statusB;
-    
-    // For matches with the same status, sort by date/time
-    return new Date(a.dateEvent + 'T' + a.strTime).getTime() - 
-           new Date(b.dateEvent + 'T' + b.strTime).getTime();
-  });
-
-  const visibleMatches = showAll ? sortedMatches : sortedMatches.slice(0, 5);
+  const allMatches = matches?.map(processMatchData);
+  const visibleMatches = showAll ? allMatches : allMatches?.slice(0, 5);
 
   return (
     <section className="min-h-screen py-8 px-4 bg-gradient-to-r from-purple-100 to-pink-100">
@@ -170,7 +144,7 @@ const LiveMatches = () => {
           </div>
         ) : visibleMatches?.length === 0 ? (
           <div className="text-center text-gray-600">
-            No upcoming or live matches found for ICC Champions Trophy
+            No upcoming or live matches found
           </div>
         ) : (
           <div className="space-y-4">
@@ -184,7 +158,7 @@ const LiveMatches = () => {
           </div>
         )}
 
-        {sortedMatches?.length > 5 && !showAll && (
+        {allMatches?.length > 5 && !showAll && (
           <div className="mt-4 text-center">
             <button
               onClick={() => setShowAll(true)}
