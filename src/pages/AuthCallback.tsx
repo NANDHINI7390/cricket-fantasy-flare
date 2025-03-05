@@ -15,9 +15,11 @@ const AuthCallback = () => {
         // Check for hash fragment in URL which indicates OAuth response
         const hasHashFragment = window.location.hash && window.location.hash.length > 0;
         
+        // Process the hash to set up the session
         if (hasHashFragment) {
           setMessage("Processing authentication response...");
-          // Let Supabase handle the hash fragment
+          
+          // Process the OAuth callback
           const { data, error } = await supabase.auth.getSession();
           
           if (error) {
@@ -29,6 +31,7 @@ const AuthCallback = () => {
           }
           
           if (data.session) {
+            console.log("Authentication successful, session established");
             setMessage("Authentication successful!");
             toast.success("Successfully signed in!");
             setTimeout(() => navigate('/'), 1000);
@@ -39,18 +42,45 @@ const AuthCallback = () => {
             setTimeout(() => navigate('/auth'), 2000);
           }
         } else {
-          // If no hash fragment, check if there's an active session
-          const { data, error } = await supabase.auth.getSession();
+          // Check for URL params as an alternative auth method
+          const params = new URLSearchParams(window.location.search);
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
           
-          if (error || !data.session) {
-            console.error('Auth callback error:', error || "No session found");
-            setMessage("Authentication failed");
-            toast.error(error?.message || "Authentication failed. Please try again.");
-            setTimeout(() => navigate('/auth'), 2000);
+          if (accessToken && refreshToken) {
+            // Handle token-based login
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (error) {
+              console.error('Auth session error:', error);
+              setMessage("Authentication failed");
+              toast.error(error.message || "Authentication failed");
+              setTimeout(() => navigate('/auth'), 2000);
+              return;
+            }
+            
+            if (data.session) {
+              setMessage("Authentication successful!");
+              toast.success("Successfully signed in!");
+              setTimeout(() => navigate('/'), 1000);
+            }
           } else {
-            setMessage("Authentication successful!");
-            toast.success("Successfully signed in!");
-            setTimeout(() => navigate('/'), 1000);
+            // If no auth params found, check if there's an active session
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error || !data.session) {
+              console.error('Auth callback error:', error || "No session found");
+              setMessage("Authentication failed");
+              toast.error(error?.message || "Authentication failed. Please try again.");
+              setTimeout(() => navigate('/auth'), 2000);
+            } else {
+              setMessage("Authentication successful!");
+              toast.success("Successfully signed in!");
+              setTimeout(() => navigate('/'), 1000);
+            }
           }
         }
       } catch (error) {

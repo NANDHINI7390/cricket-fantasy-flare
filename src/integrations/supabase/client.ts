@@ -12,7 +12,18 @@ export const supabase = createClient<Database>(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      storageKey: 'supabase.auth.token'
     }
   }
 );
+
+// Helper function to check current session
+export const getCurrentUser = async () => {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error('Error getting session:', error);
+    return null;
+  }
+  return data?.session?.user || null;
+};

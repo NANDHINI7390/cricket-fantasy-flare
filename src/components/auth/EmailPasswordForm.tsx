@@ -14,7 +14,27 @@ interface EmailPasswordFormProps {
 
 export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const navigate = useNavigate();
+
+  const validateForm = (email: string, password: string) => {
+    let isValid = true;
+    setEmailError("");
+    setPasswordError("");
+
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      setEmailError("Please enter a valid email address");
+      isValid = false;
+    }
+
+    if (!password || password.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      isValid = false;
+    }
+
+    return isValid;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -25,11 +45,18 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
     const password = formData.get("password") as string;
     const username = formData.get("username") as string;
 
+    // Validate form fields
+    if (!validateForm(email, password)) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // First sign out to clear any potential conflicting sessions
       await supabase.auth.signOut();
       
       if (isSignUp) {
+        console.log("Signing up with:", { email, password, username });
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -40,7 +67,10 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           },
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Sign up error:", error);
+          throw error;
+        }
 
         if (data.user && data.session) {
           toast.success("Sign up successful and signed in!");
@@ -49,12 +79,16 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           toast.success("Sign up successful! Please check your email to verify your account.");
         }
       } else {
+        console.log("Signing in with:", { email });
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Sign in error:", error);
+          throw error;
+        }
 
         if (data.session) {
           toast.success("Successfully signed in!");
@@ -97,6 +131,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           placeholder="you@example.com"
           required
         />
+        {emailError && <p className="text-sm text-red-500">{emailError}</p>}
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
@@ -108,6 +143,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           required
           minLength={6}
         />
+        {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
       </div>
       <Button
         type="submit"

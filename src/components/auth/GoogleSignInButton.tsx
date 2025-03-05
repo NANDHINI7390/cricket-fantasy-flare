@@ -14,6 +14,10 @@ export const GoogleSignInButton = () => {
       // Clear any existing sessions that might be causing conflicts
       await supabase.auth.signOut();
       
+      // Get the current URL for redirect
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log("Redirect URL:", redirectUrl);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -21,7 +25,7 @@ export const GoogleSignInButton = () => {
             access_type: 'offline',
             prompt: 'consent',
           },
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl
         }
       });
 
@@ -32,6 +36,7 @@ export const GoogleSignInButton = () => {
 
       if (data?.url) {
         // Using window.location.href for direct redirect
+        console.log("Redirecting to:", data.url);
         window.location.href = data.url;
       } else {
         throw new Error("No redirect URL returned from Supabase");
@@ -39,7 +44,6 @@ export const GoogleSignInButton = () => {
     } catch (error) {
       console.error('Detailed Google sign in error:', error);
       toast.error(error instanceof Error ? error.message : "An error occurred with Google sign in");
-    } finally {
       setIsLoading(false);
     }
   };
