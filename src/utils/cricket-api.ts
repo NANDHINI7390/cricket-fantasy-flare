@@ -23,25 +23,6 @@ export const getCountryFlagUrl = (country: string): string => {
   return TEAM_FLAGS[cleanedCountry] || "/placeholder.svg";
 };
 
-export const isMatchLiveOrUpcoming = (matchDate: string, matchTime: string): boolean => {
-  if (!matchDate || !matchTime) return false;
-  const matchDateTime = new Date(`${matchDate}T${matchTime}Z`);
-  const now = new Date();
-  return matchDateTime >= now;
-};
-
-export const convertToLocalTime = (date: string, time: string): string => {
-  if (!date || !time) return "TBA";
-  const utcDateTime = new Date(`${date}T${time}Z`);
-  return utcDateTime.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-};
-
-export const teamsMatch = (team1: string, team2: string): boolean => {
-  const cleanName1 = team1 ? team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim() : "";
-  const cleanName2 = team2 ? team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim() : "";
-  return cleanName1 === cleanName2 || cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1);
-};
-
 interface SportsDBMatch {
   idEvent: string;
   strEvent: string;
@@ -86,11 +67,11 @@ export const fetchMatches = async (): Promise<ProcessedMatch[]> => {
         return {
           ...match,
           matchStatus: isLive ? "Live" : isFinished ? "Finished" : "Upcoming",
-        };
+        } as ProcessedMatch;
       })
       .filter(Boolean)
       .sort((a: ProcessedMatch, b: ProcessedMatch) => {
-        const statusPriority = { Live: 0, Upcoming: 1, Finished: 2 };
+        const statusPriority: {[key: string]: number} = { Live: 0, Upcoming: 1, Finished: 2 };
         const priorityDiff = statusPriority[a.matchStatus] - statusPriority[b.matchStatus];
 
         if (priorityDiff !== 0) return priorityDiff;
@@ -101,7 +82,7 @@ export const fetchMatches = async (): Promise<ProcessedMatch[]> => {
         );
       });
 
-    return filteredMatches;
+    return filteredMatches as ProcessedMatch[];
   } catch (error) {
     console.error("Error fetching matches:", error);
     toast.error("Failed to fetch matches");
@@ -109,18 +90,19 @@ export const fetchMatches = async (): Promise<ProcessedMatch[]> => {
   }
 };
 
+interface TeamInfo {
+  name: string;
+  shortname?: string;
+  img?: string;
+}
+
 interface ScoreInfo {
   r?: number;
   w?: number;
   o?: number;
   inning: string;
+  team?: string;
   update?: boolean;
-}
-
-interface TeamInfo {
-  name: string;
-  shortname?: string;
-  img?: string;
 }
 
 interface CricketMatch {
@@ -185,6 +167,52 @@ export const fetchLiveScores = async (): Promise<ProcessedCricketMatch[]> => {
   }
 };
 
+interface EnhancedMatch extends ProcessedMatch {
+  liveStatus?: string;
+  firstBattingTeam?: string;
+  firstBattingScore?: ScoreInfo | null;
+  secondBattingTeam?: string;
+  secondBattingScore?: ScoreInfo | null;
+}
+
+// Process live scores to match with SportsDB matches
+export const processLiveScores = (matches: ProcessedMatch[], liveScores: CricketMatch[]): EnhancedMatch[] => {
+  return matches.map((match) => {
+    const liveMatch = liveScores.find(
+      (score) =>
+        (score.teamInfo && score.teamInfo.length >= 2 && 
+          (teamsMatch(score.teamInfo[0]?.name, match.strHomeTeam) ||
+          teamsMatch(score.teamInfo[1]?.name, match.strAwayTeam)))
+    );
+
+    if (!liveMatch || !liveMatch.score) return match;
+
+    const battingTeam = liveMatch.score[0]?.inning;
+    const firstBattingTeam = liveMatch.score[0]?.team;
+    const secondBattingTeam = liveMatch.score[1]?.team;
+
+    let firstBattingScore = null;
+    let secondBattingScore = null;
+
+    // Update only the team that is currently batting
+    if (battingTeam === firstBattingTeam) {
+      firstBattingScore = liveMatch.score[0];
+    } else if (battingTeam === secondBattingTeam) {
+      secondBattingScore = liveMatch.score[1];
+    }
+
+    return {
+      ...match,
+      liveStatus: liveMatch.status,
+      firstBattingTeam,
+      firstBattingScore,
+      secondBattingTeam,
+      secondBattingScore,
+    };
+  });
+};
+
+// Format match date for display
 export const formatMatchDate = (matchDate: string, matchTime: string): string => {
   if (!matchDate || !matchTime) return "TBA";
 
@@ -200,4 +228,16 @@ export const formatMatchDate = (matchDate: string, matchTime: string): string =>
   } else {
     return matchDateTime.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
   }
+};
+
+// Helper function to check if team names match
+export const teamsMatch = (team1: string, team2: string): boolean => {
+  const cleanName1 = team1
+    ? team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim()
+    : "";
+  const cleanName2 = team2
+    ? team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim()
+    : "";
+
+  return cleanName1 === cleanName2 || cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1);
 };
