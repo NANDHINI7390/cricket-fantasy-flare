@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import MatchCard from "@/components/MatchCard";
 import MatchDetailsModal from "@/components/MatchDetailsModal";
-import { fetchMatches, fetchLiveScores, convertToLocalTime, teamsMatch } from "@/utils/cricket-api";
+import { fetchMatches, fetchLiveScores, convertToLocalTime, teamsMatch, formatMatchDate } from "@/utils/cricket-api";
 
 const LiveMatches = () => {
   const [showAll, setShowAll] = useState(false);
@@ -25,9 +25,6 @@ const LiveMatches = () => {
   });
 
   const processMatchData = (match) => {
-    const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
-    const now = new Date();
-    
     // Find corresponding live score data with improved team name matching
     const liveMatchData = liveScores?.find(
       (score) => {
@@ -57,16 +54,15 @@ const LiveMatches = () => {
       }
     );
 
-    // Determine if match is live based on time and live score data
-    const isLive = liveMatchData || 
-      (matchDateTime <= now && match.strStatus !== "Match Finished");
+    const isLive = match.matchStatus === "Live" || 
+      (liveMatchData?.matchStarted && !liveMatchData?.matchEnded);
 
     // Find the correct score entries for home and away teams
     let homeScore = "0";
     let homeWickets = "0";
     let awayScore = "0";
     let awayWickets = "0";
-    let matchStatus = isLive ? "Live" : "Upcoming";
+    let matchStatus = match.matchStatus || "Upcoming";
 
     if (liveMatchData) {
       if (liveMatchData.score && liveMatchData.score.length > 0) {
@@ -106,12 +102,14 @@ const LiveMatches = () => {
       }
       
       // Use the status from cricAPI if available
-      matchStatus = liveMatchData.status || "Live";
+      if (liveMatchData.status) {
+        matchStatus = liveMatchData.status;
+      }
     }
 
     return {
       ...match,
-      matchTime: convertToLocalTime(match.dateEvent, match.strTime),
+      matchTime: formatMatchDate(match.dateEvent, match.strTime),
       liveScore: {
         homeScore,
         homeWickets,

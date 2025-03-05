@@ -1,5 +1,3 @@
-
-// Cricket data fetching utilities
 import { toast } from "sonner";
 
 export const SPORTS_DB_API_URL =
@@ -39,8 +37,8 @@ export const convertToLocalTime = (date: string, time: string): string => {
 // Helper function to check if team names match
 export const teamsMatch = (team1: string, team2: string): boolean => {
   // Clean both team names by removing common suffixes and converting to lowercase
-  const cleanName1 = team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
-  const cleanName2 = team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim();
+  const cleanName1 = team1 ? team1.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim() : "";
+  const cleanName2 = team2 ? team2.replace(/ Cricket| National Team| Masters| Women/gi, "").toLowerCase().trim() : "";
   
   // Return true if cleaned names match or one is a substring of the other
   return cleanName1 === cleanName2 || cleanName1.includes(cleanName2) || cleanName2.includes(cleanName1);
@@ -56,12 +54,38 @@ export const fetchMatches = async () => {
       throw new Error("No matches data received");
     }
     
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    // Filter matches and determine their status
     const filteredMatches = data.events
-      .filter((match) => 
-        match.strStatus !== "Match Finished" && 
-        isMatchLiveOrUpcoming(match.dateEvent, match.strTime)
-      )
-      .sort((a, b) => new Date(a.dateEvent).getTime() - new Date(b.dateEvent).getTime());
+      .map(match => {
+        const matchDateTime = new Date(`${match.dateEvent}T${match.strTime}Z`);
+        const isFinished = match.strStatus === "Match Finished";
+        const isFinishedRecently = isFinished && matchDateTime >= twentyFourHoursAgo;
+        const isLive = matchDateTime <= now && !isFinished;
+        const isUpcoming = matchDateTime > now;
+        
+        // Only keep matches that are live, upcoming, or finished in the last 24 hours
+        if (!isLive && !isUpcoming && !isFinishedRecently) return null;
+        
+        return {
+          ...match,
+          matchStatus: isLive ? "Live" : (isFinished ? "Finished" : "Upcoming")
+        };
+      })
+      .filter(Boolean) // Remove null items
+      .sort((a, b) => {
+        // Sort by status priority: Live -> Upcoming -> Finished
+        const statusPriority = { "Live": 0, "Upcoming": 1, "Finished": 2 };
+        const priorityDiff = statusPriority[a.matchStatus] - statusPriority[b.matchStatus];
+        
+        if (priorityDiff !== 0) return priorityDiff;
+        
+        // Within the same status, sort by date/time
+        return new Date(`${a.dateEvent}T${a.strTime}Z`).getTime() - 
+               new Date(`${b.dateEvent}T${b.strTime}Z`).getTime();
+      });
     
     return filteredMatches;
   } catch (error) {
@@ -86,5 +110,23 @@ export const fetchLiveScores = async () => {
     console.error("Error fetching live scores:", error);
     toast.error("Failed to fetch live scores");
     return [];
+  }
+};
+
+// Format match date for display
+export const formatMatchDate = (matchDate: string, matchTime: string): string => {
+  if (!matchDate || !matchTime) return "TBA";
+  
+  const matchDateTime = new Date(`${matchDate}T${matchTime}Z`);
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  
+  if (matchDateTime.toDateString() === now.toDateString()) {
+    return `Today, ${matchDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  } else if (matchDateTime.toDateString() === tomorrow.toDateString()) {
+    return `Tomorrow, ${matchDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  } else {
+    return matchDateTime.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
   }
 };
