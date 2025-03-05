@@ -140,7 +140,8 @@ interface CricketMatch {
   [key: string]: any;
 }
 
-interface ProcessedCricketMatch extends CricketMatch {
+// Interface with required score property
+interface ProcessedCricketMatch extends Omit<CricketMatch, 'score'> {
   score: ScoreInfo[];
 }
 
@@ -156,22 +157,23 @@ export const fetchLiveScores = async (): Promise<ProcessedCricketMatch[]> => {
 
     const matches: CricketMatch[] = data?.data || [];
 
-    const updatedMatches = matches.map((match) => {
-      const { teamInfo, score, status, teamBatting } = match;
-
-      if (!score || score.length === 0) return match;
+    // Transform to ensure all matches have the score property as a non-optional array
+    const updatedMatches: ProcessedCricketMatch[] = matches.map((match) => {
+      const { teamInfo, score = [], status, teamBatting } = match;
 
       // Identify batting team
       const battingTeam = teamBatting || (score[0]?.inning ? score[0].inning.split(" ")[0] : null);
 
+      // Ensure score is always an array
+      const processedScore: ScoreInfo[] = score ? 
+        score.map((inning: ScoreInfo) => ({
+          ...inning,
+          update: inning.inning && battingTeam ? inning.inning.includes(battingTeam) : false,
+        })) : [];
+
       return {
         ...match,
-        score: score.map((inning: ScoreInfo) => {
-          return {
-            ...inning,
-            update: inning.inning.includes(battingTeam), // Update only for batting team
-          };
-        }),
+        score: processedScore, // Now this is guaranteed to be an array
       };
     });
 
