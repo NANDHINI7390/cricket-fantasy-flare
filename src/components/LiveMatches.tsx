@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import MatchCard from "@/components/MatchCard";
 import MatchDetailsModal from "@/components/MatchDetailsModal";
-import { fetchMatches, fetchLiveScores, formatMatchDate, teamsMatch } from "@/utils/cricket-api";
+import { fetchMatches, fetchLiveScores, convertToLocalTime, teamsMatch, formatMatchDate } from "@/utils/cricket-api";
 
 const LiveMatches = () => {
   const [showAll, setShowAll] = useState(false);
