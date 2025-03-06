@@ -39,6 +39,8 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setEmailError("");
+    setPasswordError("");
 
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
@@ -52,8 +54,14 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
     }
 
     try {
+      console.log("Starting authentication process");
+      
       // First sign out to clear any potential conflicting sessions
-      await supabase.auth.signOut();
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        console.warn("Error during sign out:", signOutError);
+        // Continue anyway as this is just a precaution
+      }
       
       if (isSignUp) {
         console.log("Signing up with:", { email, password, username });
@@ -64,19 +72,31 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
             data: {
               username,
             },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });
 
+        console.log("Sign up response:", { data, error });
+
         if (error) {
           console.error("Sign up error:", error);
-          throw error;
+          if (error.message.includes("already registered")) {
+            setEmailError("This email is already registered. Please sign in instead.");
+          } else {
+            toast.error(error.message || "Sign up failed. Please try again.");
+          }
+          setIsLoading(false);
+          return;
         }
 
         if (data.user && data.session) {
           toast.success("Sign up successful and signed in!");
           navigate("/");
-        } else {
+        } else if (data.user) {
           toast.success("Sign up successful! Please check your email to verify your account.");
+          setTimeout(() => navigate("/auth"), 2000);
+        } else {
+          toast.error("Sign up failed. Please try again.");
         }
       } else {
         console.log("Signing in with:", { email });
@@ -85,9 +105,17 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           password,
         });
 
+        console.log("Sign in response:", { data, error });
+
         if (error) {
           console.error("Sign in error:", error);
-          throw error;
+          if (error.message.includes("Invalid login credentials")) {
+            toast.error("Invalid email or password");
+          } else {
+            toast.error(error.message || "Sign in failed. Please try again.");
+          }
+          setIsLoading(false);
+          return;
         }
 
         if (data.session) {
