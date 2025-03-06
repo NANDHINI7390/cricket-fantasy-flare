@@ -41,6 +41,73 @@ interface ProcessedMatch extends SportsDBMatch {
   matchStatus: 'Live' | 'Finished' | 'Upcoming';
 }
 
+interface TeamInfo {
+  name: string;
+  shortname?: string;
+  img?: string;
+}
+
+interface ScoreInfo {
+  r?: number;
+  w?: number;
+  o?: number;
+  inning: string;
+  team?: string;
+  update?: boolean;
+}
+
+interface CricketMatch {
+  id: string;
+  name: string;
+  matchType: string;
+  status: string;
+  venue: string;
+  date: string;
+  dateTimeGMT: string;
+  teams: string[];
+  teamInfo?: TeamInfo[];
+  teamBatting?: string;
+  score?: ScoreInfo[];
+  matchStarted?: boolean;
+  matchEnded?: boolean;
+  [key: string]: any;
+}
+
+// Interface with required score property
+interface ProcessedCricketMatch extends Omit<CricketMatch, 'score'> {
+  score: ScoreInfo[];
+}
+
+// Cache configuration
+const CACHE_KEY = "cachedLiveScores";
+const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
+
+const getCachedData = (): ProcessedCricketMatch[] | null => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+
+    const { timestamp, data } = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_TIME) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch (error) {
+    console.error("Error reading from cache:", error);
+    localStorage.removeItem(CACHE_KEY);
+    return null;
+  }
+};
+
+const setCachedData = (data: ProcessedCricketMatch[]) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data }));
+  } catch (error) {
+    console.error("Error writing to cache:", error);
+  }
+};
+
 export const fetchMatches = async (): Promise<ProcessedMatch[]> => {
   try {
     const response = await fetch(SPORTS_DB_API_URL);
@@ -90,45 +157,11 @@ export const fetchMatches = async (): Promise<ProcessedMatch[]> => {
   }
 };
 
-interface TeamInfo {
-  name: string;
-  shortname?: string;
-  img?: string;
-}
-
-interface ScoreInfo {
-  r?: number;
-  w?: number;
-  o?: number;
-  inning: string;
-  team?: string;
-  update?: boolean;
-}
-
-interface CricketMatch {
-  id: string;
-  name: string;
-  matchType: string;
-  status: string;
-  venue: string;
-  date: string;
-  dateTimeGMT: string;
-  teams: string[];
-  teamInfo?: TeamInfo[];
-  teamBatting?: string;
-  score?: ScoreInfo[];
-  matchStarted?: boolean;
-  matchEnded?: boolean;
-  [key: string]: any;
-}
-
-// Interface with required score property
-interface ProcessedCricketMatch extends Omit<CricketMatch, 'score'> {
-  score: ScoreInfo[];
-}
-
 export const fetchLiveScores = async (): Promise<ProcessedCricketMatch[]> => {
   try {
+    const cachedData = getCachedData();
+    if (cachedData) return cachedData;
+
     const response = await fetch(CRICK_API_URL);
     const data = await response.json();
     console.log("Fetched live scores:", data);
@@ -159,6 +192,7 @@ export const fetchLiveScores = async (): Promise<ProcessedCricketMatch[]> => {
       };
     });
 
+    setCachedData(updatedMatches);
     return updatedMatches;
   } catch (error) {
     console.error("Error fetching live scores:", error);
