@@ -14,8 +14,7 @@ export const supabase = createClient<Database>(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true,
-      flowType: 'pkce' // Use PKCE flow for better security
+      detectSessionInUrl: true
     }
   }
 );

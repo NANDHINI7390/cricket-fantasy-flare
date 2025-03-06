@@ -15,7 +15,9 @@ export const GoogleSignInButton = () => {
       await supabase.auth.signOut();
       
       // Get the current URL for redirect
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const currentUrl = window.location.origin;
+      const redirectUrl = `${currentUrl}/auth/callback`;
+      console.log("Base URL:", currentUrl);
       console.log("Redirect URL:", redirectUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -30,13 +32,13 @@ export const GoogleSignInButton = () => {
       });
 
       if (error) {
-        console.error('Google sign in error:', error);
+        console.error('Google sign in error details:', error);
         throw error;
       }
 
       if (data?.url) {
+        console.log("Redirecting to OAuth URL:", data.url);
         // Using window.location.href for direct redirect
-        console.log("Redirecting to:", data.url);
         window.location.href = data.url;
       } else {
         throw new Error("No redirect URL returned from Supabase");

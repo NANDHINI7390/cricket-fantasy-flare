@@ -16,12 +16,14 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [generalError, setGeneralError] = useState("");
   const navigate = useNavigate();
 
   const validateForm = (email: string, password: string) => {
     let isValid = true;
     setEmailError("");
     setPasswordError("");
+    setGeneralError("");
 
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       setEmailError("Please enter a valid email address");
@@ -41,6 +43,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
     setIsLoading(true);
     setEmailError("");
     setPasswordError("");
+    setGeneralError("");
 
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
@@ -54,7 +57,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
     }
 
     try {
-      console.log("Starting authentication process");
+      console.log(`Starting ${isSignUp ? "sign up" : "sign in"} process`);
       
       // First sign out to clear any potential conflicting sessions
       const { error: signOutError } = await supabase.auth.signOut();
@@ -63,8 +66,11 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
         // Continue anyway as this is just a precaution
       }
       
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log("Using redirect URL:", redirectUrl);
+      
       if (isSignUp) {
-        console.log("Signing up with:", { email, password, username });
+        console.log("Signing up with:", { email, username });
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -72,7 +78,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
             data: {
               username,
             },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: redirectUrl,
           },
         });
 
@@ -83,7 +89,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           if (error.message.includes("already registered")) {
             setEmailError("This email is already registered. Please sign in instead.");
           } else {
-            toast.error(error.message || "Sign up failed. Please try again.");
+            setGeneralError(error.message || "Sign up failed. Please try again.");
           }
           setIsLoading(false);
           return;
@@ -96,7 +102,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           toast.success("Sign up successful! Please check your email to verify your account.");
           setTimeout(() => navigate("/auth"), 2000);
         } else {
-          toast.error("Sign up failed. Please try again.");
+          setGeneralError("Sign up failed. Please try again.");
         }
       } else {
         console.log("Signing in with:", { email });
@@ -110,9 +116,9 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
         if (error) {
           console.error("Sign in error:", error);
           if (error.message.includes("Invalid login credentials")) {
-            toast.error("Invalid email or password");
+            setGeneralError("Invalid email or password");
           } else {
-            toast.error(error.message || "Sign in failed. Please try again.");
+            setGeneralError(error.message || "Sign in failed. Please try again.");
           }
           setIsLoading(false);
           return;
@@ -122,12 +128,12 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           toast.success("Successfully signed in!");
           navigate("/");
         } else {
-          throw new Error("No session returned after sign in");
+          setGeneralError("No session returned after sign in");
         }
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      toast.error(error instanceof Error ? error.message : "An error occurred during authentication");
+      setGeneralError(error instanceof Error ? error.message : "An error occurred during authentication");
     } finally {
       setIsLoading(false);
     }
@@ -135,6 +141,12 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {generalError && (
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-500 text-sm">
+          {generalError}
+        </div>
+      )}
+      
       {isSignUp && (
         <div className="space-y-2">
           <Label htmlFor="username">Username</Label>
