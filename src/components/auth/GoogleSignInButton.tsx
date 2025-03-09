@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { captureAuthError } from "@/integrations/sentry/config";
 
 export const GoogleSignInButton = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +46,14 @@ export const GoogleSignInButton = () => {
       if (error) {
         console.error('Google sign in error details:', error);
         setDebugInfo(`OAuth error: ${error.message}`);
+        
+        // Capture error in Sentry with context
+        captureAuthError(error, {
+          authType: 'google',
+          redirectUrl,
+          errorLocation: 'GoogleSignInButton - signInWithOAuth'
+        });
+        
         throw error;
       }
 
@@ -54,13 +63,28 @@ export const GoogleSignInButton = () => {
         // Using window.location.href for direct redirect
         window.location.href = data.url;
       } else {
-        throw new Error("No redirect URL returned from Supabase");
+        const noUrlError = new Error("No redirect URL returned from Supabase");
+        captureAuthError(noUrlError, {
+          authType: 'google', 
+          redirectUrl,
+          responseData: JSON.stringify(data)
+        });
+        throw noUrlError;
       }
     } catch (error) {
       console.error('Detailed Google sign in error:', error);
       const errorMessage = error instanceof Error ? error.message : "An error occurred with Google sign in";
       setDebugInfo(`Error: ${errorMessage}`);
       toast.error(errorMessage);
+      
+      // Capture all uncaught errors
+      if (!(error instanceof Error)) {
+        captureAuthError(
+          new Error(`Unknown Google sign-in error: ${String(error)}`),
+          { authType: 'google' }
+        );
+      }
+      
       setIsLoading(false);
     }
   };

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { captureAuthError } from "@/integrations/sentry/config";
 
 interface EmailPasswordFormProps {
   isSignUp: boolean;
@@ -86,6 +87,13 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
 
         if (error) {
           console.error("Sign up error:", error);
+          captureAuthError(error, {
+            authType: 'email',
+            mode: 'signup',
+            email,
+            hasUsername: !!username
+          });
+          
           if (error.message.includes("already registered")) {
             setEmailError("This email is already registered. Please sign in instead.");
           } else {
@@ -102,6 +110,13 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           toast.success("Sign up successful! Please check your email to verify your account.");
           setTimeout(() => navigate("/auth"), 2000);
         } else {
+          const signupError = new Error("Sign up failed. Please try again.");
+          captureAuthError(signupError, {
+            authType: 'email',
+            mode: 'signup',
+            email,
+            response: JSON.stringify(data)
+          });
           setGeneralError("Sign up failed. Please try again.");
         }
       } else {
@@ -115,6 +130,12 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
 
         if (error) {
           console.error("Sign in error:", error);
+          captureAuthError(error, {
+            authType: 'email',
+            mode: 'signin',
+            email
+          });
+          
           if (error.message.includes("Invalid login credentials")) {
             setGeneralError("Invalid email or password");
           } else {
@@ -128,12 +149,27 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           toast.success("Successfully signed in!");
           navigate("/");
         } else {
+          const noSessionError = new Error("No session returned after sign in");
+          captureAuthError(noSessionError, {
+            authType: 'email',
+            mode: 'signin',
+            email,
+            response: JSON.stringify(data)
+          });
           setGeneralError("No session returned after sign in");
         }
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      setGeneralError(error instanceof Error ? error.message : "An error occurred during authentication");
+      const errorMessage = error instanceof Error ? error.message : "An error occurred during authentication";
+      captureAuthError(
+        error instanceof Error ? error : new Error(errorMessage),
+        {
+          authType: 'email',
+          mode: isSignUp ? 'signup' : 'signin',
+        }
+      );
+      setGeneralError(errorMessage);
     } finally {
       setIsLoading(false);
     }

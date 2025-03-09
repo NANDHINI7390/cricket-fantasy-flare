@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
 import { Loader2, AlertCircle } from "lucide-react";
+import { captureAuthError } from '@/integrations/sentry/config';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -25,6 +26,13 @@ const AuthCallback = () => {
         const hasQueryParams = window.location.search && window.location.search.length > 0;
         
         if (!hasHashFragment && !hasQueryParams) {
+          const noAuthDataError = new Error("No authentication data found in URL");
+          captureAuthError(noAuthDataError, {
+            callbackUrl: currentUrl,
+            authType: 'callback',
+            callbackStage: 'init'
+          });
+          
           setMessage("No authentication data found in URL");
           setErrorOccurred(true);
           setDebugInfo("Missing authentication parameters in callback URL");
@@ -56,6 +64,14 @@ const AuthCallback = () => {
           if (params.get('error')) {
             const errorDesc = params.get('error_description') || params.get('error');
             console.error('OAuth error:', errorDesc);
+            
+            captureAuthError(`OAuth error: ${errorDesc}`, {
+              callbackUrl: currentUrl,
+              authType: 'callback',
+              callbackStage: 'queryParams',
+              oauthError: errorDesc
+            });
+            
             setMessage(`Authentication error: ${errorDesc}`);
             setErrorOccurred(true);
             setDebugInfo(`OAuth error: ${errorDesc}`);
@@ -70,6 +86,13 @@ const AuthCallback = () => {
         
         if (sessionError) {
           console.error('Auth session error:', sessionError);
+          
+          captureAuthError(sessionError, {
+            callbackUrl: currentUrl,
+            authType: 'callback',
+            callbackStage: 'getSession'
+          });
+          
           setMessage(`Authentication failed: ${sessionError.message}`);
           setErrorOccurred(true);
           setDebugInfo(JSON.stringify(sessionError, null, 2));
@@ -92,11 +115,25 @@ const AuthCallback = () => {
             const { data: refreshedSession, error: refreshError } = await supabase.auth.getSession();
             
             if (refreshError) {
+              captureAuthError(refreshError, {
+                callbackUrl: currentUrl,
+                authType: 'callback',
+                callbackStage: 'refreshSession'
+              });
+              
               throw refreshError;
             }
             
             if (!refreshedSession?.session) {
-              throw new Error("Failed to establish session after token exchange");
+              const noSessionError = new Error("Failed to establish session after token exchange");
+              captureAuthError(noSessionError, {
+                callbackUrl: currentUrl,
+                authType: 'callback',
+                callbackStage: 'refreshSession',
+                response: JSON.stringify(refreshedSession)
+              });
+              
+              throw noSessionError;
             }
             
             setDetailedDebug(prev => ({
@@ -107,6 +144,16 @@ const AuthCallback = () => {
             console.log("Session established after token exchange");
           } catch (exchangeError) {
             console.error('Token exchange error:', exchangeError);
+            
+            captureAuthError(
+              exchangeError instanceof Error ? exchangeError : new Error(String(exchangeError)),
+              {
+                callbackUrl: currentUrl,
+                authType: 'callback',
+                callbackStage: 'tokenExchange'
+              }
+            );
+            
             setMessage(`Token exchange failed: ${exchangeError instanceof Error ? exchangeError.message : String(exchangeError)}`);
             setErrorOccurred(true);
             setDebugInfo(JSON.stringify(exchangeError, null, 2));
@@ -127,6 +174,14 @@ const AuthCallback = () => {
           setTimeout(() => navigate('/'), 1500);
         } else {
           console.error('No session found after authentication');
+          
+          captureAuthError("No session established", {
+            callbackUrl: currentUrl,
+            authType: 'callback',
+            callbackStage: 'finalCheck',
+            finalResponse: JSON.stringify(finalSession)
+          });
+          
           setMessage("No session established");
           setErrorOccurred(true);
           setDebugInfo("Authentication completed but no session was created");
@@ -135,6 +190,15 @@ const AuthCallback = () => {
         }
       } catch (error) {
         console.error('Error during auth callback:', error);
+        
+        captureAuthError(
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            authType: 'callback',
+            callbackStage: 'uncaught'
+          }
+        );
+        
         setMessage("Authentication process failed");
         setErrorOccurred(true);
         setDebugInfo(error instanceof Error ? error.message : String(error));
