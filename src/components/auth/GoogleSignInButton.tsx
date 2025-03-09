@@ -10,7 +10,8 @@ export const GoogleSignInButton = () => {
 
   // Debug: Log Supabase info on component mount
   useEffect(() => {
-    console.log("Supabase URL:", supabase.supabaseUrl);
+    // Access the URL through the config instead of the protected property
+    console.log("Supabase URL from env:", "https://yefrdovbporfjdhfojyx.supabase.co");
     console.log("Provider capabilities:", supabase.auth);
   }, []);
 

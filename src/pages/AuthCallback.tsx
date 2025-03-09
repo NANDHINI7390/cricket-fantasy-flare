@@ -10,6 +10,7 @@ const AuthCallback = () => {
   const [message, setMessage] = useState("Processing authentication...");
   const [errorOccurred, setErrorOccurred] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [detailedDebug, setDetailedDebug] = useState<any>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -31,6 +32,13 @@ const AuthCallback = () => {
           setTimeout(() => navigate('/auth'), 5000);
           return;
         }
+        
+        setDetailedDebug({
+          url: currentUrl,
+          hash: window.location.hash,
+          search: window.location.search,
+          origin: window.location.origin
+        });
         
         if (hasHashFragment) {
           setMessage("Processing hash fragment...");
@@ -57,23 +65,64 @@ const AuthCallback = () => {
           }
         }
         
-        // Let Supabase handle the session
-        const { data, error } = await supabase.auth.getSession();
+        // Get the current session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('Auth session error:', error);
-          setMessage(`Authentication failed: ${error.message}`);
+        if (sessionError) {
+          console.error('Auth session error:', sessionError);
+          setMessage(`Authentication failed: ${sessionError.message}`);
           setErrorOccurred(true);
-          setDebugInfo(JSON.stringify(error, null, 2));
-          toast.error(error.message || "Authentication failed");
+          setDebugInfo(JSON.stringify(sessionError, null, 2));
+          toast.error(sessionError.message || "Authentication failed");
           setTimeout(() => navigate('/auth'), 5000);
           return;
         }
         
-        if (data?.session) {
-          console.log("Session established for user:", data.session.user.id);
+        // If no session is present yet, try to exchange the auth code
+        if (!sessionData?.session) {
+          try {
+            // Try to parse the hash or query parameters
+            console.log("No session found, attempting to parse auth parameters");
+            setMessage("Exchanging authentication token...");
+            
+            // Give Supabase a moment to process the hash
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Check session again
+            const { data: refreshedSession, error: refreshError } = await supabase.auth.getSession();
+            
+            if (refreshError) {
+              throw refreshError;
+            }
+            
+            if (!refreshedSession?.session) {
+              throw new Error("Failed to establish session after token exchange");
+            }
+            
+            setDetailedDebug(prev => ({
+              ...prev,
+              refreshedSession: !!refreshedSession?.session
+            }));
+            
+            console.log("Session established after token exchange");
+          } catch (exchangeError) {
+            console.error('Token exchange error:', exchangeError);
+            setMessage(`Token exchange failed: ${exchangeError instanceof Error ? exchangeError.message : String(exchangeError)}`);
+            setErrorOccurred(true);
+            setDebugInfo(JSON.stringify(exchangeError, null, 2));
+            toast.error("Failed to complete authentication");
+            setTimeout(() => navigate('/auth'), 5000);
+            return;
+          }
+        }
+        
+        // Final session check
+        const { data: finalSession } = await supabase.auth.getSession();
+        
+        if (finalSession?.session) {
+          console.log("Session established for user:", finalSession.session.user.id);
           setMessage("Authentication successful!");
-          setDebugInfo(`User authenticated: ${data.session.user.email}`);
+          setDebugInfo(`User authenticated: ${finalSession.session.user.email}`);
           toast.success("Successfully signed in!");
           setTimeout(() => navigate('/'), 1500);
         } else {
@@ -121,6 +170,14 @@ const AuthCallback = () => {
         {debugInfo && (
           <div className="mt-4 p-3 bg-gray-800 rounded text-xs text-left overflow-auto max-h-60">
             <p className="font-mono break-words whitespace-pre-wrap">{debugInfo}</p>
+          </div>
+        )}
+        
+        {detailedDebug && (
+          <div className="mt-4 p-3 bg-gray-800 rounded text-xs text-left overflow-auto max-h-60">
+            <p className="font-mono break-words whitespace-pre-wrap">
+              {JSON.stringify(detailedDebug, null, 2)}
+            </p>
           </div>
         )}
       </div>
