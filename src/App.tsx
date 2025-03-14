@@ -9,6 +9,10 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
+import CreateTeam from "./pages/CreateTeam";
+import Contests from "./pages/Contests";
+import Leaderboard from "./pages/Leaderboard";
+import MyTeams from "./pages/MyTeams";
 import { useEffect } from "react";
 import { initSentry } from "./integrations/sentry/config";
 import * as Sentry from '@sentry/react';
@@ -53,6 +57,10 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/create-team" element={<CreateTeam />} />
+                <Route path="/contests" element={<Contests />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/my-teams" element={<MyTeams />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

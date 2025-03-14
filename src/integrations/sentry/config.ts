@@ -50,7 +50,7 @@ export const captureAuthError = (error: Error | string, context: Record<string, 
     });
     
     if (typeof error === 'string') {
-      Sentry.captureMessage(error, Sentry.Severity.Error);
+      Sentry.captureMessage(error, 'error');
     } else {
       Sentry.captureException(error);
     }
