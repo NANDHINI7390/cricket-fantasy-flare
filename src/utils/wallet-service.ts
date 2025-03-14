@@ -67,7 +67,21 @@ export const getWalletTransactions = async (): Promise<Transaction[]> => {
       throw error;
     }
     
-    return data || [];
+    // Validate and transform the transaction types to ensure they match our interface
+    return (data || []).map(tx => {
+      // Validate that the type is one of our expected values
+      let txType = tx.type;
+      if (!['deposit', 'withdrawal', 'contest_join', 'contest_win'].includes(txType)) {
+        console.warn(`Unknown transaction type: ${txType}, defaulting to 'deposit'`);
+        txType = 'deposit';
+      }
+      
+      // Return a properly typed Transaction object
+      return {
+        ...tx,
+        type: txType as 'deposit' | 'withdrawal' | 'contest_join' | 'contest_win'
+      };
+    });
   } catch (error) {
     console.error("Error fetching wallet transactions:", error);
     Sentry.captureException(error, {
