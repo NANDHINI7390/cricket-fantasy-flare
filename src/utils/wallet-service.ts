@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as Sentry from '@sentry/react';
 
@@ -251,7 +250,7 @@ export const withdrawMoney = async (amount: number): Promise<boolean> => {
   }
 };
 
-export const joinContest = async (contestId: string, entryFee: number): Promise<boolean> => {
+export const joinContest = async (contestId: string, teamId: string): Promise<boolean> => {
   try {
     const { data: user } = await supabase.auth.getUser();
     
@@ -259,49 +258,15 @@ export const joinContest = async (contestId: string, entryFee: number): Promise<
       throw new Error("User not authenticated");
     }
     
-    // Check wallet balance
-    const { data: wallet, error: walletError } = await supabase
-      .from('wallets')
-      .select('id, balance')
-      .eq('user_id', user.user.id)
-      .single();
-      
-    if (walletError && walletError.code !== 'PGRST116') {
-      throw walletError;
-    }
-    
-    if (!wallet || wallet.balance < entryFee) {
-      throw new Error("Insufficient balance to join contest");
-    }
-    
-    // Create transaction record
-    const description = `Joined contest #${contestId} with entry fee ₹${entryFee}`;
-    
-    const { error: txError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: user.user.id,
-        amount: -entryFee, // Negative amount for fee deduction
-        type: 'contest_join',
-        status: 'completed',
-        description
+    // This will call our secure database function to handle the join contest logic
+    const { data, error } = await supabase
+      .rpc('join_contest', { 
+        contest_id: contestId,
+        team_id: teamId
       });
-      
-    if (txError) {
-      throw txError;
-    }
     
-    // Update wallet balance
-    const { error: updateError } = await supabase
-      .from('wallets')
-      .update({ 
-        balance: wallet.balance - entryFee,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', wallet.id);
-      
-    if (updateError) {
-      throw updateError;
+    if (error) {
+      throw error;
     }
     
     return true;
@@ -313,6 +278,18 @@ export const joinContest = async (contestId: string, entryFee: number): Promise<
         operation: 'join_contest'
       }
     });
+    
+    // Provide more specific error message to the user
+    if (error instanceof Error) {
+      if (error.message.includes('Insufficient wallet balance')) {
+        throw new Error('You don\'t have enough balance to join this contest');
+      } else if (error.message.includes('Contest is already full')) {
+        throw new Error('This contest is already full');
+      } else if (error.message.includes('Team not found')) {
+        throw new Error('You need to select a valid team to join');
+      }
+    }
+    
     return false;
   }
 };

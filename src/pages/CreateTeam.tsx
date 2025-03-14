@@ -1,6 +1,5 @@
-
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Check, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,49 +11,57 @@ import { captureAuthError } from "@/integrations/sentry/config";
 const MAX_PLAYERS = 11;
 const MAX_CREDITS = 100;
 
-type Player = {
+interface Player {
   id: string;
   name: string;
   team: string;
   role: "batsman" | "bowler" | "allrounder" | "wicketkeeper";
   credits: number;
-  image?: string;
-  stats?: {
-    matches: number;
-    runs?: number;
-    wickets?: number;
-    economy?: number;
-    average?: number;
-  };
+  image_url?: string;
+  stats?: any;
   selected: boolean;
-};
-
-// Sample players data (in a real app, this would come from an API)
-const samplePlayers: Player[] = [
-  { id: "1", name: "Virat Kohli", team: "India", role: "batsman", credits: 10.5, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Virat_Kohli.jpg/440px-Virat_Kohli.jpg", stats: { matches: 254, runs: 12169, average: 57.4 }, selected: false },
-  { id: "2", name: "Rohit Sharma", team: "India", role: "batsman", credits: 10, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Rohit_Sharma_during_the_India_vs_Australia_4th_Test_match_at_Narendra_Modi_Stadium.jpg/440px-Rohit_Sharma_during_the_India_vs_Australia_4th_Test_match_at_Narendra_Modi_Stadium.jpg", stats: { matches: 227, runs: 9825, average: 48.6 }, selected: false },
-  { id: "3", name: "Jasprit Bumrah", team: "India", role: "bowler", credits: 9.5, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Jasprit_Bumrah_2018.jpg/440px-Jasprit_Bumrah_2018.jpg", stats: { matches: 72, wickets: 141, economy: 4.5 }, selected: false },
-  { id: "4", name: "Kane Williamson", team: "New Zealand", role: "batsman", credits: 9, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Kane_Williamson_2018_NZ.jpg/440px-Kane_Williamson_2018_NZ.jpg", stats: { matches: 203, runs: 8603, average: 52.4 }, selected: false },
-  { id: "5", name: "Pat Cummins", team: "Australia", role: "bowler", credits: 9, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Pat_Cummins_2018_cropped.jpg/440px-Pat_Cummins_2018_cropped.jpg", stats: { matches: 50, wickets: 217, economy: 3.28 }, selected: false },
-  { id: "6", name: "Ben Stokes", team: "England", role: "allrounder", credits: 9.5, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Ben_Stokes_2021.jpg/440px-Ben_Stokes_2021.jpg", stats: { matches: 89, runs: 5529, wickets: 174 }, selected: false },
-  { id: "7", name: "Babar Azam", team: "Pakistan", role: "batsman", credits: 9, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Babar_Azam_in_2022.jpg/440px-Babar_Azam_in_2022.jpg", stats: { matches: 105, runs: 5142, average: 56.5 }, selected: false },
-  { id: "8", name: "Jos Buttler", team: "England", role: "wicketkeeper", credits: 8.5, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Jos_Buttler_2017.jpg/440px-Jos_Buttler_2017.jpg", stats: { matches: 151, runs: 4732, average: 41.1 }, selected: false },
-  { id: "9", name: "Rashid Khan", team: "Afghanistan", role: "bowler", credits: 8.5, image: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Rashid_Khan_Arman.jpg", stats: { matches: 89, wickets: 183, economy: 4.2 }, selected: false },
-  { id: "10", name: "Quinton de Kock", team: "South Africa", role: "wicketkeeper", credits: 8, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Quinton_de_Kock.jpg/440px-Quinton_de_Kock.jpg", stats: { matches: 140, runs: 5740, average: 44.8 }, selected: false },
-  { id: "11", name: "Mitchell Starc", team: "Australia", role: "bowler", credits: 8.5, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Mitchell_Starc_26_January_2015.jpg/440px-Mitchell_Starc_26_January_2015.jpg", stats: { matches: 110, wickets: 236, economy: 5.1 }, selected: false },
-  { id: "12", name: "Hardik Pandya", team: "India", role: "allrounder", credits: 8.5, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Hardik_Pandya_in_2019.jpg/440px-Hardik_Pandya_in_2019.jpg", stats: { matches: 84, runs: 1774, wickets: 74 }, selected: false },
-  { id: "13", name: "David Warner", team: "Australia", role: "batsman", credits: 8, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/David_Warner_February_2016.jpg/440px-David_Warner_February_2016.jpg", stats: { matches: 241, runs: 8700, average: 42.4 }, selected: false },
-  { id: "14", name: "Trent Boult", team: "New Zealand", role: "bowler", credits: 8, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Trent_Boult.jpg/440px-Trent_Boult.jpg", stats: { matches: 170, wickets: 317, economy: 4.9 }, selected: false },
-  { id: "15", name: "Rishabh Pant", team: "India", role: "wicketkeeper", credits: 8, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Rishabh_Pant_the_Indian_Cricket_Player.jpg/440px-Rishabh_Pant_the_Indian_Cricket_Player.jpg", stats: { matches: 54, runs: 2271, average: 43.7 }, selected: false },
-];
+}
 
 const CreateTeam = () => {
-  const [players, setPlayers] = useState<Player[]>(samplePlayers);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [teamName, setTeamName] = useState<string>("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [matches, setMatches] = useState<{ id: string, name: string, time: string }[]>([
+    { id: "m1", name: "IND vs AUS", time: "Today, 7:30 PM" },
+    { id: "m2", name: "ENG vs NZ", time: "Tomorrow, 3:30 PM" },
+    { id: "m3", name: "SA vs PAK", time: "Tomorrow, 7:00 PM" },
+  ]);
+  const [selectedMatch, setSelectedMatch] = useState<string>("m1");
+  
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
+
+  const fetchPlayers = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('players')
+        .select('*');
+
+      if (error) {
+        throw error;
+      }
+
+      setPlayers(data.map(player => ({ ...player, selected: false })) || []);
+    } catch (error) {
+      console.error("Error fetching players:", error);
+      toast.error("Failed to load players");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const selectedCredits = selectedPlayers.reduce((sum, player) => sum + player.credits, 0);
   const remainingCredits = MAX_CREDITS - selectedCredits;
@@ -117,20 +124,44 @@ const CreateTeam = () => {
       
       if (!user.user) {
         toast.error("You must be logged in to create a team");
+        navigate("/auth");
         return;
       }
 
-      const captain = selectedPlayers[0].id; // Default first player as captain
-      const viceCaptain = selectedPlayers[1].id; // Default second player as vice captain
+      // Default first player as captain, second as vice captain
+      const captain = selectedPlayers[0].id;
+      const viceCaptain = selectedPlayers[1].id;
 
-      // In a real app, save this to your database
-      console.log({
-        teamName,
-        players: selectedPlayers.map(p => p.id),
-        captain,
-        viceCaptain,
-        userId: user.user.id
-      });
+      // First save the team
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .insert({
+          user_id: user.user.id,
+          name: teamName,
+          match_id: selectedMatch,
+          captain_id: captain,
+          vice_captain_id: viceCaptain
+        })
+        .select('id')
+        .single();
+        
+      if (teamError) {
+        throw teamError;
+      }
+      
+      // Then save the team players
+      const teamPlayers = selectedPlayers.map(player => ({
+        team_id: teamData.id,
+        player_id: player.id
+      }));
+      
+      const { error: playersError } = await supabase
+        .from('team_players')
+        .insert(teamPlayers);
+        
+      if (playersError) {
+        throw playersError;
+      }
 
       toast.success("Your team has been created successfully!");
       navigate("/contests");
@@ -208,52 +239,58 @@ const CreateTeam = () => {
                 </div>
               </div>
 
-              <div className="space-y-3 mt-4">
-                {filteredPlayers.map(player => (
-                  <div 
-                    key={player.id}
-                    className={`flex items-center p-3 rounded-lg border ${player.selected ? 'border-purple-500 bg-purple-50' : 'border-gray-200'} hover:shadow-md transition-all`}
-                  >
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-gray-100">
-                      {player.image ? (
-                        <img src={player.image} alt={player.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-800">
-                          {player.name.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="ml-4 flex-grow">
-                      <h3 className="font-semibold">{player.name}</h3>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <span>{player.team}</span>
-                        <span className="mx-2">•</span>
-                        <span className="capitalize">{player.role}</span>
+              {isLoading ? (
+                <div className="text-center p-8">
+                  <p className="text-gray-500">Loading players...</p>
+                </div>
+              ) : (
+                <div className="space-y-3 mt-4">
+                  {filteredPlayers.map(player => (
+                    <div 
+                      key={player.id}
+                      className={`flex items-center p-3 rounded-lg border ${player.selected ? 'border-purple-500 bg-purple-50' : 'border-gray-200'} hover:shadow-md transition-all`}
+                    >
+                      <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-gray-100">
+                        {player.image_url ? (
+                          <img src={player.image_url} alt={player.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-800">
+                            {player.name.charAt(0)}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="text-right flex items-center">
-                      <div className="mr-4">
-                        <div className="font-semibold text-gray-900">{player.credits} Cr</div>
-                        <div className="text-xs text-gray-500">
-                          {player.role === "batsman" ? `${player.stats?.average} Avg` : 
-                           player.role === "bowler" ? `${player.stats?.wickets} Wkts` : 
-                           `${player.stats?.runs} Runs`}
+                      <div className="ml-4 flex-grow">
+                        <h3 className="font-semibold">{player.name}</h3>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <span>{player.team}</span>
+                          <span className="mx-2">•</span>
+                          <span className="capitalize">{player.role}</span>
                         </div>
                       </div>
-                      <button 
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          player.selected 
-                            ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-                            : 'bg-green-100 text-green-600 hover:bg-green-200'
-                        }`}
-                        onClick={() => handlePlayerToggle(player)}
-                      >
-                        {player.selected ? '-' : '+'}
-                      </button>
+                      <div className="text-right flex items-center">
+                        <div className="mr-4">
+                          <div className="font-semibold text-gray-900">{player.credits} Cr</div>
+                          <div className="text-xs text-gray-500">
+                            {player.role === "batsman" ? `${player.stats?.average} Avg` : 
+                            player.role === "bowler" ? `${player.stats?.wickets} Wkts` : 
+                            `${player.stats?.runs} Runs`}
+                          </div>
+                        </div>
+                        <button 
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            player.selected 
+                              ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                              : 'bg-green-100 text-green-600 hover:bg-green-200'
+                          }`}
+                          onClick={() => handlePlayerToggle(player)}
+                        >
+                          {player.selected ? '-' : '+'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
@@ -319,8 +356,8 @@ const CreateTeam = () => {
                       <div key={player.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-                            {player.image ? (
-                              <img src={player.image} alt={player.name} className="w-full h-full object-cover rounded-full" />
+                            {player.image_url ? (
+                              <img src={player.image_url} alt={player.name} className="w-full h-full object-cover rounded-full" />
                             ) : (
                               player.name.charAt(0)
                             )}

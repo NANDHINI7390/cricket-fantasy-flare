@@ -9,6 +9,105 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      contest_entries: {
+        Row: {
+          contest_id: string
+          created_at: string
+          id: string
+          points: number | null
+          rank: number | null
+          team_id: string
+          updated_at: string
+          user_id: string
+          winning_amount: number | null
+        }
+        Insert: {
+          contest_id: string
+          created_at?: string
+          id?: string
+          points?: number | null
+          rank?: number | null
+          team_id: string
+          updated_at?: string
+          user_id: string
+          winning_amount?: number | null
+        }
+        Update: {
+          contest_id?: string
+          created_at?: string
+          id?: string
+          points?: number | null
+          rank?: number | null
+          team_id?: string
+          updated_at?: string
+          user_id?: string
+          winning_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_entries_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_entries_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contests: {
+        Row: {
+          created_at: string
+          entry_fee: number
+          filled_spots: number
+          first_prize: number
+          guaranteed_prize: boolean
+          id: string
+          match_id: string
+          max_entries_per_user: number
+          name: string
+          prize_pool: number
+          total_spots: number
+          updated_at: string
+          winning_percentage: number
+        }
+        Insert: {
+          created_at?: string
+          entry_fee?: number
+          filled_spots?: number
+          first_prize: number
+          guaranteed_prize?: boolean
+          id?: string
+          match_id: string
+          max_entries_per_user?: number
+          name: string
+          prize_pool: number
+          total_spots: number
+          updated_at?: string
+          winning_percentage: number
+        }
+        Update: {
+          created_at?: string
+          entry_fee?: number
+          filled_spots?: number
+          first_prize?: number
+          guaranteed_prize?: boolean
+          id?: string
+          match_id?: string
+          max_entries_per_user?: number
+          name?: string
+          prize_pool?: number
+          total_spots?: number
+          updated_at?: string
+          winning_percentage?: number
+        }
+        Relationships: []
+      }
       cricket_matches: {
         Row: {
           created_at: string | null
@@ -57,6 +156,42 @@ export type Database = {
         }
         Relationships: []
       }
+      players: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          image_url: string | null
+          name: string
+          role: string
+          stats: Json | null
+          team: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits: number
+          id?: string
+          image_url?: string | null
+          name: string
+          role: string
+          stats?: Json | null
+          team: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          image_url?: string | null
+          name?: string
+          role?: string
+          stats?: Json | null
+          team?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -75,6 +210,75 @@ export type Database = {
           id?: string
           updated_at?: string | null
           username?: string | null
+        }
+        Relationships: []
+      }
+      team_players: {
+        Row: {
+          created_at: string
+          id: string
+          player_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          player_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          player_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_players_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          captain_id: string | null
+          created_at: string
+          id: string
+          match_id: string
+          name: string
+          updated_at: string
+          user_id: string
+          vice_captain_id: string | null
+        }
+        Insert: {
+          captain_id?: string | null
+          created_at?: string
+          id?: string
+          match_id: string
+          name: string
+          updated_at?: string
+          user_id: string
+          vice_captain_id?: string | null
+        }
+        Update: {
+          captain_id?: string | null
+          created_at?: string
+          id?: string
+          match_id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          vice_captain_id?: string | null
         }
         Relationships: []
       }
@@ -140,7 +344,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      join_contest: {
+        Args: {
+          contest_id: string
+          team_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

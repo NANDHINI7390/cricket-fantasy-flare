@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Users, ChevronRight, ArrowUp, Filter, Sparkles, TrendingUp } from "lucide-react";
@@ -8,171 +8,164 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { joinContest } from "@/utils/wallet-service";
 
 interface Contest {
   id: string;
   name: string;
-  entryFee: number;
-  prizePool: number;
-  totalSpots: number;
-  filledSpots: number;
-  maxEntriesPerUser: number;
-  matchId: string;
-  matchName: string;
-  matchTime: string;
-  firstPrize: number;
-  guaranteedPrize: boolean;
-  winningPercentage: number;
+  entry_fee: number;
+  prize_pool: number;
+  total_spots: number;
+  filled_spots: number;
+  max_entries_per_user: number;
+  match_id: string;
+  first_prize: number;
+  guaranteed_prize: boolean;
+  winning_percentage: number;
+  created_at: string;
 }
 
-// Sample contests data
-const sampleContests: Contest[] = [
-  {
-    id: "1",
-    name: "Winner Takes All",
-    entryFee: 49,
-    prizePool: 10000,
-    totalSpots: 100,
-    filledSpots: 65,
-    maxEntriesPerUser: 1,
-    matchId: "m1",
-    matchName: "IND vs AUS",
-    matchTime: "Today, 7:30 PM",
-    firstPrize: 10000,
-    guaranteedPrize: true,
-    winningPercentage: 1
-  },
-  {
-    id: "2",
-    name: "Mega Contest",
-    entryFee: 99,
-    prizePool: 100000,
-    totalSpots: 1000,
-    filledSpots: 750,
-    maxEntriesPerUser: 5,
-    matchId: "m1",
-    matchName: "IND vs AUS",
-    matchTime: "Today, 7:30 PM",
-    firstPrize: 20000,
-    guaranteedPrize: true,
-    winningPercentage: 50
-  },
-  {
-    id: "3",
-    name: "Practice Contest",
-    entryFee: 0,
-    prizePool: 1000,
-    totalSpots: 500,
-    filledSpots: 320,
-    maxEntriesPerUser: 1,
-    matchId: "m1",
-    matchName: "IND vs AUS",
-    matchTime: "Today, 7:30 PM",
-    firstPrize: 500,
-    guaranteedPrize: false,
-    winningPercentage: 30
-  },
-  {
-    id: "4",
-    name: "Head to Head",
-    entryFee: 499,
-    prizePool: 900,
-    totalSpots: 2,
-    filledSpots: 1,
-    maxEntriesPerUser: 1,
-    matchId: "m2",
-    matchName: "ENG vs NZ",
-    matchTime: "Tomorrow, 3:30 PM",
-    firstPrize: 900,
-    guaranteedPrize: true,
-    winningPercentage: 50
-  },
-  {
-    id: "5",
-    name: "Small Prize Pool",
-    entryFee: 19,
-    prizePool: 5000,
-    totalSpots: 500,
-    filledSpots: 200,
-    maxEntriesPerUser: 10,
-    matchId: "m2",
-    matchName: "ENG vs NZ",
-    matchTime: "Tomorrow, 3:30 PM",
-    firstPrize: 1000,
-    guaranteedPrize: false,
-    winningPercentage: 40
-  },
-  {
-    id: "6",
-    name: "Beginners Only",
-    entryFee: 9,
-    prizePool: 2000,
-    totalSpots: 200,
-    filledSpots: 50,
-    maxEntriesPerUser: 1,
-    matchId: "m3",
-    matchName: "SA vs PAK",
-    matchTime: "Tomorrow, 7:00 PM",
-    firstPrize: 500,
-    guaranteedPrize: true,
-    winningPercentage: 60
-  },
-];
+interface Match {
+  id: string;
+  name: string;
+  time: string;
+}
 
 const Contests = () => {
   const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("entryFee");
-  const [matches, setMatches] = useState<{ id: string, name: string, time: string }[]>([
+  const [sortBy, setSortBy] = useState<string>("entry_fee");
+  const [matches, setMatches] = useState<Match[]>([
     { id: "m1", name: "IND vs AUS", time: "Today, 7:30 PM" },
     { id: "m2", name: "ENG vs NZ", time: "Tomorrow, 3:30 PM" },
     { id: "m3", name: "SA vs PAK", time: "Tomorrow, 7:00 PM" },
   ]);
   const [selectedMatch, setSelectedMatch] = useState<string>("m1");
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
-  const handleJoinContest = (contest: Contest) => {
-    // Check if user is authenticated
-    const isAuthenticated = true; // Replace with actual auth check
+  useEffect(() => {
+    fetchContests();
+  }, []);
 
-    if (!isAuthenticated) {
-      toast.error("Please log in to join contests");
-      // navigate to login page
-      return;
+  const fetchContests = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('contests')
+        .select('*')
+        .order(sortBy, { ascending: sortBy === 'entry_fee' });
+
+      if (error) {
+        throw error;
+      }
+
+      setContests(data || []);
+    } catch (error) {
+      console.error("Error fetching contests:", error);
+      toast.error("Failed to load contests");
+    } finally {
+      setIsLoading(false);
     }
-
-    // Check if user has created a team for this match
-    const hasTeam = true; // Replace with actual team check
-
-    if (!hasTeam) {
-      toast.info("Create a team first to join this contest");
-      navigate("/create-team");
-      return;
-    }
-
-    // In a real app, you would call an API to join the contest
-    toast.success(`Successfully joined ${contest.name}`);
-    
-    // Navigate to team selection if user has multiple teams
-    navigate(`/team-preview/${contest.id}`);
   };
 
-  const filteredContests = sampleContests
+  // Fetch user teams for the selected match
+  const [userTeams, setUserTeams] = useState<{ id: string; name: string }[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  
+  const fetchUserTeams = async (matchId: string) => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      
+      if (!user.user) {
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('user_id', user.user.id)
+        .eq('match_id', matchId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      setUserTeams(data || []);
+      if (data && data.length > 0) {
+        setSelectedTeamId(data[0].id);
+      } else {
+        setSelectedTeamId(null);
+      }
+    } catch (error) {
+      console.error("Error fetching user teams:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserTeams(selectedMatch);
+  }, [selectedMatch]);
+
+  const handleJoinContest = async (contest: Contest) => {
+    try {
+      // Check if user is authenticated
+      const { data: user } = await supabase.auth.getUser();
+      
+      if (!user.user) {
+        toast.error("Please log in to join contests");
+        // navigate to login page
+        navigate("/auth");
+        return;
+      }
+      
+      // Check if user has created a team for this match
+      if (userTeams.length === 0) {
+        toast.info("Create a team first to join this contest");
+        navigate("/create-team");
+        return;
+      }
+
+      // If multiple teams, ensure one is selected
+      if (!selectedTeamId) {
+        toast.error("Please select a team to join this contest");
+        return;
+      }
+
+      // Call the join contest function
+      const success = await joinContest(contest.id, selectedTeamId);
+      
+      if (success) {
+        toast.success(`Successfully joined ${contest.name}`);
+        // Refresh contests to update the UI
+        fetchContests();
+      } else {
+        toast.error("Failed to join contest");
+      }
+    } catch (error) {
+      console.error("Error joining contest:", error);
+      toast.error("Failed to join contest. Please try again.");
+    }
+  };
+
+  const filteredContests = contests
     .filter(contest => {
-      if (selectedMatch !== "all" && contest.matchId !== selectedMatch) {
+      if (selectedMatch !== "all" && contest.match_id !== selectedMatch) {
         return false;
       }
       
       if (activeFilter === "all") return true;
-      if (activeFilter === "free" && contest.entryFee === 0) return true;
-      if (activeFilter === "paid" && contest.entryFee > 0) return true;
-      if (activeFilter === "guaranteed" && contest.guaranteedPrize) return true;
+      if (activeFilter === "free" && contest.entry_fee === 0) return true;
+      if (activeFilter === "paid" && contest.entry_fee > 0) return true;
+      if (activeFilter === "guaranteed" && contest.guaranteed_prize) return true;
       
       return false;
     })
     .sort((a, b) => {
-      if (sortBy === "entryFee") return a.entryFee - b.entryFee;
-      if (sortBy === "prizePool") return b.prizePool - a.prizePool;
-      if (sortBy === "filledSpots") return (b.filledSpots / b.totalSpots) - (a.filledSpots / a.totalSpots);
+      if (sortBy === "entry_fee") return a.entry_fee - b.entry_fee;
+      if (sortBy === "prize_pool") return b.prize_pool - a.prize_pool;
+      if (sortBy === "filled_spots") return (b.filled_spots / b.total_spots) - (a.filled_spots / a.total_spots);
       return 0;
     });
 
@@ -205,6 +198,24 @@ const Contests = () => {
             ))}
           </Tabs>
         </div>
+
+        {userTeams.length > 0 && (
+          <Card className="p-4 mb-6 bg-white shadow-md">
+            <h3 className="font-semibold mb-2">Select Team to Join Contests</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {userTeams.map(team => (
+                <Button 
+                  key={team.id}
+                  variant={selectedTeamId === team.id ? "default" : "outline"}
+                  onClick={() => setSelectedTeamId(team.id)}
+                  className="text-sm"
+                >
+                  {team.name}
+                </Button>
+              ))}
+            </div>
+          </Card>
+        )}
 
         <Card className="p-4 mb-6 bg-white shadow-md">
           <div className="flex flex-wrap gap-2 mb-4">
@@ -245,18 +256,26 @@ const Contests = () => {
               <select 
                 className="text-sm border rounded-md px-2 py-1"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  // Re-fetch with new sort order
+                  fetchContests();
+                }}
               >
-                <option value="entryFee">Entry Fee</option>
-                <option value="prizePool">Prize Pool</option>
-                <option value="filledSpots">Filling Fast</option>
+                <option value="entry_fee">Entry Fee</option>
+                <option value="prize_pool">Prize Pool</option>
+                <option value="filled_spots">Filling Fast</option>
               </select>
             </div>
           </div>
         </Card>
 
         <div className="space-y-4">
-          {filteredContests.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center p-8">
+              <p className="text-gray-500">Loading contests...</p>
+            </div>
+          ) : filteredContests.length === 0 ? (
             <div className="text-center p-8">
               <p className="text-gray-500">No contests available for the selected filters</p>
             </div>
@@ -288,15 +307,15 @@ interface ContestCardProps {
 
 const ContestCard: React.FC<ContestCardProps> = ({ contest, onJoin }) => {
   const [showDetails, setShowDetails] = useState(false);
-  const spotsLeft = contest.totalSpots - contest.filledSpots;
-  const fillPercentage = (contest.filledSpots / contest.totalSpots) * 100;
+  const spotsLeft = contest.total_spots - contest.filled_spots;
+  const fillPercentage = (contest.filled_spots / contest.total_spots) * 100;
   
   return (
     <Card className="overflow-hidden bg-white shadow-md hover:shadow-lg transition-shadow">
       <div className="p-4">
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-bold text-lg">{contest.name}</h3>
-          {contest.guaranteedPrize && (
+          {contest.guaranteed_prize && (
             <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
               Guaranteed
             </span>
@@ -306,17 +325,17 @@ const ContestCard: React.FC<ContestCardProps> = ({ contest, onJoin }) => {
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center">
             <Trophy size={16} className="text-purple-600 mr-1" />
-            <span className="font-semibold">₹{contest.prizePool.toLocaleString()}</span>
+            <span className="font-semibold">₹{contest.prize_pool.toLocaleString()}</span>
           </div>
           <div>
             <span className="text-sm text-gray-500">Entry: </span>
-            <span className="font-semibold">{contest.entryFee === 0 ? 'FREE' : `₹${contest.entryFee}`}</span>
+            <span className="font-semibold">{contest.entry_fee === 0 ? 'FREE' : `₹${contest.entry_fee}`}</span>
           </div>
         </div>
         
         <div className="mb-2">
           <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>{contest.filledSpots} teams</span>
+            <span>{contest.filled_spots} teams</span>
             <span>{spotsLeft} spots left</span>
           </div>
           <Progress value={fillPercentage} className="h-2" />
@@ -326,15 +345,15 @@ const ContestCard: React.FC<ContestCardProps> = ({ contest, onJoin }) => {
           <div className="mt-4 mb-4 space-y-3 bg-gray-50 p-3 rounded-lg">
             <div className="flex justify-between">
               <span className="text-sm text-gray-500">First Prize</span>
-              <span className="font-semibold">₹{contest.firstPrize.toLocaleString()}</span>
+              <span className="font-semibold">₹{contest.first_prize.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-500">Winners %</span>
-              <span className="font-semibold">{contest.winningPercentage}%</span>
+              <span className="font-semibold">{contest.winning_percentage}%</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-500">Max entries per user</span>
-              <span className="font-semibold">{contest.maxEntriesPerUser}</span>
+              <span className="font-semibold">{contest.max_entries_per_user}</span>
             </div>
           </div>
         )}
@@ -349,7 +368,7 @@ const ContestCard: React.FC<ContestCardProps> = ({ contest, onJoin }) => {
           </button>
           
           <Button onClick={onJoin} className="bg-purple-600 hover:bg-purple-700">
-            {contest.entryFee === 0 ? 'Join FREE' : `Join ₹${contest.entryFee}`}
+            {contest.entry_fee === 0 ? 'Join FREE' : `Join ₹${contest.entry_fee}`}
           </Button>
         </div>
       </div>
