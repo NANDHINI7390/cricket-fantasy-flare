@@ -1,23 +1,54 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Trophy, UserCircle, Users, LogIn, ChevronDown, Home, LogOut } from "lucide-react";
+import { Menu, X, Trophy, UserCircle, Users, LogIn, ChevronDown, Home, LogOut, CircleUser, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
 
   const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        setUser(data.session?.user || null);
+      } catch (error) {
+        console.error("Error checking user:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUser();
+
+    // Subscribe to auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   // Menu items
   const menuItems = [
@@ -67,27 +98,55 @@ const Navbar = () => {
               </Link>
             ))}
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-white hover:bg-white/10">
-                  <UserCircle className="h-4 w-4 mr-2" />
-                  Account
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem asChild>
-                  <Link to="/auth" className="flex items-center">
-                    <LogIn className="h-4 w-4 mr-2" />
-                    <span>Login / Sign Up</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="flex items-center">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {isLoading ? null : user ? (
+              <>
+                <Link
+                  to="/wallet"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${
+                    isActive('/wallet')
+                      ? "bg-white/10 text-white"
+                      : "text-gray-200 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  Wallet
+                </Link>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="text-white hover:bg-white/10">
+                      <CircleUser className="h-4 w-4 mr-2" />
+                      Account
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile" className="flex items-center">
+                        <CircleUser className="h-4 w-4 mr-2" />
+                        <span>My Profile</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="flex items-center">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Button
+                asChild
+                variant="ghost"
+                className="text-white hover:bg-white/10"
+              >
+                <Link to="/auth" className="flex items-center">
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Login / Sign Up
+                </Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -121,24 +180,53 @@ const Navbar = () => {
                 {item.label}
               </Link>
             ))}
-            <Link
-              to="/auth"
-              className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-white/10"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <LogIn className="h-4 w-4 mr-2" />
-              Login / Sign Up
-            </Link>
-            <button
-              className="flex items-center w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-white/10"
-              onClick={() => {
-                handleLogout();
-                setIsMenuOpen(false);
-              }}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </button>
+            
+            {user && (
+              <Link
+                to="/wallet"
+                className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                  isActive('/wallet')
+                    ? "bg-white/10 text-white"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Wallet className="h-4 w-4 mr-2" />
+                Wallet
+              </Link>
+            )}
+            
+            {user ? (
+              <>
+                <Link
+                  to="/profile"
+                  className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-white/10"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <CircleUser className="h-4 w-4 mr-2" />
+                  My Profile
+                </Link>
+                <button
+                  className="flex items-center w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-white/10"
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/auth"
+                className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-white/10"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <LogIn className="h-4 w-4 mr-2" />
+                Login / Sign Up
+              </Link>
+            )}
           </div>
         </div>
       )}
