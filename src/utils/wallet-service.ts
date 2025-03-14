@@ -1,15 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import * as Sentry from '@sentry/react';
-
-export interface Transaction {
-  id: string;
-  user_id: string;
-  amount: number;
-  type: 'deposit' | 'withdrawal' | 'contest_join' | 'contest_win';
-  status: 'pending' | 'completed' | 'failed';
-  description: string;
-  created_at: string;
-}
+import { Transaction, TransactionStatus, TransactionType } from "@/types/transaction";
 
 export interface WalletDetails {
   balance: number;
@@ -66,7 +58,7 @@ export const getWalletTransactions = async (): Promise<Transaction[]> => {
       throw error;
     }
     
-    // Validate and transform the transaction types to ensure they match our interface
+    // Validate and transform the transaction types and status to ensure they match our interface
     return (data || []).map(tx => {
       // Validate that the type is one of our expected values
       let txType = tx.type;
@@ -75,10 +67,18 @@ export const getWalletTransactions = async (): Promise<Transaction[]> => {
         txType = 'deposit';
       }
       
+      // Validate that the status is one of our expected values
+      let txStatus = tx.status;
+      if (!['pending', 'completed', 'failed'].includes(txStatus)) {
+        console.warn(`Unknown transaction status: ${txStatus}, defaulting to 'completed'`);
+        txStatus = 'completed';
+      }
+      
       // Return a properly typed Transaction object
       return {
         ...tx,
-        type: txType as 'deposit' | 'withdrawal' | 'contest_join' | 'contest_win'
+        type: txType as TransactionType,
+        status: txStatus as TransactionStatus
       };
     });
   } catch (error) {
