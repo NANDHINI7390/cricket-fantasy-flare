@@ -21,9 +21,10 @@ import { Label } from "@/components/ui/label";
 interface LoginPopupProps {
   isOpen: boolean;
   onClose: () => void;
+  action?: string; // New prop to describe the action that triggered the login popup
 }
 
-const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
+const LoginPopup = ({ isOpen, onClose, action = "view and manage your fantasy cricket teams" }: LoginPopupProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +65,7 @@ const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
         <DialogHeader>
           <DialogTitle className="text-xl">Login Required</DialogTitle>
           <DialogDescription>
-            Please log in to view and manage your fantasy cricket teams.
+            Please log in to {action}.
           </DialogDescription>
         </DialogHeader>
 

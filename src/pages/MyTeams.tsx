@@ -26,6 +26,7 @@ const MyTeams = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [user, setUser] = useState<any>(null);
   const [showLoginPopup, setShowLoginPopup] = useState<boolean>(false);
+  const [loginAction, setLoginAction] = useState<string>("view and manage your fantasy cricket teams");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,7 +41,8 @@ const MyTeams = () => {
         } else {
           setUser(null);
           setIsLoading(false);
-          setShowLoginPopup(true);
+          // Don't automatically show login popup on page load
+          // setShowLoginPopup(true);
         }
       } catch (error) {
         console.error("Error checking user:", error);
@@ -60,7 +62,6 @@ const MyTeams = () => {
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setTeams([]);
-          setShowLoginPopup(true);
         }
       }
     );
@@ -156,6 +157,12 @@ const MyTeams = () => {
   };
 
   const handleDeleteTeam = async (teamId: string) => {
+    if (!user) {
+      setLoginAction("delete teams");
+      setShowLoginPopup(true);
+      return;
+    }
+    
     try {
       // Delete team players first
       const { error: teamPlayersError } = await supabase
@@ -192,9 +199,35 @@ const MyTeams = () => {
 
   const handleCreateTeamClick = () => {
     if (!user) {
+      setLoginAction("create a new team");
       setShowLoginPopup(true);
     } else {
       navigate("/create-team");
+    }
+  };
+
+  const handleEditTeamClick = (teamId: string) => {
+    if (!user) {
+      setLoginAction("edit your team");
+      setShowLoginPopup(true);
+    } else {
+      navigate(`/edit-team/${teamId}`);
+    }
+  };
+  
+  const handleCopyTeamClick = () => {
+    if (!user) {
+      setLoginAction("copy this team");
+      setShowLoginPopup(true);
+    }
+  };
+
+  const handleViewTeamDetails = (teamId: string) => {
+    if (!user) {
+      setLoginAction("view team details");
+      setShowLoginPopup(true);
+    } else {
+      navigate(`/team-details/${teamId}`);
     }
   };
 
@@ -222,21 +255,18 @@ const MyTeams = () => {
               Create Team
             </Button>
           </div>
-        ) : user ? (
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {teams.map(team => (
-              <TeamCard key={team.id} team={team} onDelete={handleDeleteTeam} />
+              <TeamCard 
+                key={team.id} 
+                team={team} 
+                onDelete={handleDeleteTeam} 
+                onEdit={handleEditTeamClick}
+                onCopy={handleCopyTeamClick}
+                onViewDetails={handleViewTeamDetails}
+              />
             ))}
-          </div>
-        ) : (
-          <div className="text-center p-8">
-            <p className="text-gray-500">Log in to view and manage your teams</p>
-            <Button 
-              onClick={() => setShowLoginPopup(true)} 
-              className="mt-4 bg-purple-600 hover:bg-purple-700"
-            >
-              Log in
-            </Button>
           </div>
         )}
 
@@ -250,7 +280,11 @@ const MyTeams = () => {
         </div>
       </div>
 
-      <LoginPopup isOpen={showLoginPopup} onClose={handleLoginPopupClose} />
+      <LoginPopup 
+        isOpen={showLoginPopup} 
+        onClose={handleLoginPopupClose} 
+        action={loginAction}
+      />
     </motion.div>
   );
 };
@@ -258,9 +292,12 @@ const MyTeams = () => {
 interface TeamCardProps {
   team: FantasyTeam;
   onDelete: (teamId: string) => void;
+  onEdit: (teamId: string) => void;
+  onCopy: () => void;
+  onViewDetails: (teamId: string) => void;
 }
 
-const TeamCard: React.FC<TeamCardProps> = ({ team, onDelete }) => {
+const TeamCard: React.FC<TeamCardProps> = ({ team, onDelete, onEdit, onCopy, onViewDetails }) => {
   const navigate = useNavigate();
   
   return (
@@ -277,10 +314,10 @@ const TeamCard: React.FC<TeamCardProps> = ({ team, onDelete }) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => navigate(`/edit-team/${team.id}`)}>
+              <DropdownMenuItem onClick={() => onEdit(team.id)}>
                 <Edit className="mr-2 h-4 w-4" /> Edit Team
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onCopy()}>
                 <Copy className="mr-2 h-4 w-4" /> Copy Team
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -315,7 +352,7 @@ const TeamCard: React.FC<TeamCardProps> = ({ team, onDelete }) => {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between items-center">
-        <Button onClick={() => navigate(`/team-details/${team.id}`)} variant="secondary">View Details</Button>
+        <Button onClick={() => onViewDetails(team.id)} variant="secondary">View Details</Button>
         <Badge variant="outline">Rank: #42</Badge>
       </CardFooter>
     </Card>
