@@ -19,31 +19,66 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { FantasyTeam } from "@/types/team";
 import { Player, PlayerRole } from "@/types/player";
+import LoginPopup from "@/components/LoginPopup";
 
 const MyTeams = () => {
   const [teams, setTeams] = useState<FantasyTeam[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<any>(null);
+  const [showLoginPopup, setShowLoginPopup] = useState<boolean>(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchMyTeams();
+    const checkUserAndFetchTeams = async () => {
+      try {
+        setIsLoading(true);
+        const { data: userData } = await supabase.auth.getUser();
+        
+        if (userData.user) {
+          setUser(userData.user);
+          fetchMyTeams(userData.user.id);
+        } else {
+          setUser(null);
+          setIsLoading(false);
+          setShowLoginPopup(true);
+        }
+      } catch (error) {
+        console.error("Error checking user:", error);
+        setIsLoading(false);
+      }
+    };
+
+    checkUserAndFetchTeams();
+
+    // Listen for auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user);
+          fetchMyTeams(session.user.id);
+          setShowLoginPopup(false);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setTeams([]);
+          setShowLoginPopup(true);
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchMyTeams = async () => {
+  const fetchMyTeams = async (userId: string) => {
     try {
       setIsLoading(true);
-      const { data: user } = await supabase.auth.getUser();
-      
-      if (!user.user) {
-        navigate("/auth");
-        return;
-      }
       
       // Fetch all teams for the user
       const { data: teamsData, error: teamsError } = await supabase
         .from('teams')
         .select('*')
-        .eq('user_id', user.user.id);
+        .eq('user_id', userId);
         
       if (teamsError) {
         throw teamsError;
@@ -51,6 +86,7 @@ const MyTeams = () => {
       
       if (!teamsData || teamsData.length === 0) {
         setTeams([]);
+        setIsLoading(false);
         return;
       }
       
@@ -142,11 +178,23 @@ const MyTeams = () => {
       }
       
       // Refresh teams
-      fetchMyTeams();
+      fetchMyTeams(user.id);
       toast.success("Team deleted successfully");
     } catch (error) {
       console.error("Error deleting team:", error);
       toast.error("Failed to delete team");
+    }
+  };
+
+  const handleLoginPopupClose = () => {
+    setShowLoginPopup(false);
+  };
+
+  const handleCreateTeamClick = () => {
+    if (!user) {
+      setShowLoginPopup(true);
+    } else {
+      navigate("/create-team");
     }
   };
 
@@ -167,27 +215,42 @@ const MyTeams = () => {
           <div className="text-center p-8">
             <p className="text-gray-500">Loading teams...</p>
           </div>
-        ) : teams.length === 0 ? (
+        ) : user && teams.length === 0 ? (
           <div className="text-center p-8">
             <p className="text-gray-500">No teams created yet. Create your first team!</p>
-            <Button onClick={() => navigate("/create-team")} className="mt-4 bg-purple-600 hover:bg-purple-700">
+            <Button onClick={handleCreateTeamClick} className="mt-4 bg-purple-600 hover:bg-purple-700">
               Create Team
             </Button>
           </div>
-        ) : (
+        ) : user ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {teams.map(team => (
               <TeamCard key={team.id} team={team} onDelete={handleDeleteTeam} />
             ))}
           </div>
+        ) : (
+          <div className="text-center p-8">
+            <p className="text-gray-500">Log in to view and manage your teams</p>
+            <Button 
+              onClick={() => setShowLoginPopup(true)} 
+              className="mt-4 bg-purple-600 hover:bg-purple-700"
+            >
+              Log in
+            </Button>
+          </div>
         )}
 
         <div className="mt-8 flex justify-center">
-          <Button onClick={() => navigate("/create-team")} className="bg-purple-600 hover:bg-purple-700">
+          <Button 
+            onClick={handleCreateTeamClick} 
+            className="bg-purple-600 hover:bg-purple-700"
+          >
             Create New Team
           </Button>
         </div>
       </div>
+
+      <LoginPopup isOpen={showLoginPopup} onClose={handleLoginPopupClose} />
     </motion.div>
   );
 };
