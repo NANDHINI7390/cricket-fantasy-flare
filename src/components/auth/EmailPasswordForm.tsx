@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
 
     try {
       console.log(`Starting ${isSignUp ? "sign up" : "sign in"} process`);
+      console.log("Using email:", email);
       
       if (isSignUp) {
         console.log("Signing up with:", { email, username });

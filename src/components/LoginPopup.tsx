@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 interface LoginPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  action?: string; // New prop to describe the action that triggered the login popup
+  action?: string; // Prop to describe the action that triggered the login popup
 }
 
 const LoginPopup = ({ isOpen, onClose, action = "view and manage your fantasy cricket teams" }: LoginPopupProps) => {
@@ -37,10 +37,15 @@ const LoginPopup = ({ isOpen, onClose, action = "view and manage your fantasy cr
     setError("");
 
     try {
+      console.log("Starting login process");
+      console.log("Signing in with:", { email });
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      console.log("Sign in response:", { data, error });
 
       if (error) {
         console.error("Login error:", error);
