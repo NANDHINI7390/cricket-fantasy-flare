@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { joinContest } from "@/utils/wallet-service";
+import LoginPopup from "@/components/LoginPopup";
 
 interface Contest {
   id: string;
@@ -43,11 +45,13 @@ const Contests = () => {
   const [selectedMatch, setSelectedMatch] = useState<string>("m1");
   const [contests, setContests] = useState<Contest[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showLoginPopup, setShowLoginPopup] = useState<boolean>(false);
+  const [loginAction, setLoginAction] = useState<string>("join contests");
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchContests();
-  }, []);
+  }, [sortBy]);
 
   const fetchContests = async () => {
     try {
@@ -79,6 +83,9 @@ const Contests = () => {
       const { data: user } = await supabase.auth.getUser();
       
       if (!user.user) {
+        // User not authenticated, don't try to fetch teams
+        setUserTeams([]);
+        setSelectedTeamId(null);
         return;
       }
       
@@ -113,9 +120,9 @@ const Contests = () => {
       const { data: user } = await supabase.auth.getUser();
       
       if (!user.user) {
-        toast.error("Please log in to join contests");
-        // navigate to login page
-        navigate("/auth");
+        // Set the action for the login popup
+        setLoginAction("join contests");
+        setShowLoginPopup(true);
         return;
       }
       
@@ -144,8 +151,16 @@ const Contests = () => {
       }
     } catch (error) {
       console.error("Error joining contest:", error);
-      toast.error("Failed to join contest. Please try again.");
+      if (error instanceof Error) {
+        toast.error(error.message || "Failed to join contest. Please try again.");
+      } else {
+        toast.error("Failed to join contest. Please try again.");
+      }
     }
+  };
+
+  const handleCloseLoginPopup = () => {
+    setShowLoginPopup(false);
   };
 
   const filteredContests = contests
@@ -257,8 +272,6 @@ const Contests = () => {
                 value={sortBy}
                 onChange={(e) => {
                   setSortBy(e.target.value);
-                  // Re-fetch with new sort order
-                  fetchContests();
                 }}
               >
                 <option value="entry_fee">Entry Fee</option>
@@ -295,6 +308,12 @@ const Contests = () => {
           </Button>
         </div>
       </div>
+
+      <LoginPopup 
+        isOpen={showLoginPopup} 
+        onClose={handleCloseLoginPopup} 
+        action={loginAction} 
+      />
     </motion.div>
   );
 };
