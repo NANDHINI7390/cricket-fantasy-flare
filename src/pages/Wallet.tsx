@@ -13,8 +13,8 @@ import {
   getWalletDetails,
   addMoney,
   withdrawMoney,
-  Transaction
 } from "@/utils/wallet-service";
+import { Transaction } from "@/types/transaction";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 
