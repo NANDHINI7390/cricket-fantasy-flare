@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,16 +59,6 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
     try {
       console.log(`Starting ${isSignUp ? "sign up" : "sign in"} process`);
       
-      // First sign out to clear any potential conflicting sessions
-      const { error: signOutError } = await supabase.auth.signOut();
-      if (signOutError) {
-        console.warn("Error during sign out:", signOutError);
-        // Continue anyway as this is just a precaution
-      }
-      
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      console.log("Using redirect URL:", redirectUrl);
-      
       if (isSignUp) {
         console.log("Signing up with:", { email, username });
         const { data, error } = await supabase.auth.signUp({
@@ -79,7 +68,6 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
             data: {
               username,
             },
-            emailRedirectTo: redirectUrl,
           },
         });
 
@@ -103,10 +91,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           return;
         }
 
-        if (data.user && data.session) {
-          toast.success("Sign up successful and signed in!");
-          navigate("/");
-        } else if (data.user) {
+        if (data.user) {
           toast.success("Sign up successful! Please check your email to verify your account.");
           setTimeout(() => navigate("/auth"), 2000);
         } else {

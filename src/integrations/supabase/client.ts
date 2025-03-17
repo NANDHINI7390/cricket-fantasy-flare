@@ -14,8 +14,7 @@ export const supabase = createClient<Database>(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true,
-      flowType: 'implicit' // Use implicit flow instead of PKCE
+      detectSessionInUrl: true
     }
   }
 );

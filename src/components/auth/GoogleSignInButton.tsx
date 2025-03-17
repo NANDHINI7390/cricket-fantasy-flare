@@ -1,36 +1,23 @@
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { captureAuthError } from "@/integrations/sentry/config";
 
 export const GoogleSignInButton = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
-
-  // Debug: Log Supabase info on component mount
-  useEffect(() => {
-    // Access the URL through the config instead of the protected property
-    console.log("Supabase URL from env:", "https://yefrdovbporfjdhfojyx.supabase.co");
-    console.log("Provider capabilities:", supabase.auth);
-  }, []);
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
       
-      // Clear any existing sessions that might be causing conflicts
-      await supabase.auth.signOut();
-      
       // Get the current URL for redirect
       const currentUrl = window.location.origin;
       const redirectUrl = `${currentUrl}/auth/callback`;
       
-      // Log information for debugging
       console.log("Base URL:", currentUrl);
       console.log("Redirect URL:", redirectUrl);
-      setDebugInfo(`Preparing OAuth: ${redirectUrl}`);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -45,7 +32,6 @@ export const GoogleSignInButton = () => {
 
       if (error) {
         console.error('Google sign in error details:', error);
-        setDebugInfo(`OAuth error: ${error.message}`);
         
         // Capture error in Sentry with context
         captureAuthError(error, {
@@ -59,7 +45,6 @@ export const GoogleSignInButton = () => {
 
       if (data?.url) {
         console.log("Redirecting to OAuth URL:", data.url);
-        setDebugInfo(`Redirecting to: ${data.url}`);
         // Using window.location.href for direct redirect
         window.location.href = data.url;
       } else {
@@ -74,7 +59,6 @@ export const GoogleSignInButton = () => {
     } catch (error) {
       console.error('Detailed Google sign in error:', error);
       const errorMessage = error instanceof Error ? error.message : "An error occurred with Google sign in";
-      setDebugInfo(`Error: ${errorMessage}`);
       toast.error(errorMessage);
       
       // Capture all uncaught errors
@@ -117,12 +101,6 @@ export const GoogleSignInButton = () => {
         </svg>
         {isLoading ? "Signing in..." : "Continue with Google"}
       </Button>
-      
-      {debugInfo && (
-        <div className="mt-2 p-2 bg-gray-800 text-gray-300 rounded text-xs overflow-auto max-h-20">
-          <code className="whitespace-pre-wrap break-all">{debugInfo}</code>
-        </div>
-      )}
     </div>
   );
 };

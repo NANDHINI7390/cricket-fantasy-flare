@@ -28,11 +28,13 @@ const LoginPopup = ({ isOpen, onClose, action = "view and manage your fantasy cr
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -41,14 +43,21 @@ const LoginPopup = ({ isOpen, onClose, action = "view and manage your fantasy cr
       });
 
       if (error) {
+        console.error("Login error:", error);
+        setError(error.message);
         toast.error(error.message);
-      } else {
+      } else if (data.session) {
         toast.success("Logged in successfully");
         onClose();
+      } else {
+        setError("Login failed. Please try again.");
+        toast.error("Login failed. Please try again.");
       }
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("An error occurred during login");
+      const errorMessage = error instanceof Error ? error.message : "An error occurred during login";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +79,12 @@ const LoginPopup = ({ isOpen, onClose, action = "view and manage your fantasy cr
         </DialogHeader>
 
         <form onSubmit={handleLogin} className="grid gap-4 py-4">
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-500 text-sm">
+              {error}
+            </div>
+          )}
+          
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
