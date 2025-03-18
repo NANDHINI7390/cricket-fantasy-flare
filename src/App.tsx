@@ -18,6 +18,7 @@ import Wallet from "./pages/Wallet";
 import { useEffect } from "react";
 import { initSentry } from "./integrations/sentry/config";
 import * as Sentry from '@sentry/react';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Initialize Sentry
 initSentry();
@@ -48,29 +49,31 @@ const SentryErrorBoundary = Sentry.withErrorBoundary(({ children }) => <>{childr
 const App = () => (
   <SentryErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/create-team" element={<CreateTeam />} />
-                <Route path="/contests" element={<Contests />} />
-                <Route path="/leaderboard" element={<Leaderboard />} />
-                <Route path="/my-teams" element={<MyTeams />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/wallet" element={<Wallet />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-          </div>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/create-team" element={<CreateTeam />} />
+                  <Route path="/contests" element={<Contests />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
+                  <Route path="/my-teams" element={<MyTeams />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/wallet" element={<Wallet />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+            </div>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </SentryErrorBoundary>
 );

@@ -1,368 +1,403 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { 
+  CircleDollarSign, 
+  Plus, 
+  ArrowUpRight, 
+  ArrowDownLeft, 
+  Loader2, 
+  Trophy,
+  Calendar,
+  ExternalLink,
+  Filter
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
-import { captureAuthError } from "@/integrations/sentry/config";
-import { Loader2, Wallet, ArrowDown, ArrowUp, Plus, Minus } from "lucide-react";
-import { toast } from "sonner";
-import {
-  getWalletDetails,
-  addMoney,
-  withdrawMoney,
-} from "@/utils/wallet-service";
+import { useAuth } from "@/contexts/AuthContext";
+import { getWalletDetails, addMoney, withdrawMoney } from "@/utils/wallet-service";
 import { Transaction } from "@/types/transaction";
-import { supabase } from "@/integrations/supabase/client";
-import { motion } from "framer-motion";
+import { format } from "date-fns";
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric'
-  });
+// Format currency to Indian Rupees
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
 };
 
-const TransactionItem = ({ transaction }: { transaction: Transaction }) => {
-  const isCredit = transaction.amount > 0;
-  
-  const getTransactionIcon = () => {
-    switch (transaction.type) {
-      case 'deposit':
-        return <Plus className="h-5 w-5 text-green-500" />;
-      case 'withdrawal':
-        return <Minus className="h-5 w-5 text-red-500" />;
-      case 'contest_join':
-        return <ArrowDown className="h-5 w-5 text-amber-500" />;
-      case 'contest_win':
-        return <ArrowUp className="h-5 w-5 text-green-500" />;
-      default:
-        return isCredit ? 
-          <ArrowDown className="h-5 w-5 text-green-500" /> : 
-          <ArrowUp className="h-5 w-5 text-red-500" />;
-    }
-  };
-  
-  return (
-    <div className="p-4 border-b border-gray-700">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <div className="bg-gray-800 rounded-full p-2 mr-4">
-            {getTransactionIcon()}
-          </div>
-          <div>
-            <p className="font-medium">{transaction.description}</p>
-            <p className="text-sm text-gray-400">{formatDate(transaction.created_at)}</p>
-          </div>
-        </div>
-        <div className={`font-bold ${isCredit ? 'text-green-500' : 'text-red-500'}`}>
-          {isCredit ? '+' : ''}{transaction.amount.toFixed(2)}
-        </div>
-      </div>
-    </div>
-  );
+// Get transaction icon based on type
+const getTransactionIcon = (type: string) => {
+  switch (type) {
+    case 'deposit':
+      return <ArrowDownLeft className="text-green-500" />;
+    case 'withdrawal':
+      return <ArrowUpRight className="text-red-500" />;
+    case 'contest_join':
+      return <Trophy className="text-amber-500" />;
+    case 'contest_win':
+      return <Trophy className="text-green-500" />;
+    default:
+      return <CircleDollarSign className="text-gray-500" />;
+  }
 };
 
-const WalletPage = () => {
+// Get transaction status class
+const getStatusClass = (status: string) => {
+  switch (status) {
+    case 'completed':
+      return 'bg-green-100 text-green-800 border-green-200';
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case 'failed':
+      return 'bg-red-100 text-red-800 border-red-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};
+
+const Wallet = () => {
+  const { user, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [depositAmount, setDepositAmount] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [addAmount, setAddAmount] = useState<number>(100);
+  const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        toast.error("Please sign in to access wallet");
-        navigate("/auth");
+    const fetchWalletData = async () => {
+      if (authLoading) return;
+      
+      if (!user) {
+        navigate('/auth');
         return;
       }
-    };
-    
-    checkAuth();
-  }, [navigate]);
-
-  useEffect(() => {
-    const loadWalletData = async () => {
+      
       try {
         setIsLoading(true);
         const walletDetails = await getWalletDetails();
         setBalance(walletDetails.balance);
         setTransactions(walletDetails.transactions);
       } catch (error) {
-        console.error("Error loading wallet:", error);
-        captureAuthError(
-          error instanceof Error ? error : new Error("Failed to load wallet"),
-          { source: "Wallet Page" }
-        );
-        toast.error("Could not load wallet information");
+        console.error("Error fetching wallet details:", error);
+        toast.error("Failed to load wallet details");
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadWalletData();
-  }, []);
+    fetchWalletData();
+  }, [user, authLoading, navigate]);
 
-  const handleDeposit = async () => {
-    if (!depositAmount || isNaN(parseFloat(depositAmount)) || parseFloat(depositAmount) <= 0) {
+  const handleAddMoney = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (addAmount <= 0) {
       toast.error("Please enter a valid amount");
       return;
     }
-    
+
     try {
-      setIsProcessing(true);
-      const amount = parseFloat(depositAmount);
-      
-      // In a real app, this would open a payment gateway
-      // For demo purposes, we'll directly add money
-      const success = await addMoney(amount);
+      setIsAdding(true);
+      const success = await addMoney(addAmount);
       
       if (success) {
-        toast.success(`₹${amount.toFixed(2)} added to your wallet`);
-        setBalance(prev => prev + amount);
-        
-        // Refresh transactions
+        toast.success(`Added ${formatCurrency(addAmount)} to your wallet`);
+        // Refresh wallet data
         const walletDetails = await getWalletDetails();
+        setBalance(walletDetails.balance);
         setTransactions(walletDetails.transactions);
-        
-        setDepositAmount("");
+        setAddAmount(100); // Reset amount
       } else {
-        toast.error("Failed to add money. Please try again.");
+        toast.error("Failed to add money");
       }
     } catch (error) {
-      console.error("Deposit error:", error);
-      captureAuthError(
-        error instanceof Error ? error : new Error("Failed to deposit"),
-        { source: "Wallet Page - Deposit" }
-      );
-      toast.error("Transaction failed. Please try again later.");
+      console.error("Error adding money:", error);
+      toast.error("Failed to add money");
     } finally {
-      setIsProcessing(false);
+      setIsAdding(false);
     }
   };
 
-  const handleWithdraw = async () => {
-    if (!withdrawAmount || isNaN(parseFloat(withdrawAmount)) || parseFloat(withdrawAmount) <= 0) {
+  const handleWithdrawMoney = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (withdrawAmount <= 0) {
       toast.error("Please enter a valid amount");
       return;
     }
-    
-    const amount = parseFloat(withdrawAmount);
-    
-    if (amount > balance) {
+
+    if (withdrawAmount > balance) {
       toast.error("Insufficient balance");
       return;
     }
-    
+
     try {
-      setIsProcessing(true);
-      
-      // In a real app, this would collect withdrawal info
-      // For demo purposes, we'll directly withdraw money
-      const success = await withdrawMoney(amount);
+      setIsWithdrawing(true);
+      const success = await withdrawMoney(withdrawAmount);
       
       if (success) {
-        toast.success(`₹${amount.toFixed(2)} withdrawn from your wallet`);
-        setBalance(prev => prev - amount);
-        
-        // Refresh transactions
+        toast.success(`Withdrawn ${formatCurrency(withdrawAmount)} from your wallet`);
+        // Refresh wallet data
         const walletDetails = await getWalletDetails();
+        setBalance(walletDetails.balance);
         setTransactions(walletDetails.transactions);
-        
-        setWithdrawAmount("");
+        setWithdrawAmount(0); // Reset amount
       } else {
-        toast.error("Failed to withdraw money. Please try again.");
+        toast.error("Failed to withdraw money");
       }
     } catch (error) {
-      console.error("Withdrawal error:", error);
-      captureAuthError(
-        error instanceof Error ? error : new Error("Failed to withdraw"),
-        { source: "Wallet Page - Withdraw" }
-      );
-      toast.error("Transaction failed. Please try again later.");
+      console.error("Error withdrawing money:", error);
+      toast.error("Failed to withdraw money");
     } finally {
-      setIsProcessing(false);
+      setIsWithdrawing(false);
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-[#1A1F2C] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
       </div>
     );
   }
 
+  if (!user) {
+    navigate('/auth');
+    return null;
+  }
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-[#1A1F2C] text-white py-8 px-4"
+      className="min-h-screen py-8 px-4 bg-gradient-to-b from-indigo-50 to-purple-50"
     >
-      <div className="container mx-auto max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8 flex items-center">
-          <Wallet className="mr-3 h-8 w-8" />
-          My Wallet
-        </h1>
-        
+      <div className="container mx-auto max-w-6xl">
+        <header className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900">My Wallet</h1>
+          <p className="text-gray-600">Manage your funds and track transactions</p>
+        </header>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Card className="bg-[#2A2F3C] text-white border-none shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl">Balance</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Current wallet balance and transaction history
-                </CardDescription>
+          {/* Balance Card */}
+          <div className="lg:col-span-1">
+            <Card className="shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl">Available Balance</CardTitle>
+                <CardDescription>Your current wallet balance</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="bg-gradient-to-r from-purple-800 to-indigo-800 rounded-lg p-6 mb-6">
-                  <p className="text-gray-300 mb-2">Available Balance</p>
-                  <h2 className="text-4xl font-bold">₹{balance.toFixed(2)}</h2>
-                </div>
-                
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Recent Transactions</h3>
-                  
-                  <div className="bg-[#1A1F2C] rounded-lg overflow-hidden max-h-80 overflow-y-auto">
-                    {transactions.length === 0 ? (
-                      <div className="p-6 text-center text-gray-400">
-                        No transactions yet
-                      </div>
-                    ) : (
-                      transactions.map((transaction) => (
-                        <TransactionItem 
-                          key={transaction.id} 
-                          transaction={transaction} 
-                        />
-                      ))
-                    )}
+                <div className="flex items-center justify-center py-4">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center mb-2">
+                      <CircleDollarSign className="h-12 w-12 text-purple-500" />
+                    </div>
+                    <div className="text-4xl font-bold text-gray-900">{formatCurrency(balance)}</div>
                   </div>
                 </div>
               </CardContent>
+              <CardFooter className="flex flex-col space-y-2">
+                <Button 
+                  onClick={() => document.getElementById('add-money-tab')?.click()}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> 
+                  Add Money
+                </Button>
+                <Button 
+                  onClick={() => document.getElementById('withdraw-money-tab')?.click()}
+                  variant="outline" 
+                  className="w-full"
+                  disabled={balance <= 0}
+                >
+                  <ArrowUpRight className="mr-2 h-4 w-4" /> 
+                  Withdraw
+                </Button>
+              </CardFooter>
             </Card>
-          </div>
-          
-          <div className="lg:col-span-1">
-            <Card className="bg-[#2A2F3C] text-white border-none shadow-lg sticky top-4">
+
+            {/* Money Actions */}
+            <Card className="mt-6 shadow-md">
               <CardHeader>
-                <CardTitle className="text-xl">Money Actions</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Add or withdraw money from your wallet
-                </CardDescription>
+                <CardTitle>Manage Funds</CardTitle>
               </CardHeader>
               <CardContent>
-                <Tabs className="mt-2">
-                  <TabList className="flex mb-4 border-b border-gray-700">
-                    <Tab 
-                      className="px-4 py-2 font-medium focus:outline-none cursor-pointer"
-                      selectedClassName="text-purple-400 border-b-2 border-purple-400"
-                    >
-                      Add Money
-                    </Tab>
-                    <Tab 
-                      className="px-4 py-2 font-medium focus:outline-none cursor-pointer"
-                      selectedClassName="text-purple-400 border-b-2 border-purple-400"
-                    >
-                      Withdraw
-                    </Tab>
-                  </TabList>
-                  
-                  <TabPanel>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="deposit-amount">Amount (₹)</Label>
-                        <Input
-                          id="deposit-amount"
-                          type="number"
-                          min="1"
-                          placeholder="Enter amount"
-                          value={depositAmount}
-                          onChange={(e) => setDepositAmount(e.target.value)}
-                          className="bg-[#3A3F4C] border-[#4A4F5C] text-white"
-                        />
-                      </div>
-                      
-                      <Button
-                        onClick={handleDeposit}
-                        disabled={isProcessing}
-                        className="w-full bg-green-600 hover:bg-green-700"
-                      >
-                        {isProcessing ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          "Add Money"
-                        )}
-                      </Button>
-                      
-                      <p className="text-xs text-gray-400 mt-2">
-                        * In a real app, this would redirect to a payment gateway
-                      </p>
+                <Tabs defaultValue="add-money">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="add-money" id="add-money-tab" className="w-1/2">Add Money</TabsTrigger>
+                    <TabsTrigger value="withdraw" id="withdraw-money-tab" className="w-1/2">Withdraw</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="add-money" className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="add-amount">Amount to Add (₹)</Label>
+                      <Input
+                        id="add-amount"
+                        type="number"
+                        min="100"
+                        step="100"
+                        value={addAmount}
+                        onChange={(e) => setAddAmount(Number(e.target.value))}
+                        className="text-lg"
+                      />
                     </div>
-                  </TabPanel>
-                  
-                  <TabPanel>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="withdraw-amount">Amount (₹)</Label>
-                        <Input
-                          id="withdraw-amount"
-                          type="number"
-                          min="1"
-                          max={balance}
-                          placeholder="Enter amount"
-                          value={withdrawAmount}
-                          onChange={(e) => setWithdrawAmount(e.target.value)}
-                          className="bg-[#3A3F4C] border-[#4A4F5C] text-white"
-                        />
-                        <p className="text-xs text-gray-400">
-                          Maximum: ₹{balance.toFixed(2)}
-                        </p>
-                      </div>
-                      
-                      <Button
-                        onClick={handleWithdraw}
-                        disabled={isProcessing || balance <= 0}
-                        className="w-full bg-amber-600 hover:bg-amber-700"
-                      >
-                        {isProcessing ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          "Withdraw"
-                        )}
-                      </Button>
-                      
-                      <p className="text-xs text-gray-400 mt-2">
-                        * In a real app, this would collect your bank details
-                      </p>
+                    <div className="flex space-x-2">
+                      {[100, 500, 1000, 2000].map((amount) => (
+                        <Button
+                          key={amount}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAddAmount(amount)}
+                          className={`flex-1 ${addAmount === amount ? 'bg-purple-100 border-purple-300' : ''}`}
+                        >
+                          ₹{amount}
+                        </Button>
+                      ))}
                     </div>
-                  </TabPanel>
+                    <Button
+                      onClick={handleAddMoney}
+                      disabled={isAdding || addAmount <= 0}
+                      className="w-full bg-purple-600 hover:bg-purple-700 mt-4"
+                    >
+                      {isAdding ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>Add ₹{addAmount}</>
+                      )}
+                    </Button>
+                  </TabsContent>
+                  <TabsContent value="withdraw" className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="withdraw-amount">Withdrawal Amount (₹)</Label>
+                      <Input
+                        id="withdraw-amount"
+                        type="number"
+                        min="100"
+                        max={balance}
+                        step="100"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(Number(e.target.value))}
+                        className="text-lg"
+                      />
+                      <p className="text-xs text-gray-500">Available balance: {formatCurrency(balance)}</p>
+                    </div>
+                    <Button
+                      onClick={handleWithdrawMoney}
+                      disabled={isWithdrawing || withdrawAmount <= 0 || withdrawAmount > balance}
+                      className="w-full bg-purple-600 hover:bg-purple-700 mt-4"
+                    >
+                      {isWithdrawing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>Withdraw ₹{withdrawAmount}</>
+                      )}
+                    </Button>
+                  </TabsContent>
                 </Tabs>
               </CardContent>
-              <CardFooter className="flex justify-center pt-2 pb-4">
-                <p className="text-sm text-gray-400 text-center">
-                  Need help with a transaction?{" "}
-                  <a href="#" className="text-purple-400 hover:underline">
-                    Contact Support
-                  </a>
-                </p>
-              </CardFooter>
+            </Card>
+          </div>
+
+          {/* Transactions */}
+          <div className="lg:col-span-2">
+            <Card className="shadow-md">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Transaction History</CardTitle>
+                    <CardDescription>Your recent wallet activities</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filter
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {transactions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No transactions found</p>
+                    <Button 
+                      onClick={() => document.getElementById('add-money-tab')?.click()}
+                      variant="link" 
+                      className="mt-2 text-purple-600"
+                    >
+                      Add money to get started
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {transactions.map((transaction, index) => (
+                      <div 
+                        key={transaction.id || index} 
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mr-4">
+                            {getTransactionIcon(transaction.type)}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-900">
+                              {transaction.type === 'deposit' && 'Added Money'}
+                              {transaction.type === 'withdrawal' && 'Withdrawal'}
+                              {transaction.type === 'contest_join' && 'Contest Entry'}
+                              {transaction.type === 'contest_win' && 'Contest Winnings'}
+                            </h4>
+                            <div className="text-sm text-gray-500 flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {transaction.created_at 
+                                ? format(new Date(transaction.created_at), 'MMM dd, yyyy • HH:mm')
+                                : 'Date unavailable'
+                              }
+                            </div>
+                            {transaction.description && (
+                              <p className="text-xs text-gray-500 mt-1">{transaction.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-semibold ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+                          </div>
+                          <div className={`text-xs px-2 py-1 rounded-full border ${getStatusClass(transaction.status)}`}>
+                            {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+              {transactions.length > 0 && (
+                <CardFooter className="flex justify-center">
+                  <Button variant="link" className="text-purple-600">
+                    View All Transactions <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           </div>
         </div>
@@ -371,4 +406,4 @@ const WalletPage = () => {
   );
 };
 
-export default WalletPage;
+export default Wallet;

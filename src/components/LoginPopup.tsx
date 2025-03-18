@@ -37,8 +37,7 @@ const LoginPopup = ({ isOpen, onClose, action = "view and manage your fantasy cr
     setError("");
 
     try {
-      console.log("Starting login process");
-      console.log("Signing in with:", { email });
+      console.log("Starting login process with email:", email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -48,19 +47,21 @@ const LoginPopup = ({ isOpen, onClose, action = "view and manage your fantasy cr
       console.log("Sign in response:", { data, error });
 
       if (error) {
-        console.error("Login error:", error);
-        setError(error.message);
-        toast.error(error.message);
-      } else if (data.session) {
+        throw error;
+      }
+
+      if (data.session) {
         toast.success("Logged in successfully");
         onClose();
       } else {
-        setError("Login failed. Please try again.");
-        toast.error("Login failed. Please try again.");
+        throw new Error("No session returned");
       }
     } catch (error) {
       console.error("Login error:", error);
-      const errorMessage = error instanceof Error ? error.message : "An error occurred during login";
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "An error occurred during login";
+      
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {

@@ -15,54 +15,21 @@ interface EmailPasswordFormProps {
 
 export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [generalError, setGeneralError] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
-
-  const validateForm = (email: string, password: string) => {
-    let isValid = true;
-    setEmailError("");
-    setPasswordError("");
-    setGeneralError("");
-
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      setEmailError("Please enter a valid email address");
-      isValid = false;
-    }
-
-    if (!password || password.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
-      isValid = false;
-    }
-
-    return isValid;
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    setEmailError("");
-    setPasswordError("");
-    setGeneralError("");
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const username = formData.get("username") as string;
-
-    // Validate form fields
-    if (!validateForm(email, password)) {
-      setIsLoading(false);
-      return;
-    }
+    setError("");
 
     try {
-      console.log(`Starting ${isSignUp ? "sign up" : "sign in"} process`);
-      console.log("Using email:", email);
+      console.log(`Starting ${isSignUp ? "sign up" : "sign in"} process with email: ${email}`);
       
       if (isSignUp) {
-        console.log("Signing up with:", { email, username });
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -77,37 +44,12 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
 
         if (error) {
           console.error("Sign up error:", error);
-          captureAuthError(error, {
-            authType: 'email',
-            mode: 'signup',
-            email,
-            hasUsername: !!username
-          });
-          
-          if (error.message.includes("already registered")) {
-            setEmailError("This email is already registered. Please sign in instead.");
-          } else {
-            setGeneralError(error.message || "Sign up failed. Please try again.");
-          }
-          setIsLoading(false);
-          return;
+          throw error;
         }
 
-        if (data.user) {
-          toast.success("Sign up successful! Please check your email to verify your account.");
-          setTimeout(() => navigate("/auth"), 2000);
-        } else {
-          const signupError = new Error("Sign up failed. Please try again.");
-          captureAuthError(signupError, {
-            authType: 'email',
-            mode: 'signup',
-            email,
-            response: JSON.stringify(data)
-          });
-          setGeneralError("Sign up failed. Please try again.");
-        }
+        toast.success("Sign up successful! Please check your email to verify your account.");
+        setTimeout(() => navigate("/auth"), 2000);
       } else {
-        console.log("Signing in with:", { email });
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -117,46 +59,41 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
 
         if (error) {
           console.error("Sign in error:", error);
-          captureAuthError(error, {
-            authType: 'email',
-            mode: 'signin',
-            email
-          });
-          
-          if (error.message.includes("Invalid login credentials")) {
-            setGeneralError("Invalid email or password");
-          } else {
-            setGeneralError(error.message || "Sign in failed. Please try again.");
-          }
-          setIsLoading(false);
-          return;
+          throw error;
         }
 
         if (data.session) {
           toast.success("Successfully signed in!");
           navigate("/");
         } else {
-          const noSessionError = new Error("No session returned after sign in");
-          captureAuthError(noSessionError, {
-            authType: 'email',
-            mode: 'signin',
-            email,
-            response: JSON.stringify(data)
-          });
-          setGeneralError("No session returned after sign in");
+          throw new Error("No session returned after sign in");
         }
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      const errorMessage = error instanceof Error ? error.message : "An error occurred during authentication";
+      let errorMessage = "An error occurred during authentication";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        if (errorMessage.includes("Invalid login credentials")) {
+          errorMessage = "Invalid email or password";
+        } else if (errorMessage.includes("already registered")) {
+          errorMessage = "This email is already registered. Please sign in instead.";
+        }
+      }
+      
+      setError(errorMessage);
       captureAuthError(
         error instanceof Error ? error : new Error(errorMessage),
         {
           authType: 'email',
           mode: isSignUp ? 'signup' : 'signin',
+          email
         }
       );
-      setGeneralError(errorMessage);
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -164,9 +101,9 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {generalError && (
+      {error && (
         <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-500 text-sm">
-          {generalError}
+          {error}
         </div>
       )}
       
@@ -175,39 +112,43 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
           <Label htmlFor="username">Username</Label>
           <Input
             id="username"
-            name="username"
             type="text"
             className="bg-[#2A2F3C] border-[#3A3F4C] text-white"
             placeholder="johndoe"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required={isSignUp}
             minLength={3}
           />
         </div>
       )}
+      
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
           id="email"
-          name="email"
           type="email"
           className="bg-[#2A2F3C] border-[#3A3F4C] text-white"
           placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
-        {emailError && <p className="text-sm text-red-500">{emailError}</p>}
       </div>
+      
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input
           id="password"
-          name="password"
           type="password"
           className="bg-[#2A2F3C] border-[#3A3F4C] text-white"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           required
           minLength={6}
         />
-        {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
       </div>
+      
       <Button
         type="submit"
         className="w-full bg-[#9b87f5] hover:bg-[#8b77e5] text-white transition-all duration-200"
@@ -215,6 +156,7 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
       >
         {isLoading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
       </Button>
+      
       <div className="text-center mt-4">
         <button
           type="button"

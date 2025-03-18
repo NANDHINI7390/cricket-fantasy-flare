@@ -34,7 +34,8 @@ const AuthCallback = () => {
           return;
         }
         
-        // Wait for hash fragment to be processed by Supabase client
+        // The supabase client will automatically process the auth callback
+        // Just need to wait a moment
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Get the current session
