@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Medal, TrendingUp, Search, Filter, ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
@@ -6,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PageNavigation from "@/components/PageNavigation";
 
 interface User {
   id: string;
@@ -65,10 +65,12 @@ const Leaderboard = () => {
       className="min-h-screen py-8 px-4 bg-gradient-to-r from-indigo-50 to-purple-50"
     >
       <div className="container mx-auto max-w-4xl">
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Leaderboard</h1>
-          <p className="text-gray-600">See how you rank against other players</p>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Leaderboard</h1>
+          <PageNavigation />
         </div>
+        
+        <p className="text-gray-600 text-center mb-6">See how you rank against other players</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <LeaderboardCard 
