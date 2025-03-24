@@ -21,7 +21,7 @@ interface User {
 
 // Sample leaderboard data
 const sampleUsers: User[] = [
-  { id: "1", name: "Virat Shah", username: "kingkohli", avatar: "https://randomuser.me/api/portraits/men/32.jpg", rank: 1, points: 1289, teams: 12, winnings: 25000, change: 'same' },
+  { id: "1", name: "Virat Shahh", username: "kingkohli", avatar: "https://randomuser.me/api/portraits/men/32.jpg", rank: 1, points: 1289, teams: 12, winnings: 25000, change: 'same' },
   { id: "2", name: "Rohit Malhotra", username: "hitman45", avatar: "https://randomuser.me/api/portraits/men/44.jpg", rank: 2, points: 1187, teams: 15, winnings: 18000, change: 'up' },
   { id: "3", name: "Mahendra Singh", username: "captaincool07", avatar: "https://randomuser.me/api/portraits/men/67.jpg", rank: 3, points: 1142, teams: 10, winnings: 15000, change: 'down' },
   { id: "4", name: "Ajay Patel", username: "cricket_king", avatar: "https://randomuser.me/api/portraits/men/55.jpg", rank: 4, points: 1098, teams: 14, winnings: 12000, change: 'up' },
