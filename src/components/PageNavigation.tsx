@@ -27,7 +27,7 @@ const PageNavigation = ({ className = "" }: PageNavigationProps) => {
         className="flex items-center gap-1"
       >
         <ArrowLeft className="h-4 w-4" />
-        <span className="hidden sm:inline">Back</span>
+        <span>Back</span>
       </Button>
       
       <Button 
@@ -36,7 +36,7 @@ const PageNavigation = ({ className = "" }: PageNavigationProps) => {
         onClick={goForward}
         className="flex items-center gap-1"
       >
-        <span className="hidden sm:inline">Forward</span>
+        <span>Forward</span>
         <ArrowRight className="h-4 w-4" />
       </Button>
     </div>

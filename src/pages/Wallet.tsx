@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -23,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getWalletDetails, addMoney, withdrawMoney } from "@/utils/wallet-service";
 import { Transaction } from "@/types/transaction";
 import { format } from "date-fns";
+import PageNavigation from "@/components/PageNavigation";
 
 // Format currency to Indian Rupees
 const formatCurrency = (amount: number) => {
@@ -191,6 +191,10 @@ const Wallet = () => {
       className="min-h-screen py-8 px-4 bg-gradient-to-b from-indigo-50 to-purple-50"
     >
       <div className="container mx-auto max-w-6xl">
+        <div className="mb-4">
+          <PageNavigation />
+        </div>
+        
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900">My Wallet</h1>
           <p className="text-gray-600">Manage your funds and track transactions</p>

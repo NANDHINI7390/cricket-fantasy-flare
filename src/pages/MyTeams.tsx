@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FantasyTeam } from "@/types/team";
 import { Player, PlayerRole } from "@/types/player";
 import LoginPopup from "@/components/LoginPopup";
+import PageNavigation from "@/components/PageNavigation";
 
 const MyTeams = () => {
   const [teams, setTeams] = useState<FantasyTeam[]>([]);
@@ -239,6 +240,10 @@ const MyTeams = () => {
       className="min-h-screen py-8 px-4 bg-gradient-to-r from-indigo-50 to-purple-50"
     >
       <div className="container mx-auto max-w-4xl">
+        <div className="mb-4">
+          <PageNavigation />
+        </div>
+        
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">My Teams</h1>
           <p className="text-gray-600">Manage your fantasy cricket teams</p>
