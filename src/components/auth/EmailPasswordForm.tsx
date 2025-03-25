@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { captureAuthError } from "@/integrations/sentry/config";
-import { Eye, EyeOff } from "lucide-react";
 
 interface EmailPasswordFormProps {
   isSignUp: boolean;
@@ -20,7 +19,6 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -101,10 +99,6 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
@@ -144,24 +138,15 @@ export const EmailPasswordForm = ({ isSignUp, onToggleMode }: EmailPasswordFormP
       
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
-        <div className="relative">
-          <Input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            className="bg-[#2A2F3C] border-[#3A3F4C] text-white pr-10"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
-          <button 
-            type="button"
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
-            onClick={togglePasswordVisibility}
-          >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
+        <Input
+          id="password"
+          type="password"
+          className="bg-[#2A2F3C] border-[#3A3F4C] text-white"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+        />
       </div>
       
       <Button
