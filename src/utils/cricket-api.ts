@@ -7,9 +7,13 @@ export const fetchMatches = async () => {
     const data = await response.json();
     
     if (data && data.data) {
-      return data.data.filter(
-        (match) => match.series && match.series.includes("IPL")
-      );
+      const now = new Date();
+      return data.data.filter((match) => {
+        const matchDate = new Date(match.date);
+        const isLive = match.matchStarted && !match.matchEnded;
+        const isRecent = match.matchEnded && (now - matchDate) / (1000 * 60 * 60) <= 24;
+        return isLive || isRecent;
+      });
     }
     return [];
   } catch (error) {
@@ -24,13 +28,20 @@ export const fetchLiveScores = async () => {
     const data = await response.json();
     
     if (data && data.data) {
+      const now = new Date();
       return data.data
-        .filter((match) => match.series && match.series.includes("IPL"))
+        .filter((match) => {
+          const matchDate = new Date(match.date);
+          const isLive = match.matchStarted && !match.matchEnded;
+          const isRecent = match.matchEnded && (now - matchDate) / (1000 * 60 * 60) <= 24;
+          return isLive || isRecent;
+        })
         .map((match) => ({
           id: match.id,
           teams: match.teams,
           teamInfo: match.teamInfo,
           score: match.score,
+          matchType: match.matchType,
           matchStarted: match.matchStarted,
           matchEnded: match.matchEnded,
           status: match.status,
