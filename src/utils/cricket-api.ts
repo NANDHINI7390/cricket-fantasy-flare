@@ -52,3 +52,7 @@ export const teamsMatch = (team1, team2) => {
   return team1.toLowerCase().includes(team2.toLowerCase()) || 
          team2.toLowerCase().includes(team1.toLowerCase());
 };
+
+export const getCountryFlagUrl = (countryCode) => {
+  return `https://flagcdn.com/w320/${countryCode.toLowerCase()}.png`;
+};
