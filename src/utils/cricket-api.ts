@@ -1,96 +1,71 @@
 const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 const BASE_URL = "https://api.cricapi.com/v1";
 
-// Function to fetch matches with filters
-export const fetchMatches = async (filters = {}) => {
+// Function to fetch matches
+export const fetchMatches = async () => {
   try {
     const response = await fetch(`${BASE_URL}/currentMatches?apikey=${API_KEY}`);
     const data = await response.json();
     
     if (!data || !data.data) return [];
 
+    const matches = data.data.filter(match => match.matchType === "t20"); // Fetch only cricket matches
+    
     const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000); // Last 24 hours
 
-    return data.data
-      .filter((match) => {
-        const matchDate = new Date(match.date);
-        
-        // Apply filters
-        if (filters.matchType && match.matchType !== filters.matchType) return false;
-        if (filters.status && !match.status.includes(filters.status)) return false;
-        if (filters.teams && !filters.teams.some(team => match.teams.includes(team))) return false;
-        if (filters.date && match.date !== filters.date) return false;
-        if (filters.venue && match.venue !== filters.venue) return false;
-        if (filters.matchStarted !== undefined && match.matchStarted !== filters.matchStarted) return false;
-        if (filters.matchEnded !== undefined && match.matchEnded !== filters.matchEnded) return false;
-        
-        return (
-          (match.matchStarted && !match.matchEnded) ||
-          (match.matchEnded && matchDate >= oneDayAgo)
-        );
-      })
-      .map((match) => ({
-        id: match.id,
-        teams: match.teams || [],
-        teamInfo: match.teamInfo || [],
-        score: match.score || [],
-        matchType: match.matchType,
-        matchStarted: match.matchStarted,
-        matchEnded: match.matchEnded,
-        status: match.status,
-        date: match.date,
-        venue: match.venue,
-      }));
+    return matches.filter(match => {
+      const matchDate = new Date(match.date);
+      return match.matchStarted || matchDate >= oneDayAgo; // Live or finished in the last 24 hours
+    });
+
   } catch (error) {
     console.error("Error fetching matches:", error);
     return [];
   }
 };
 
-// Fetch live scores with the same filters
-export const fetchLiveScores = async (filters = {}) => {
+// Function to fetch live scores
+export const fetchLiveScores = async () => {
   try {
     const response = await fetch(`${BASE_URL}/currentMatches?apikey=${API_KEY}`);
     const data = await response.json();
     
     if (!data || !data.data) return [];
 
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
     return data.data
-      .filter((match) => {
-        const matchDate = new Date(match.date);
-        
-        // Apply filters
-        if (filters.matchType && match.matchType !== filters.matchType) return false;
-        if (filters.status && !match.status.includes(filters.status)) return false;
-        if (filters.teams && !filters.teams.some(team => match.teams.includes(team))) return false;
-        if (filters.date && match.date !== filters.date) return false;
-        if (filters.venue && match.venue !== filters.venue) return false;
-        if (filters.matchStarted !== undefined && match.matchStarted !== filters.matchStarted) return false;
-        if (filters.matchEnded !== undefined && match.matchEnded !== filters.matchEnded) return false;
-        
-        return (
-          (match.matchStarted && !match.matchEnded) ||
-          (match.matchEnded && matchDate >= oneDayAgo)
-        );
-      })
-      .map((match) => ({
+      .filter(match => match.matchType === "t20") // Fetch only cricket matches
+      .map(match => ({
         id: match.id,
-        teams: match.teams || [],
-        teamInfo: match.teamInfo || [],
-        score: match.score || [],
-        matchType: match.matchType,
+        teams: match.teams,
+        teamInfo: match.teamInfo,
+        score: match.score,
         matchStarted: match.matchStarted,
         matchEnded: match.matchEnded,
         status: match.status,
         date: match.date,
-        venue: match.venue,
       }));
+
   } catch (error) {
     console.error("Error fetching live scores:", error);
     return [];
   }
+};
+
+// Function to format match date
+export const formatMatchDate = (date, time) => {
+  return new Date(`${date}T${time}`).toLocaleString();
+};
+
+// Function to compare teams safely
+export const teamsMatch = (team1, team2) => {
+  if (!team1 || !team2) return false; // Prevents undefined error
+  return team1.toLowerCase().includes(team2.toLowerCase()) || 
+         team2.toLowerCase().includes(team1.toLowerCase());
+};
+
+// Function to get country flag URL
+export const getCountryFlagUrl = (countryCode) => {
+  if (!countryCode) return ""; // Prevent undefined values
+  return `https://flagcdn.com/w320/${countryCode.toLowerCase()}.png`;
 };
