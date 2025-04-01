@@ -1,181 +1,179 @@
+import React, { useEffect, useState } from "react";
+import { fetchLiveMatches, fetchLiveScores, CricketMatch } from "@/utils/cricket-api"; // Ensure this path is correct
+import { toast } from "sonner";
 
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
-import MatchCard from "@/components/MatchCard";
-import MatchDetailsModal from "@/components/MatchDetailsModal";
-import { fetchMatches, fetchLiveScores, formatMatchDate, teamsMatch } from "@/utils/cricket-api";
+const CATEGORIES = ["All", "Live", "International", "Leagues", "ICC"];
 
-const LiveMatches = () => {
-  const [showAll, setShowAll] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState(null);
+const LiveMatch = () => {
+  const [matches, setMatches] = useState<CricketMatch[]>([]);
+  const [filteredMatches, setFilteredMatches] = useState<CricketMatch[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const { data: matches, isLoading: isMatchesLoading } = useQuery({
-    queryKey: ["matches"],
-    queryFn: fetchMatches,
-    refetchInterval: 300000, // 5 minutes
-  });
+  useEffect(() => {
+    fetchMatches();
+  }, []);
 
-  const { data: liveScores, isLoading: isScoresLoading } = useQuery({
-    queryKey: ["liveScores"],
-    queryFn: fetchLiveScores,
-    refetchInterval: 30000, // 30 seconds
-    retry: 2,
-  });
-
-  const processMatchData = (match) => {
-    // Find corresponding live score data with improved team name matching
-    const liveMatchData = liveScores?.find(
-      (score) => {
-        // First try to match using teamInfo if available
-        if (score.teamInfo && score.teamInfo.length >= 2) {
-          return (
-            teamsMatch(match.strHomeTeam, score.teamInfo[0].name) && 
-            teamsMatch(match.strAwayTeam, score.teamInfo[1].name)
-          ) || (
-            teamsMatch(match.strHomeTeam, score.teamInfo[1].name) && 
-            teamsMatch(match.strAwayTeam, score.teamInfo[0].name)
-          );
-        }
-
-        // Fall back to matching with teams array
-        if (score.teams && score.teams.length >= 2) {
-          return (
-            teamsMatch(match.strHomeTeam, score.teams[0]) && 
-            teamsMatch(match.strAwayTeam, score.teams[1])
-          ) || (
-            teamsMatch(match.strHomeTeam, score.teams[1]) && 
-            teamsMatch(match.strAwayTeam, score.teams[0])
-          );
-        }
-
-        return false;
-      }
-    );
-
-    const isLive = match.matchStatus === "Live" || 
-      (liveMatchData?.matchStarted && !liveMatchData?.matchEnded);
-
-    // Find the correct score entries for home and away teams
-    let homeScore = "0";
-    let homeWickets = "0";
-    let awayScore = "0";
-    let awayWickets = "0";
-    let matchStatus = match.matchStatus || "Upcoming";
-
-    if (liveMatchData) {
-      if (liveMatchData.score && liveMatchData.score.length > 0) {
-        // Try to match home team with the inning string
-        const homeScoreEntry = liveMatchData.score.find(s => 
-          s.inning && (
-            s.inning.includes(match.strHomeTeam.replace(" Cricket", "")) ||
-            teamsMatch(s.inning, match.strHomeTeam)
-          )
-        );
-        
-        if (homeScoreEntry) {
-          homeScore = homeScoreEntry.r?.toString() || "0";
-          homeWickets = homeScoreEntry.w?.toString() || "0";
-        } else if (liveMatchData.score[0]) {
-          // If no direct match, use the first score entry for home team
-          homeScore = liveMatchData.score[0].r?.toString() || "0";
-          homeWickets = liveMatchData.score[0].w?.toString() || "0";
-        }
-
-        // Try to match away team with the inning string
-        const awayScoreEntry = liveMatchData.score.find(s => 
-          s.inning && (
-            s.inning.includes(match.strAwayTeam.replace(" Cricket", "")) ||
-            teamsMatch(s.inning, match.strAwayTeam)
-          )
-        );
-        
-        if (awayScoreEntry) {
-          awayScore = awayScoreEntry.r?.toString() || "0";
-          awayWickets = awayScoreEntry.w?.toString() || "0";
-        } else if (liveMatchData.score[1]) {
-          // If no direct match, use the second score entry for away team
-          awayScore = liveMatchData.score[1].r?.toString() || "0";
-          awayWickets = liveMatchData.score[1].w?.toString() || "0";
-        }
-      }
-      
-      // Use the status from cricAPI if available
-      if (liveMatchData.status) {
-        matchStatus = liveMatchData.status;
-      }
+  const fetchMatches = async () => {
+    try {
+      const data = await fetchLiveMatches(); // Fetching live matches
+      setMatches(data);
+      setFilteredMatches(data);
+    } catch (error) {
+      toast.error("Failed to fetch matches");
+      console.error("Fetch Matches Error:", error);
     }
-
-    return {
-      ...match,
-      matchTime: formatMatchDate(match.dateEvent, match.strTime),
-      liveScore: {
-        homeScore,
-        homeWickets,
-        awayScore,
-        awayWickets,
-        status: matchStatus,
-        matchDetails: liveMatchData // Pass the full match data for detail view
-      }
-    };
   };
 
-  const allMatches = matches?.map(processMatchData);
-  const visibleMatches = showAll ? allMatches : allMatches?.slice(0, 5);
+  const fetchScores = async () => {
+    try {
+      const data = await fetchLiveScores(); // Fetching live scores
+      setMatches(data);
+      setFilteredMatches(data);
+      toast.success("Live scores updated!");
+    } catch (error) {
+      toast.error("Failed to fetch live scores");
+      console.error("Fetch Live Scores Error:", error);
+    }
+  };
+
+  // Function to filter matches based on category
+  const filterMatches = (category: string) => {
+    setSelectedCategory(category);
+
+    if (category === "All") {
+      setFilteredMatches(matches);
+      return;
+    }
+
+    let filtered: CricketMatch[];
+
+    switch (category) {
+      case "Live":
+        filtered = matches.filter((match) => match.status.toLowerCase().includes("live"));
+        break;
+      case "International":
+        filtered = matches.filter((match) => match.matchType.toLowerCase().includes("international"));
+        break;
+      case "Leagues":
+        filtered = matches.filter((match) => match.matchType.toLowerCase().includes("league"));
+        break;
+      case "ICC":
+        filtered = matches.filter((match) => match.name.toLowerCase().includes("icc"));
+        break;
+      default:
+        filtered = matches;
+    }
+
+    setFilteredMatches(filtered);
+  };
 
   return (
-    <section className="min-h-screen py-8 px-4 bg-gradient-to-r from-purple-100 to-pink-100">
-      <div className="container mx-auto max-w-2xl">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">
-            <span className="text-gray-900">Cricket</span>{" "}
-            <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-              Matches
-            </span>
-          </h1>
-        </motion.div>
+    <div className="container">
+      {/* Category Buttons */}
+      <div className="categories">
+        {CATEGORIES.map((category) => (
+          <button
+            key={category}
+            className={selectedCategory === category ? "active" : ""}
+            onClick={() => filterMatches(category)}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
 
-        {isMatchesLoading || isScoresLoading ? (
-          <div className="flex justify-center">
-            <Loader2 className="animate-spin text-purple-600" size={28} />
-          </div>
-        ) : visibleMatches?.length === 0 ? (
-          <div className="text-center text-gray-600">
-            No upcoming or live matches found
-          </div>
+      {/* Refresh Button */}
+      <button className="refresh-button" onClick={fetchScores}>
+        Refresh Live Scores
+      </button>
+
+      {/* Matches Display */}
+      <div className="matches">
+        <h1 className="live-match-title">Live Matches</h1> {/* Title for Live Matches */}
+        {filteredMatches.length > 0 ? (
+          filteredMatches.map((match) => (
+            <div key={match.id} className="match-card">
+              <h3>{match.name}</h3>
+              <p>Type: {match.matchType}</p>
+              <p>Status: {match.status}</p>
+              <p>Venue: {match.venue}</p>
+              <p>Teams: {match.teams.join(" vs ")}</p>
+
+              {/* Logging the match and score for debugging */}
+              {console.log("Match:", match)}
+              {console.log("Score:", match.score)}
+
+              {match.score && Array.isArray(match.score) ? (
+                match.score.map((s, index) => {
+                  // Check if s has the required properties
+                  if (s.team !== undefined && s.r !== undefined && s.w !== undefined && s.o !== undefined) {
+                    return (
+                      <p key={index}>
+                        {s.team}: {s.r}/{s.w} ({s.o} overs)
+                      </p>
+                    );
+                  } else {
+                    return (
+                      <p key={index}>
+                        Invalid score data.
+                      </p>
+                    );
+                  }
+                })
+              ) : (
+                <p>No score information available.</p>
+              )}
+            </div>
+          ))
         ) : (
-          <div className="space-y-4">
-            {visibleMatches?.map((match) => (
-              <MatchCard 
-                key={match.idEvent} 
-                match={match} 
-                onViewDetails={setSelectedMatch} 
-              />
-            ))}
-          </div>
-        )}
-
-        {allMatches?.length > 5 && !showAll && (
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => setShowAll(true)}
-              className="text-purple-600 hover:text-purple-700 font-semibold"
-            >
-              Show More Matches
-            </button>
-          </div>
+          <p>No matches found.</p>
         )}
       </div>
 
-      {selectedMatch && (
-        <MatchDetailsModal
-          match={selectedMatch}
-          onClose={() => setSelectedMatch(null)}
-        />
-      )}
-    </section>
+      {/* Styling */}
+      <style jsx>{`
+        .container {
+          max-width: 800px;
+          margin: auto;
+          text-align: center;
+        }
+        .categories {
+          display: flex;
+          justify-content: center;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        button {
+          padding: 10px 20px;
+          border: none;
+          cursor: pointer;
+          background: #ddd;
+          border-radius: 5px;
+          transition: 0.3s;
+        }
+        .active {
+          background: #007bff;
+          color: white;
+        }
+        .refresh-button {
+          background: #28a745;
+          color: white;
+          margin: 20px 0;
+        }
+        .match-card {
+          border: 1px solid #ddd;
+          padding: 10px;
+          margin: 10px 0;
+          border-radius: 5px;
+        }
+        .live-match-title {
+          color: #000; /* Set desired color here */
+          font-size: 24px; /* Adjust font size as needed */
+          margin-bottom: 20px; /* Add margin for spacing */
+        }
+      `}</style>
+    </div>
   );
 };
 
-export default LiveMatches;
+export default LiveMatch;
