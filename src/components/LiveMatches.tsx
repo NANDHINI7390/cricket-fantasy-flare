@@ -13,6 +13,7 @@ const LiveMatches = () => {
   const fetchMatches = async () => {
     try {
       const data = await fetchLiveMatches();
+      console.log("Fetched Matches:", data); // Debugging log
       setMatches(data);
       setFilteredMatches(data);
     } catch (error) {
@@ -20,19 +21,21 @@ const LiveMatches = () => {
     }
   };
 
-  const filterMatches = (category) => {
+  const filterMatches = (category: string) => {
     setActiveFilter(category);
     if (category === "All") {
       setFilteredMatches(matches);
     } else if (category === "Upcoming") {
-      const upcoming = matches.filter((match) => match.status === "Upcoming");
-      setFilteredMatches(upcoming);
+      setFilteredMatches(matches.filter((match) => match.status === "Upcoming"));
+    } else if (category === "Live") {
+      setFilteredMatches(matches.filter((match) => match.status === "Live"));
     } else {
-      const filtered = matches.filter((match) =>
-        match.matchType.includes(category)
-      );
-      setFilteredMatches(filtered);
+      setFilteredMatches(matches.filter((match) => match.matchType.includes(category)));
     }
+  };
+
+  const getCountryFlag = (country: string) => {
+    return `https://flagsapi.com/${country.slice(0, 2).toUpperCase()}/flat/64.png`;
   };
 
   return (
@@ -55,27 +58,23 @@ const LiveMatches = () => {
             <div key={match.id} className="match-card">
               <h3 className="match-title">{match.name}</h3>
               <p className="match-info">Type: {match.matchType}</p>
-              <p className="match-info status">Status: {match.status}</p>
+              <p className={`match-status ${match.status.toLowerCase()}`}>{match.status}</p>
               <p className="match-info venue">Venue: {match.venue}</p>
               <p className="match-info date-time">
-                {match.dateEvent} {match.strTime}
+                {match.dateEvent} | {match.strTime}
               </p>
-              <p className="teams">
-                Teams: {match.teams.map((team, index) => (
-                  <span key={index} className="team-info">
-                    <img
-                      src={`https://flagsapi.com/${team.slice(0, 2).toUpperCase()}/flat/64.png`}
-                      alt={team}
-                      className="team-flag"
-                    />
-                    {team}
-                  </span>
+              <div className="teams">
+                {match.teams.map((team, index) => (
+                  <div key={index} className="team-info">
+                    <img src={getCountryFlag(team)} alt={team} className="team-flag" />
+                    <span>{team}</span>
+                  </div>
                 ))}
-              </p>
+              </div>
             </div>
           ))
         ) : (
-          <p className="no-matches">No matches found.</p>
+          <p className="no-matches">No matches found under "{activeFilter}" category.</p>
         )}
       </div>
 
@@ -98,13 +97,16 @@ const LiveMatches = () => {
         }
         .filter-buttons {
           margin-bottom: 20px;
+          display: flex;
+          justify-content: center;
+          gap: 10px;
+          flex-wrap: wrap;
         }
         .filter-btn {
           background-color: #007bff;
           color: white;
           border: none;
           padding: 10px 15px;
-          margin: 5px;
           cursor: pointer;
           border-radius: 5px;
           transition: background-color 0.3s, transform 0.2s;
@@ -125,26 +127,39 @@ const LiveMatches = () => {
           border-radius: 8px;
           padding: 15px;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-          width: 250px;
+          width: 280px;
           text-align: left;
           transition: transform 0.2s;
+          position: relative;
         }
         .match-card:hover {
           transform: translateY(-5px);
         }
         .match-title {
-          font-size: 20px;
+          font-size: 18px;
           font-weight: bold;
-          margin-bottom: 10px;
           color: #333;
+          text-align: center;
         }
         .match-info {
           font-size: 14px;
           margin: 5px 0;
         }
-        .status {
+        .match-status {
           font-weight: bold;
-          color: red;
+          text-align: center;
+          padding: 5px;
+          border-radius: 5px;
+          width: 120px;
+          margin: 10px auto;
+        }
+        .match-status.live {
+          background-color: #ff4d4d;
+          color: white;
+        }
+        .match-status.upcoming {
+          background-color: #ffa500;
+          color: white;
         }
         .venue {
           font-style: italic;
@@ -154,19 +169,22 @@ const LiveMatches = () => {
           color: #666;
         }
         .teams {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
           margin-top: 10px;
-          font-size: 14px;
+          align-items: center;
         }
         .team-info {
           display: flex;
           align-items: center;
-          gap: 5px;
-          margin: 5px 0;
+          gap: 8px;
+          font-size: 16px;
         }
         .team-flag {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
+          width: 30px;
+          height: 20px;
+          border-radius: 3px;
         }
         .no-matches {
           color: red;
