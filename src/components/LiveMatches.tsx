@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchLiveMatches } from "../utils/cricket-api";
+import { fetchLiveMatches } from "./api";
 import "./LiveMatches.css"; // Import CSS file for styling
 
 const getFlagUrl = (team) => `https://countryflagsapi.com/png/${team.replace(" ", "-").toLowerCase()}`;
