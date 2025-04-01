@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { fetchLiveMatches } from "../utils/cricket-api"; // Import the function from the correct path
+import { fetchLiveMatches } from "../utils/cricket-api";
+import "./LiveMatches.css"; // Import CSS file for styling
+
+const getFlagUrl = (team) => `https://countryflagsapi.com/png/${team.replace(" ", "-").toLowerCase()}`;
 
 const LiveMatches = () => {
-  const [matches, setMatches] = useState<CricketMatch[]>([]);
+  const [matches, setMatches] = useState([]);
 
   useEffect(() => {
     fetchMatches();
@@ -12,7 +15,7 @@ const LiveMatches = () => {
 
   const fetchMatches = async () => {
     try {
-      const data = await fetchLiveMatches(); // Call the imported function
+      const data = await fetchLiveMatches();
       setMatches(data);
     } catch (error) {
       console.error("Error fetching matches:", error);
@@ -20,20 +23,28 @@ const LiveMatches = () => {
   };
 
   return (
-    <div>
-      <h2>Live Matches</h2>
+    <div className="live-matches-container">
+      <h2 className="title">Live Cricket Matches</h2>
       {matches.length > 0 ? (
-        matches.map((match) => (
-          <div key={match.id} className="match-card">
-            <h3>{match.name}</h3>
-            <p>Type: {match.matchType}</p>
-            <p>Status: {match.status}</p>
-            <p>Venue: {match.venue}</p>
-            <p>Teams: {match.teams.join(" vs ")}</p>
-          </div>
-        ))
+        <div className="matches-grid">
+          {matches.map((match) => (
+            <div key={match.id} className="match-card">
+              <h3>{match.name}</h3>
+              <p className="match-info">{match.matchType} | {match.venue}</p>
+              <p className="match-status">{match.status}</p>
+              <div className="teams">
+                {match.teams.map((team, index) => (
+                  <div key={index} className="team">
+                    <img src={getFlagUrl(team)} alt={team} className="team-flag" />
+                    <span className="team-name">{team}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
-        <p>No matches found.</p>
+        <p className="no-matches">No live matches available.</p>
       )}
     </div>
   );
