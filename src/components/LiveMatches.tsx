@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchLiveMatches } from "../utils/cricket-api"; // Update this path as needed
+import { fetchLiveMatches } from "../utils/cricket-api"; // Ensure the path is correct
 
 const LiveMatches = () => {
   const [matches, setMatches] = useState([]);
@@ -24,6 +24,9 @@ const LiveMatches = () => {
     setActiveFilter(category);
     if (category === "All") {
       setFilteredMatches(matches);
+    } else if (category === "Upcoming") {
+      const upcoming = matches.filter((match) => match.status === "Upcoming");
+      setFilteredMatches(upcoming);
     } else {
       const filtered = matches.filter((match) =>
         match.matchType.includes(category)
@@ -34,9 +37,9 @@ const LiveMatches = () => {
 
   return (
     <div className="live-matches-container">
-      <h2 className="title">Live Matches</h2>
+      <h2 className="title">Live & Upcoming Matches</h2>
       <div className="filter-buttons">
-        {["All", "Live", "International", "ICC", "IPL"].map((category) => (
+        {["All", "Live", "Upcoming", "International", "ICC", "IPL"].map((category) => (
           <button
             key={category}
             className={`filter-btn ${activeFilter === category ? "active" : ""}`}
@@ -54,6 +57,9 @@ const LiveMatches = () => {
               <p className="match-info">Type: {match.matchType}</p>
               <p className="match-info status">Status: {match.status}</p>
               <p className="match-info venue">Venue: {match.venue}</p>
+              <p className="match-info date-time">
+                {match.dateEvent} {match.strTime}
+              </p>
               <p className="teams">
                 Teams: {match.teams.map((team, index) => (
                   <span key={index} className="team-info">
@@ -80,11 +86,15 @@ const LiveMatches = () => {
           padding: 20px;
           text-align: center;
           font-family: Arial, sans-serif;
+          background: linear-gradient(to bottom right, #f0f4f8, #d1e3ff);
+          border-radius: 10px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
         .title {
-          font-size: 24px;
+          font-size: 28px;
           font-weight: bold;
           margin-bottom: 20px;
+          color: #0056b3;
         }
         .filter-buttons {
           margin-bottom: 20px;
@@ -97,7 +107,8 @@ const LiveMatches = () => {
           margin: 5px;
           cursor: pointer;
           border-radius: 5px;
-          transition: 0.3s;
+          transition: background-color 0.3s, transform 0.2s;
+          font-size: 16px;
         }
         .filter-btn.active,
         .filter-btn:hover {
@@ -113,14 +124,19 @@ const LiveMatches = () => {
           background: white;
           border-radius: 8px;
           padding: 15px;
-          box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
           width: 250px;
           text-align: left;
+          transition: transform 0.2s;
+        }
+        .match-card:hover {
+          transform: translateY(-5px);
         }
         .match-title {
-          font-size: 18px;
+          font-size: 20px;
           font-weight: bold;
           margin-bottom: 10px;
+          color: #333;
         }
         .match-info {
           font-size: 14px;
@@ -132,6 +148,10 @@ const LiveMatches = () => {
         }
         .venue {
           font-style: italic;
+        }
+        .date-time {
+          font-size: 12px;
+          color: #666;
         }
         .teams {
           margin-top: 10px;
