@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, Send, ChevronDown, Trophy, Star, TrendingUp, CricketBall } from "lucide-react";
+import { MessageSquare, X, Send, ChevronDown, Trophy, Star, TrendingUp, Cricket } from "lucide-react";
 import { fetchLiveMatches, fetchLiveScores, CricketMatch, getTeamLogoUrl, formatMatchStatus } from "@/utils/cricket-api";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -389,6 +389,16 @@ const ChatWidget: React.FC = () => {
         
         const matchDetails = formatMatchData(message.matchData);
         
+        if (typeof matchDetails === "string") {
+          return (
+            <div className="flex justify-start mb-3">
+              <div className="bg-gray-200 rounded-2xl rounded-tl-none px-4 py-2 max-w-[80%]">
+                {matchDetails}
+              </div>
+            </div>
+          );
+        }
+        
         return (
           <div className="flex justify-start mb-3">
             <Card className="w-full max-w-[90%] border-l-4 border-l-blue-500 shadow-md hover:shadow-lg transition-shadow">
@@ -528,7 +538,7 @@ const ChatWidget: React.FC = () => {
     if (matches.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-          <CricketBall size={48} className="mb-4 opacity-30" />
+          <Cricket size={48} className="mb-4 opacity-30" />
           <p>No matches currently available</p>
           <Button 
             variant="outline" 
@@ -546,6 +556,15 @@ const ChatWidget: React.FC = () => {
       <div className="space-y-4 p-2">
         {matches.map(match => {
           const matchDetails = formatMatchData(match);
+          
+          if (typeof matchDetails === "string") {
+            return (
+              <Card key={match.id} className="hover:shadow-md transition-shadow p-4">
+                <div className="text-center text-gray-500">{matchDetails}</div>
+              </Card>
+            );
+          }
+          
           return (
             <Card key={match.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
