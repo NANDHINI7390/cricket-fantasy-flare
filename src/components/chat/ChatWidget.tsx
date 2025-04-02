@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, Send, ChevronDown, Trophy, Star, TrendingUp, Cricket } from "lucide-react";
+import { MessageSquare, X, Send, ChevronDown, Trophy, Star, TrendingUp, BarChart3 } from "lucide-react";
 import { fetchLiveMatches, fetchLiveScores, CricketMatch, getTeamLogoUrl, formatMatchStatus } from "@/utils/cricket-api";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -538,7 +537,7 @@ const ChatWidget: React.FC = () => {
     if (matches.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-          <Cricket size={48} className="mb-4 opacity-30" />
+          <BarChart3 size={48} className="mb-4 opacity-30" />
           <p>No matches currently available</p>
           <Button 
             variant="outline" 
