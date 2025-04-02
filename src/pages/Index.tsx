@@ -5,6 +5,7 @@ import CreateLeague from "../components/CreateLeague";
 import Footer from "../components/Footer";
 import PageNavigation from "@/components/PageNavigation";
 import { motion } from "framer-motion";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 const Index = () => {
   return (
@@ -21,6 +22,7 @@ const Index = () => {
       <LiveMatches />
       <CreateLeague />
       <Footer />
+      <ChatWidget />
     </motion.div>
   );
 };
