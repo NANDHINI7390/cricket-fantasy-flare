@@ -1,3 +1,4 @@
+
 const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 
 // Endpoints
@@ -19,7 +20,12 @@ export interface CricketMatch {
   status: string;
   venue: string;
   teams: string[];
+  teamInfo: {
+    name: string;
+    img: string;
+  }[];
   score?: ScoreInfo[];
+  dateTimeGMT?: string;
   matchStarted?: boolean;
   matchEnded?: boolean;
 }
@@ -56,4 +62,46 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
     console.error("Error fetching live scores:", error);
     return [];
   }
+};
+
+// Helper function to get country flag URL
+export const getCountryFlagUrl = (teamName: string): string => {
+  // Extract country name from team name, removing "Cricket" suffix if present
+  const countryName = teamName.replace(/ Cricket$/, "");
+  
+  // Map of country names to their flag codes (ISO 3166-1 alpha-2)
+  const countryCodeMap: Record<string, string> = {
+    "India": "in",
+    "Australia": "au",
+    "England": "gb-eng",
+    "Pakistan": "pk",
+    "New Zealand": "nz",
+    "South Africa": "za", 
+    "West Indies": "wi", // Custom code for West Indies
+    "Sri Lanka": "lk",
+    "Bangladesh": "bd",
+    "Afghanistan": "af",
+    "Zimbabwe": "zw",
+    "Ireland": "ie",
+    "Scotland": "gb-sct",
+    "Netherlands": "nl",
+    "United Arab Emirates": "ae",
+    "Papua New Guinea": "pg",
+    "Nepal": "np",
+    "Namibia": "na",
+    "Oman": "om",
+    "USA": "us",
+    "Canada": "ca",
+  };
+  
+  // Get the country code, default to a placeholder if not found
+  const countryCode = countryCodeMap[countryName] || "xx";
+  
+  // For West Indies, use a custom flag URL
+  if (countryCode === "wi") {
+    return "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/WestIndiesCricketFlagPre1999.svg/320px-WestIndiesCricketFlagPre1999.svg.png";
+  }
+  
+  // Return standard flag URL from flagpedia
+  return `https://flagcdn.com/w80/${countryCode.toLowerCase()}.png`;
 };
