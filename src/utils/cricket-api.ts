@@ -5,9 +5,9 @@ const MATCHES_URL = `https://api.cricapi.com/v1/currentMatches?apikey=${API_KEY}
 const LIVE_SCORES_URL = `https://api.cricapi.com/v1/cricScore?apikey=${API_KEY}`;
 
 export interface ScoreInfo {
-  r?: number; // Runs
-  w?: number; // Wickets
-  o?: number; // Overs
+  r?: number;
+  w?: number;
+  o?: number;
   team?: string;
   inning: string;
 }
@@ -27,6 +27,7 @@ export interface CricketMatch {
   dateTimeGMT?: string;
   matchStarted?: boolean;
   matchEnded?: boolean;
+  category?: string;
 }
 
 // Fetches live matches (without ball-by-ball updates)
@@ -125,13 +126,17 @@ const parseScore = (scoreString: string): [number, number, number] => {
   return [runs, wickets, overs];
 };
 
-// Helper function to get country flag URL
+// Updated helper function to get country flag URL with better fallback
 export const getCountryFlagUrl = (teamName: string): string => {
-  // Extract country name from team name, removing "Cricket" suffix if present
-  const countryName = teamName.replace(/ Cricket$/, "")
-    .replace(/\s*\[.*\]\s*$/, "").trim(); // Remove bracketed parts like [CSK]
+  if (!teamName) return "https://placehold.co/32x32?text=Team";
   
-  // Map of country names to their flag codes (ISO 3166-1 alpha-2)
+  // Extract country name from team name
+  const countryName = teamName
+    .replace(/ Cricket$/, "")
+    .replace(/\s*\[.*\]\s*$/, "")
+    .trim();
+  
+  // Map of country names to their flag codes
   const countryCodeMap: Record<string, string> = {
     "India": "in",
     "Australia": "au",
@@ -167,22 +172,28 @@ export const getCountryFlagUrl = (teamName: string): string => {
     "Lucknow Super Giants": "in",
   };
   
-  // Get the country code, default to a placeholder if not found
   const countryCode = countryCodeMap[countryName] || "xx";
   
   // For West Indies, use a custom flag URL
   if (countryCode === "wi") {
-    return "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/WestIndiesCricketFlagPre1999.svg/320px-WestIndiesCricketFlagPre1999.svg.png";
+    return "https://upload.wikimedia.org/wikipedia/commons/1/18/WestIndiesCricketFlagPre1999.svg";
   }
   
-  // Return standard flag URL from flagpedia
-  return `https://flagcdn.com/w80/${countryCode.toLowerCase()}.png`;
+  try {
+    return `https://flagcdn.com/w80/${countryCode.toLowerCase()}.png`;
+  } catch {
+    return "https://placehold.co/32x32?text=Team";
+  }
 };
 
-// Function to get team logo URL (falls back to country flag if no logo)
+// Updated function to get team logo URL with better error handling
 export const getTeamLogoUrl = (team: any): string => {
-  // If the team has an image URL, use it
-  if (team.img && team.img !== "https://h.cricapi.com/img/icon512.png") {
+  if (!team) return "https://placehold.co/32x32?text=Team";
+  
+  // If the team has a valid image URL, use it
+  if (team.img && 
+      team.img !== "https://h.cricapi.com/img/icon512.png" && 
+      team.img.startsWith('http')) {
     return team.img;
   }
   
@@ -190,10 +201,12 @@ export const getTeamLogoUrl = (team: any): string => {
   return getCountryFlagUrl(team.name);
 };
 
-// Format match status to be more user-friendly
+// Format match status with better handling
 export const formatMatchStatus = (status: string, matchStarted?: boolean, matchEnded?: boolean): string => {
-  if (status === "Match not started") return "Upcoming";
-  if (status.includes("won")) return status;
+  if (!status) return "Unknown";
+  
+  if (status === "Match not started" || status === "") return "Upcoming";
+  if (status.toLowerCase().includes("won")) return status;
   if (matchStarted && !matchEnded) return "Live";
   if (matchEnded) return "Completed";
   return status;
