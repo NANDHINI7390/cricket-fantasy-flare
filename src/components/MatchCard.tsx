@@ -9,6 +9,7 @@ import {
   getTeamLogoUrl, 
   formatMatchStatus, 
   formatTossInfo,
+  formatMatchDateTime,
   CricketMatch
 } from "@/utils/cricket-api";
 
@@ -46,17 +47,6 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
   const team2Score = match.score?.find((s: any) => s.inning?.includes(team2?.name))?.r;
   const team2Wickets = match.score?.find((s: any) => s.inning?.includes(team2?.name))?.w;
   const team2Overs = match.score?.find((s: any) => s.inning?.includes(team2?.name))?.o;
-
-  // Format date and time
-  const formatMatchDate = () => {
-    if (!match.dateTimeGMT) return "Date not available";
-    
-    const matchDate = new Date(match.dateTimeGMT);
-    return matchDate.toLocaleString('en-US', { 
-      dateStyle: 'medium', 
-      timeStyle: 'short' 
-    });
-  };
 
   // Get toss information
   const tossInfo = formatTossInfo(match);
@@ -143,7 +133,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
             <div className="text-sm text-gray-600 space-y-2">
               <div className="flex items-center">
                 <Calendar size={16} className="mr-2 text-gray-500" />
-                <span>{formatMatchDate()}</span>
+                <span>{formatMatchDateTime(match.dateTimeGMT)}</span>
               </div>
               {match.venue && (
                 <div className="flex items-center">

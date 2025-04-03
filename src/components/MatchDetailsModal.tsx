@@ -2,7 +2,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { X, Clock, MapPin, Trophy, Calendar, Flag, Award } from "lucide-react";
-import { getCountryFlagUrl, getTeamLogoUrl, formatTossInfo, CricketMatch } from "@/utils/cricket-api";
+import { getCountryFlagUrl, getTeamLogoUrl, formatTossInfo, formatMatchDateTime, CricketMatch } from "@/utils/cricket-api";
 
 interface MatchDetailsModalProps {
   match: CricketMatch;
@@ -18,21 +18,6 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
   const team1Score = match.score?.find((s: any) => s.inning?.includes(team1?.name));
   const team2Score = match.score?.find((s: any) => s.inning?.includes(team2?.name));
   
-  // Format date for display
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Date not available";
-    
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   // Get toss information
   const tossInfo = formatTossInfo(match);
   
@@ -156,7 +141,7 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
             <Calendar size={18} className="text-gray-500 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-gray-800 font-medium">Match Date</p>
-              <p className="text-sm text-gray-600">{formatDate(match.dateTimeGMT)}</p>
+              <p className="text-sm text-gray-600">{formatMatchDateTime(match.dateTimeGMT)}</p>
             </div>
           </div>
           

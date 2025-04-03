@@ -1,4 +1,3 @@
-
 const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 
 // Endpoints
@@ -236,34 +235,80 @@ export const formatTossInfo = (match: CricketMatch): string => {
   return `${winnerTeam} won the toss`;
 };
 
+// Helper to format date and time in user's local timezone
+export const formatMatchDateTime = (dateTimeGMT?: string): string => {
+  if (!dateTimeGMT) return "Date not available";
+  
+  try {
+    // Create a Date object from the GMT string
+    const matchDate = new Date(dateTimeGMT);
+    
+    // Format the date in the user's local timezone
+    return new Intl.DateTimeFormat('default', { 
+      dateStyle: 'medium', 
+      timeStyle: 'short',
+    }).format(matchDate);
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "Invalid date";
+  }
+}
+
 // Helper to categorize matches by start time and status
 export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
+  // Current time in user's local timezone
   const now = new Date();
+  
   return matches
     .map((match) => {
       if (!match?.dateTimeGMT) return null;
       
-      const matchTime = new Date(match.dateTimeGMT);
-      const hoursDiff = (matchTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-      
-      // Live matches
-      if (match.status.toLowerCase() === "live" || 
-          (match.matchStarted && !match.matchEnded)) {
-        return { ...match, category: "Live" };
-      }
-      
-      // Upcoming matches (within next 48 hours)
-      if (hoursDiff > 0 && hoursDiff <= 48) {
+      try {
+        // Parse match time from GMT string
+        const matchTime = new Date(match.dateTimeGMT);
+        
+        // Calculate hours difference
+        const hoursDiff = (matchTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        
+        console.log(`Match: ${match.name}, Time: ${matchTime.toLocaleString()}, Hours diff: ${hoursDiff}`);
+        
+        // Live matches
+        if (match.status.toLowerCase() === "live" || 
+            (match.matchStarted && !match.matchEnded)) {
+          return { ...match, category: "Live" };
+        }
+        
+        // Upcoming matches (within next 48 hours)
+        if (hoursDiff > 0 && hoursDiff <= 48) {
+          return { ...match, category: "Upcoming" };
+        }
+        
+        // Recently completed matches (within last 48 hours)
+        if (hoursDiff < 0 && hoursDiff >= -48 && 
+            (match.matchEnded || match.status.toLowerCase().includes("won"))) {
+          return { ...match, category: "Completed" };
+        }
+        
+        // Matches outside of the 48-hour window (future or past)
+        if (hoursDiff > 48) {
+          return { ...match, category: "Upcoming" };
+        }
+        
+        if (hoursDiff < -48 && 
+            (match.matchEnded || match.status.toLowerCase().includes("won"))) {
+          return { ...match, category: "Completed" };
+        }
+        
+        // Default categorization based on match status
+        if (match.status.toLowerCase().includes("won") || match.matchEnded) {
+          return { ...match, category: "Completed" };
+        }
+        
         return { ...match, category: "Upcoming" };
+      } catch (error) {
+        console.error(`Error categorizing match: ${match.name}`, error);
+        return null;
       }
-      
-      // Recently completed matches (within last 48 hours)
-      if (hoursDiff < 0 && hoursDiff >= -48 && 
-          (match.matchEnded || match.status.toLowerCase().includes("won"))) {
-        return { ...match, category: "Completed" };
-      }
-      
-      return null;
     })
     .filter(Boolean) as CricketMatch[];
 };
