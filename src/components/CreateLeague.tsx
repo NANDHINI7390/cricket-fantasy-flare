@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Trophy, Users, Zap, Link2, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,6 +25,7 @@ const features = [
 const CreateLeague = () => {
   const [leagueName, setLeagueName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
   const navigate = useNavigate();
 
   const handleCreateLeague = () => {
@@ -34,39 +34,95 @@ const CreateLeague = () => {
         toast.error("Please enter a league name");
         return;
       }
+      
+      // Generate a unique code for the league
+      const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const generatedInviteLink = `${window.location.origin}/join-league/${uniqueCode}`;
+      setInviteLink(generatedInviteLink);
+      
       toast.success(`League "${leagueName}" created! Invite your friends to join.`);
-      setLeagueName("");
-      setShowCreate(false);
+      
+      // After successfully creating a league, navigate to the new league
+      // In a real app, this would navigate to the actual league page
+      try {
+        // Store league info in localStorage for demonstration
+        const leagueData = {
+          id: uniqueCode,
+          name: leagueName,
+          createdAt: new Date().toISOString(),
+          inviteLink: generatedInviteLink
+        };
+        
+        // Save to localStorage
+        const existingLeagues = JSON.parse(localStorage.getItem('fantasy_leagues') || '[]');
+        existingLeagues.push(leagueData);
+        localStorage.setItem('fantasy_leagues', JSON.stringify(existingLeagues));
+        
+        // This would normally be a redirect to the new league page
+        // For now we'll just reset the form and keep the user on this page
+        setLeagueName("");
+        setShowCreate(false);
+      } catch (error) {
+        console.error("Error creating league:", error);
+        toast.error("There was an error creating your league. Please try again.");
+      }
     } else {
       setShowCreate(true);
     }
   };
 
-  const generateInviteLink = () => {
-    const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const inviteLink = `${window.location.origin}/join-league/${uniqueCode}`;
-    
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(inviteLink)
-        .then(() => toast.success("Invite link copied to clipboard!"))
-        .catch(err => toast.error("Failed to copy invite link"));
-    }
-    
-    return inviteLink;
-  };
-
   const handleInviteFriends = () => {
-    const inviteLink = generateInviteLink();
+    // If there's an invite link already (from creating a league), use that
+    // Otherwise generate a new one
+    const linkToShare = inviteLink || generateInviteLink();
     
     if (navigator.share) {
       navigator.share({
         title: 'Join my Fantasy Cricket League!',
         text: 'I\'ve created a fantasy cricket league. Join now and compete with me!',
-        url: inviteLink,
+        url: linkToShare,
       }).catch(err => {
         console.error('Share failed:', err);
+        copyToClipboard(linkToShare);
       });
+    } else {
+      copyToClipboard(linkToShare);
     }
+  };
+
+  const generateInviteLink = () => {
+    const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${window.location.origin}/join-league/${uniqueCode}`;
+  };
+  
+  const copyToClipboard = (link: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(link)
+        .then(() => toast.success("Invite link copied to clipboard!"))
+        .catch(err => toast.error("Failed to copy invite link"));
+    } else {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          toast.success("Invite link copied to clipboard!");
+        } else {
+          toast.error("Failed to copy invite link");
+        }
+      } catch (err) {
+        toast.error("Failed to copy invite link");
+      }
+      
+      document.body.removeChild(textArea);
+    }
+    
+    return link;
   };
 
   return (

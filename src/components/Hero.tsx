@@ -51,7 +51,7 @@ const Hero = () => {
             alt="Cricket Stadium"
             className="w-full h-full object-cover min-h-screen bg-center bg-no-repeat"
             loading="eager"
-            fetchpriority="high"
+            fetchPriority="high"
           />
         </picture>
         <div className="absolute inset-0 bg-black/40" />

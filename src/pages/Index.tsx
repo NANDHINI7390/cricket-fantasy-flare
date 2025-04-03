@@ -6,8 +6,24 @@ import Footer from "../components/Footer";
 import PageNavigation from "@/components/PageNavigation";
 import { motion } from "framer-motion";
 import ChatWidget from "@/components/chat/ChatWidget";
+import { useEffect } from "react";
 
 const Index = () => {
+  // Set page title and description for better SEO
+  useEffect(() => {
+    document.title = "Fantasy Cricket Elite - The Ultimate Cricket Fantasy Experience";
+    // Add meta description
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute("content", "Build your ultimate cricket team, dominate the leaderboard, and win exclusive rewards in Fantasy Cricket Elite!");
+    } else {
+      const newMetaDesc = document.createElement('meta');
+      newMetaDesc.name = "description";
+      newMetaDesc.content = "Build your ultimate cricket team, dominate the leaderboard, and win exclusive rewards in Fantasy Cricket Elite!";
+      document.head.appendChild(newMetaDesc);
+    }
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}

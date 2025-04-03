@@ -7,6 +7,7 @@ type CountdownValues = {
   minutes: number;
   seconds: number;
   isExpired: boolean;
+  formattedTime: string; // Add formatted time for display
 };
 
 export const useCountdown = (targetDateStr: string): CountdownValues => {
@@ -18,9 +19,16 @@ export const useCountdown = (targetDateStr: string): CountdownValues => {
       // Calculate the time difference in milliseconds
       const difference = targetDate.getTime() - now.getTime();
       
+      // Format the target time for display (e.g., "7:30 PM")
+      const formattedTime = new Intl.DateTimeFormat('default', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
+      }).format(targetDate);
+      
       // Check if the difference is less than 0 (i.e., the date has passed)
       if (difference <= 0) {
-        return { days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true };
+        return { days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true, formattedTime };
       }
       
       // Calculate days, hours, minutes, and seconds
@@ -29,10 +37,10 @@ export const useCountdown = (targetDateStr: string): CountdownValues => {
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((difference % (1000 * 60)) / 1000);
       
-      return { days, hours, minutes, seconds, isExpired: false };
+      return { days, hours, minutes, seconds, isExpired: false, formattedTime };
     } catch (error) {
       console.error("Error calculating countdown:", error);
-      return { days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true };
+      return { days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true, formattedTime: "N/A" };
     }
   };
 
