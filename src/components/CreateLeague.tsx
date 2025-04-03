@@ -1,6 +1,9 @@
+
 import { motion } from "framer-motion";
-import { Trophy, Users, Zap } from "lucide-react";
+import { Trophy, Users, Zap, Link2, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const features = [
   {
@@ -21,8 +24,49 @@ const features = [
 ];
 
 const CreateLeague = () => {
+  const [leagueName, setLeagueName] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const navigate = useNavigate();
+
   const handleCreateLeague = () => {
-    toast.info("League creation coming soon! Stay tuned for updates.");
+    if (showCreate) {
+      if (!leagueName.trim()) {
+        toast.error("Please enter a league name");
+        return;
+      }
+      toast.success(`League "${leagueName}" created! Invite your friends to join.`);
+      setLeagueName("");
+      setShowCreate(false);
+    } else {
+      setShowCreate(true);
+    }
+  };
+
+  const generateInviteLink = () => {
+    const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const inviteLink = `${window.location.origin}/join-league/${uniqueCode}`;
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(inviteLink)
+        .then(() => toast.success("Invite link copied to clipboard!"))
+        .catch(err => toast.error("Failed to copy invite link"));
+    }
+    
+    return inviteLink;
+  };
+
+  const handleInviteFriends = () => {
+    const inviteLink = generateInviteLink();
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'Join my Fantasy Cricket League!',
+        text: 'I\'ve created a fantasy cricket league. Join now and compete with me!',
+        url: inviteLink,
+      }).catch(err => {
+        console.error('Share failed:', err);
+      });
+    }
   };
 
   return (
@@ -46,7 +90,7 @@ const CreateLeague = () => {
             transition={{ delay: 0.4, duration: 0.8 }}
             className="text-gray-200 max-w-2xl mx-auto text-lg sm:text-xl"
           >
-            Start your own league, invite friends, and compete for glory in the world’s most exciting fantasy cricket experience.
+            Start your own league, invite friends, and compete for glory in the world's most exciting fantasy cricket experience.
           </motion.p>
         </div>
 
@@ -77,17 +121,63 @@ const CreateLeague = () => {
         </div>
 
         <div className="text-center">
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ delay: 0.6, duration: 0.6, type: "spring", stiffness: 100 }}
-            whileHover={{ scale: 1.1, rotate: 2 }}
-            whileTap={{ scale: 0.95, rotate: -2 }}
-            onClick={handleCreateLeague}
-            className="bg-white px-8 py-3 rounded-lg text-purple-800 font-semibold text-lg shadow-lg hover:bg-gray-100 transition-all"
-          >
-            Create League Now
-          </motion.button>
+          {showCreate ? (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="bg-white p-6 rounded-xl shadow-md max-w-md mx-auto mb-6"
+            >
+              <h3 className="text-lg font-bold mb-4 text-purple-800">Create Your League</h3>
+              <input
+                type="text"
+                value={leagueName}
+                onChange={(e) => setLeagueName(e.target.value)}
+                placeholder="Enter league name"
+                className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleCreateLeague}
+                  className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => setShowCreate(false)}
+                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ delay: 0.6, duration: 0.6, type: "spring", stiffness: 100 }}
+                whileHover={{ scale: 1.1, rotate: 2 }}
+                whileTap={{ scale: 0.95, rotate: -2 }}
+                onClick={handleCreateLeague}
+                className="bg-white px-8 py-3 rounded-lg text-purple-800 font-semibold text-lg shadow-lg hover:bg-gray-100 transition-all"
+              >
+                Create League Now
+              </motion.button>
+              
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.8, duration: 0.6, type: "spring", stiffness: 100 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleInviteFriends}
+                className="flex items-center justify-center bg-green-500 px-8 py-3 rounded-lg text-white font-semibold text-lg shadow-lg hover:bg-green-600 transition-all"
+              >
+                <Share2 size={20} className="mr-2" />
+                Invite Friends
+              </motion.button>
+            </div>
+          )}
         </div>
       </div>
     </section>

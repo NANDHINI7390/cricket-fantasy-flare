@@ -1,9 +1,11 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, Calendar, MapPin, Award } from "lucide-react";
+import { ChevronRight, Calendar, MapPin, Award, Timer, ChevronRightCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
+import { useCountdown } from "@/hooks/useCountdown";
 import { 
   getCountryFlagUrl, 
   getTeamLogoUrl, 
@@ -25,6 +27,13 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
   const isFinished = match.status.toLowerCase().includes("won") || 
     match.matchEnded;
 
+  const isUpcoming = !isLive && !isFinished;
+  
+  // Get countdown for upcoming matches
+  const { days, hours, minutes, seconds } = useCountdown(
+    match.dateTimeGMT || new Date().toISOString()
+  );
+  
   const getBadgeVariant = () => {
     if (isLive) return "destructive";
     if (isFinished) return "secondary";
@@ -51,6 +60,14 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
   // Get toss information
   const tossInfo = formatTossInfo(match);
 
+  const handleTeamClick = (e: React.MouseEvent, teamName: string) => {
+    e.stopPropagation();
+    // Navigate to team stats/profile
+    console.log(`Navigate to team profile: ${teamName}`);
+    // For now, show a toast notification
+    // toast.info(`${teamName} profile coming soon!`);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }} 
@@ -58,19 +75,38 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
       transition={{ type: "spring", stiffness: 80, damping: 12 }}
       className="h-full"
     >
-      <Card className="overflow-hidden bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow h-full">
+      <Card 
+        className={`overflow-hidden bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow h-full 
+          ${isLive ? 'border-2 border-red-500 relative animate-pulse-border' : ''}`}
+      >
         <div className="p-6 flex flex-col h-full relative">
           <div className="absolute top-3 right-3">
-            <Badge variant={getBadgeVariant()}>
+            <Badge variant={getBadgeVariant()} className={isLive ? 'animate-pulse' : ''}>
               {getDisplayStatus()}
             </Badge>
           </div>
 
           <div className="mt-6 space-y-6 flex-grow">
+            {/* Countdown timer for upcoming matches */}
+            {isUpcoming && match.dateTimeGMT && (
+              <div className="mb-4 flex items-center justify-center space-x-2 text-sm font-medium">
+                <Timer size={16} className="text-blue-500" />
+                <div className="flex space-x-1">
+                  <div className="bg-gray-100 rounded px-2 py-1">{days}d</div>
+                  <div className="bg-gray-100 rounded px-2 py-1">{hours}h</div>
+                  <div className="bg-gray-100 rounded px-2 py-1">{minutes}m</div>
+                  <div className="bg-gray-100 rounded px-2 py-1">{seconds}s</div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
               {/* Team 1 */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
+                <div 
+                  className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors"
+                  onClick={(e) => handleTeamClick(e, team1?.name || match.teams?.[0] || "Team 1")}
+                >
                   <img 
                     src={team1 ? getTeamLogoUrl(team1) : getCountryFlagUrl(match.teams?.[0] || "")} 
                     alt={team1?.name || match.teams?.[0] || "Team 1"} 
@@ -79,8 +115,9 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
                       (e.target as HTMLImageElement).src = "https://placehold.co/32x32?text=Team";
                     }}
                   />
-                  <span className="text-lg font-semibold text-gray-800 truncate max-w-[180px]">
+                  <span className="text-lg font-semibold text-gray-800 truncate max-w-[180px] flex items-center">
                     {team1?.name?.replace(/\s*\[.*\]\s*$/, "") || match.teams?.[0]?.replace(/\s*\[.*\]\s*$/, "") || "Team 1"}
+                    <ChevronRightCircle size={16} className="ml-1 text-blue-500 opacity-70" />
                   </span>
                 </div>
                 {(isLive || isFinished) && team1Score !== undefined && (
@@ -100,7 +137,10 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
 
               {/* Team 2 */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
+                <div 
+                  className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors"
+                  onClick={(e) => handleTeamClick(e, team2?.name || match.teams?.[1] || "Team 2")}
+                >
                   <img 
                     src={team2 ? getTeamLogoUrl(team2) : getCountryFlagUrl(match.teams?.[1] || "")} 
                     alt={team2?.name || match.teams?.[1] || "Team 2"} 
@@ -109,8 +149,9 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
                       (e.target as HTMLImageElement).src = "https://placehold.co/32x32?text=Team";
                     }}
                   />
-                  <span className="text-lg font-semibold text-gray-800 truncate max-w-[180px]">
+                  <span className="text-lg font-semibold text-gray-800 truncate max-w-[180px] flex items-center">
                     {team2?.name?.replace(/\s*\[.*\]\s*$/, "") || match.teams?.[1]?.replace(/\s*\[.*\]\s*$/, "") || "Team 2"}
+                    <ChevronRightCircle size={16} className="ml-1 text-blue-500 opacity-70" />
                   </span>
                 </div>
                 {(isLive || isFinished) && team2Score !== undefined && (

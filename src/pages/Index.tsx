@@ -22,6 +22,9 @@ const Index = () => {
       <LiveMatches />
       <CreateLeague />
       <Footer />
+      <div className="text-center py-4 text-sm text-gray-500 bg-gray-100">
+        © {new Date().getFullYear()} Fantasy Cricket Elite. All rights reserved.
+      </div>
       <ChatWidget />
     </motion.div>
   );
