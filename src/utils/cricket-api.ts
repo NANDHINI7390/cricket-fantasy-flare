@@ -1,3 +1,4 @@
+
 const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 
 // Endpoints
@@ -28,6 +29,8 @@ export interface CricketMatch {
   matchStarted?: boolean;
   matchEnded?: boolean;
   category?: string;
+  tossWinner?: string;
+  tossChoice?: string;
 }
 
 // Fetches live matches (without ball-by-ball updates)
@@ -40,7 +43,11 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
       throw new Error(data.reason || "Failed to fetch live matches");
     }
 
-    return data.data || [];
+    return data.data?.map((match: any) => ({
+      ...match,
+      tossWinner: match.tossWinner || "",
+      tossChoice: match.tossChoice || ""
+    })) || [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
@@ -126,7 +133,7 @@ const parseScore = (scoreString: string): [number, number, number] => {
   return [runs, wickets, overs];
 };
 
-// Updated helper function to get country flag URL with better fallback
+// Enhanced country flag URL helper with better fallback
 export const getCountryFlagUrl = (teamName: string): string => {
   if (!teamName) return "https://placehold.co/32x32?text=Team";
   
@@ -163,6 +170,7 @@ export const getCountryFlagUrl = (teamName: string): string => {
     "Chennai Super Kings": "in",
     "Mumbai Indians": "in",
     "Royal Challengers Bengaluru": "in",
+    "Royal Challengers Bangalore": "in",
     "Kolkata Knight Riders": "in",
     "Delhi Capitals": "in",
     "Punjab Kings": "in",
@@ -210,4 +218,52 @@ export const formatMatchStatus = (status: string, matchStarted?: boolean, matchE
   if (matchStarted && !matchEnded) return "Live";
   if (matchEnded) return "Completed";
   return status;
+};
+
+// Format toss information
+export const formatTossInfo = (match: CricketMatch): string => {
+  if (!match.tossWinner) return "";
+  
+  const winnerTeam = match.teams?.find(team => match.tossWinner?.includes(team)) || match.tossWinner;
+  const choice = match.tossChoice?.toLowerCase() || "";
+  
+  if (choice === "batting" || choice === "bat") {
+    return `${winnerTeam} won the toss and chose to bat first`;
+  } else if (choice === "bowling" || choice === "bowl" || choice === "field") {
+    return `${winnerTeam} won the toss and chose to bowl first`;
+  }
+  
+  return `${winnerTeam} won the toss`;
+};
+
+// Helper to categorize matches by start time and status
+export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
+  const now = new Date();
+  return matches
+    .map((match) => {
+      if (!match?.dateTimeGMT) return null;
+      
+      const matchTime = new Date(match.dateTimeGMT);
+      const hoursDiff = (matchTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      // Live matches
+      if (match.status.toLowerCase() === "live" || 
+          (match.matchStarted && !match.matchEnded)) {
+        return { ...match, category: "Live" };
+      }
+      
+      // Upcoming matches (within next 48 hours)
+      if (hoursDiff > 0 && hoursDiff <= 48) {
+        return { ...match, category: "Upcoming" };
+      }
+      
+      // Recently completed matches (within last 48 hours)
+      if (hoursDiff < 0 && hoursDiff >= -48 && 
+          (match.matchEnded || match.status.toLowerCase().includes("won"))) {
+        return { ...match, category: "Completed" };
+      }
+      
+      return null;
+    })
+    .filter(Boolean) as CricketMatch[];
 };

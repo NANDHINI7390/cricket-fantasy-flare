@@ -1,21 +1,27 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, Calendar, MapPin } from "lucide-react";
+import { ChevronRight, Calendar, MapPin, Award } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getCountryFlagUrl, getTeamLogoUrl, formatMatchStatus } from "@/utils/cricket-api";
+import { 
+  getCountryFlagUrl, 
+  getTeamLogoUrl, 
+  formatMatchStatus, 
+  formatTossInfo,
+  CricketMatch
+} from "@/utils/cricket-api";
 
 interface MatchCardProps {
-  match: any;
-  onViewDetails: (match: any) => void;
+  match: CricketMatch;
+  onViewDetails: (match: CricketMatch) => void;
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
-  const isLive = match.status === "Live" || 
+  const isLive = match.status.toLowerCase() === "live" || 
     (match.matchStarted && !match.matchEnded);
   
-  const isFinished = match.status.includes("won") || 
+  const isFinished = match.status.toLowerCase().includes("won") || 
     match.matchEnded;
 
   const getBadgeVariant = () => {
@@ -52,6 +58,9 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
     });
   };
 
+  // Get toss information
+  const tossInfo = formatTossInfo(match);
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }} 
@@ -76,6 +85,9 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
                     src={team1 ? getTeamLogoUrl(team1) : getCountryFlagUrl(match.teams?.[0] || "")} 
                     alt={team1?.name || match.teams?.[0] || "Team 1"} 
                     className="w-10 h-10 rounded-full object-cover border-2 border-gray-100" 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://placehold.co/32x32?text=Team";
+                    }}
                   />
                   <span className="text-lg font-semibold text-gray-800 truncate max-w-[180px]">
                     {team1?.name?.replace(/\s*\[.*\]\s*$/, "") || match.teams?.[0]?.replace(/\s*\[.*\]\s*$/, "") || "Team 1"}
@@ -103,6 +115,9 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
                     src={team2 ? getTeamLogoUrl(team2) : getCountryFlagUrl(match.teams?.[1] || "")} 
                     alt={team2?.name || match.teams?.[1] || "Team 2"} 
                     className="w-10 h-10 rounded-full object-cover border-2 border-gray-100" 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://placehold.co/32x32?text=Team";
+                    }}
                   />
                   <span className="text-lg font-semibold text-gray-800 truncate max-w-[180px]">
                     {team2?.name?.replace(/\s*\[.*\]\s*$/, "") || match.teams?.[1]?.replace(/\s*\[.*\]\s*$/, "") || "Team 2"}
@@ -116,6 +131,14 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
                 )}
               </div>
             </div>
+
+            {/* Toss Information */}
+            {tossInfo && (
+              <div className="flex items-center text-sm text-gray-600">
+                <Award size={16} className="mr-2 text-gray-500" />
+                <span className="text-xs italic">{tossInfo}</span>
+              </div>
+            )}
 
             <div className="text-sm text-gray-600 space-y-2">
               <div className="flex items-center">

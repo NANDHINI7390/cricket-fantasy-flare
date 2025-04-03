@@ -1,11 +1,11 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { X, Clock, MapPin, Trophy, Calendar, Flag } from "lucide-react";
-import { getCountryFlagUrl, getTeamLogoUrl } from "@/utils/cricket-api";
+import { X, Clock, MapPin, Trophy, Calendar, Flag, Award } from "lucide-react";
+import { getCountryFlagUrl, getTeamLogoUrl, formatTossInfo, CricketMatch } from "@/utils/cricket-api";
 
 interface MatchDetailsModalProps {
-  match: any;
+  match: CricketMatch;
   onClose: () => void;
 }
 
@@ -32,6 +32,9 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
       minute: '2-digit'
     });
   };
+
+  // Get toss information
+  const tossInfo = formatTossInfo(match);
   
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
@@ -58,6 +61,9 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
               src={getTeamLogoUrl(team1)} 
               alt={team1.name} 
               className="w-14 h-14 rounded-full object-cover border-2 border-gray-200" 
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "https://placehold.co/32x32?text=Team";
+              }}
             />
             <span className="text-sm font-medium text-center">{team1.name.replace(/\s*\[.*\]\s*$/, "")}</span>
           </div>
@@ -74,6 +80,9 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
               src={getTeamLogoUrl(team2)} 
               alt={team2.name} 
               className="w-14 h-14 rounded-full object-cover border-2 border-gray-200" 
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "https://placehold.co/32x32?text=Team";
+              }}
             />
             <span className="text-sm font-medium text-center">{team2.name.replace(/\s*\[.*\]\s*$/, "")}</span>
           </div>
@@ -83,6 +92,14 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
         <div className="bg-gray-100 p-3 rounded-lg text-center mb-6">
           <span className="font-semibold text-gray-800">{match.status}</span>
         </div>
+
+        {/* Toss information */}
+        {tossInfo && (
+          <div className="bg-blue-50 p-3 rounded-lg text-center mb-6 flex items-center justify-center">
+            <Award size={18} className="text-blue-600 mr-2" />
+            <span className="font-medium text-blue-800 text-sm">{tossInfo}</span>
+          </div>
+        )}
         
         {/* Live Score Section */}
         {(match.matchStarted || match.score?.length > 0) && (
@@ -93,7 +110,14 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
               {team1Score && (
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-2">
-                    <img src={getTeamLogoUrl(team1)} alt={team1.name} className="w-6 h-6 rounded-full" />
+                    <img 
+                      src={getTeamLogoUrl(team1)} 
+                      alt={team1.name} 
+                      className="w-6 h-6 rounded-full" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://placehold.co/32x32?text=Team";
+                      }}
+                    />
                     <span className="font-medium">{team1.name.replace(/\s*\[.*\]\s*$/, "")}</span>
                   </div>
                   <div>
@@ -106,7 +130,14 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
               {team2Score && (
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-2">
-                    <img src={getTeamLogoUrl(team2)} alt={team2.name} className="w-6 h-6 rounded-full" />
+                    <img 
+                      src={getTeamLogoUrl(team2)} 
+                      alt={team2.name} 
+                      className="w-6 h-6 rounded-full" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://placehold.co/32x32?text=Team";
+                      }}
+                    />
                     <span className="font-medium">{team2.name.replace(/\s*\[.*\]\s*$/, "")}</span>
                   </div>
                   <div>
@@ -139,7 +170,7 @@ const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({ match, onClose })
             </div>
           )}
           
-          {match.series_id && (
+          {match.name && (
             <div className="flex items-start space-x-3">
               <Trophy size={18} className="text-gray-500 mt-0.5 flex-shrink-0" />
               <div>
