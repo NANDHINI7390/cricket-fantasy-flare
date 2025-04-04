@@ -1,5 +1,5 @@
 
 project_id = "yefrdovbporfjdhfojyx"
 
-[functions.fetch-cricket-matches]
+[functions.cricket-assistant]
 verify_jwt = false

@@ -25,6 +25,21 @@ serve(async (req: Request) => {
 
     console.log("Received query:", query);
     
+    // Check if OpenAI API key is configured
+    if (!OPENAI_API_KEY) {
+      console.error("OpenAI API key is not configured");
+      return new Response(
+        JSON.stringify({ 
+          message: "AI analysis is not available at the moment. Please ensure the OpenAI API key is properly configured.",
+          error: "OPENAI_API_KEY not found"
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
     // 1. First fetch cricket data from API
     const cricketData = await fetchCricketData();
     console.log("Fetched cricket data");
@@ -196,11 +211,10 @@ async function fetchMatchSchedules() {
 }
 
 async function getChatGPTResponse(context) {
-  // Use the OPENAI_API_KEY environment variable
   if (!OPENAI_API_KEY) {
-    console.error("OpenAI API key is not configured");
+    console.error("OpenAI API key is not configured or is invalid");
     return {
-      message: "AI analysis is not available at the moment. Here's the raw cricket data instead."
+      message: "AI analysis is not available at the moment. The OpenAI API key is missing or invalid."
     };
   }
   
@@ -237,6 +251,8 @@ User query: "${context.query}"
 Respond with the most relevant insights and advice based on the query.`;
 
     console.log("Sending request to OpenAI API...");
+    console.log("Using OpenAI API key:", OPENAI_API_KEY ? "Key is set (masked for security)" : "Key is not set");
+    
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {

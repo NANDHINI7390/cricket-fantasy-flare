@@ -21,6 +21,7 @@ const ChatWidget: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [aiPowered, setAiPowered] = useState<boolean>(true);
+  const [aiError, setAiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initial welcome message
@@ -50,10 +51,14 @@ const ChatWidget: React.FC = () => {
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  };
 
   // Fetch cricket match data
   const fetchCricketData = async () => {
@@ -121,6 +126,7 @@ const ChatWidget: React.FC = () => {
     
     // Start loading state
     setIsLoading(true);
+    setAiError(null);
     
     try {
       if (userQuery.includes("refresh") || userQuery.includes("update")) {
@@ -149,6 +155,8 @@ const ChatWidget: React.FC = () => {
       }]);
     } finally {
       setIsLoading(false);
+      // Ensure we scroll to bottom after new messages
+      setTimeout(scrollToBottom, 100);
     }
   };
 
@@ -167,10 +175,18 @@ const ChatWidget: React.FC = () => {
       );
 
       if (!response.ok) {
-        throw new Error(`Edge function returned ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.error || `Edge function returned ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      
+      // Check if there's an error message in the response
+      if (data.error) {
+        setAiError(data.error);
+        throw new Error(data.error);
+      }
       
       // Add the AI response to messages
       setMessages(prev => [...prev, {
@@ -223,6 +239,7 @@ const ChatWidget: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching AI response:", error);
+      setAiError(error.message);
       
       // Fallback to basic processing
       processUserQuery(query.toLowerCase(), matches, setMessages);
@@ -231,7 +248,7 @@ const ChatWidget: React.FC = () => {
       setMessages(prev => [...prev, {
         id: `ai-error-${Date.now()}`,
         type: "bot",
-        content: "AI-powered analysis is currently unavailable. I've provided basic information instead.",
+        content: `AI-powered analysis is currently unavailable (${error.message}). I've provided basic information instead.`,
         timestamp: new Date(),
       }]);
     }
@@ -296,9 +313,14 @@ const ChatWidget: React.FC = () => {
             <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium">Cricket Fantasy AI</h3>
-                {aiPowered && (
+                {aiPowered && !aiError && (
                   <span className="bg-green-500 text-xs px-1.5 py-0.5 rounded-full text-white font-semibold">
                     AI
+                  </span>
+                )}
+                {aiPowered && aiError && (
+                  <span className="bg-yellow-500 text-xs px-1.5 py-0.5 rounded-full text-white font-semibold" title={aiError}>
+                    AI Issue
                   </span>
                 )}
               </div>
@@ -344,10 +366,10 @@ const ChatWidget: React.FC = () => {
                 <TabsTrigger value="matches">Live Matches</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="chat" className="flex-grow flex flex-col overflow-hidden">
-                {/* Chat messages - Fix scrolling issue by setting proper height */}
-                <ScrollArea className="flex-grow p-4 h-[calc(100%-80px)]">
-                  <div className="space-y-2">
+              <TabsContent value="chat" className="flex-grow flex flex-col overflow-hidden m-0 p-0">
+                {/* Chat messages */}
+                <ScrollArea className="flex-grow px-4 py-2">
+                  <div className="space-y-2 pb-4">
                     {messages.map(message => (
                       <div key={message.id}>
                         <ChatMessage 
@@ -391,6 +413,11 @@ const ChatWidget: React.FC = () => {
                         {aiPowered ? "AI: On" : "AI: Off"}
                       </button>
                     </div>
+                    {aiError && (
+                      <div className="text-xs text-orange-500" title={aiError}>
+                        AI issues detected
+                      </div>
+                    )}
                   </div>
                   <ChatInput 
                     onSendMessage={handleSendMessage} 
@@ -399,7 +426,7 @@ const ChatWidget: React.FC = () => {
                 </div>
               </TabsContent>
               
-              <TabsContent value="matches" className="flex-grow overflow-hidden">
+              <TabsContent value="matches" className="flex-grow overflow-hidden m-0 p-0">
                 <ScrollArea className="h-[370px]">
                   <LiveMatches 
                     matches={matches} 
