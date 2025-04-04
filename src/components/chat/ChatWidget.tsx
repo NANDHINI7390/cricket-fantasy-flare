@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, X, ChevronDown, BarChart3, Share2, RefreshCw } from "lucide-react";
@@ -337,37 +338,39 @@ const ChatWidget: React.FC = () => {
             </div>
             
             {/* Tabs */}
-            <Tabs defaultValue="chat" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs defaultValue="chat" value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
               <TabsList className="w-full grid grid-cols-2">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="matches">Live Matches</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="chat" className="flex-grow flex flex-col">
-                {/* Chat messages */}
-                <ScrollArea className="flex-grow p-4">
-                  {messages.map(message => (
-                    <div key={message.id}>
-                      <ChatMessage 
-                        message={message} 
-                        formatMatchData={formatMatchData} 
-                      />
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-center py-2">
-                      <div className="animate-pulse flex space-x-1">
-                        <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
-                        <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
-                        <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+              <TabsContent value="chat" className="flex-grow flex flex-col overflow-hidden">
+                {/* Chat messages - Fix scrolling issue by setting proper height */}
+                <ScrollArea className="flex-grow p-4 h-[calc(100%-80px)]">
+                  <div className="space-y-2">
+                    {messages.map(message => (
+                      <div key={message.id}>
+                        <ChatMessage 
+                          message={message} 
+                          formatMatchData={formatMatchData} 
+                        />
                       </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
+                    ))}
+                    {isLoading && (
+                      <div className="flex justify-center py-2">
+                        <div className="animate-pulse flex space-x-1">
+                          <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                          <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                          <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
                 </ScrollArea>
                 
                 {/* Chat input */}
-                <div className="border-t border-gray-200">
+                <div className="border-t border-gray-200 mt-auto">
                   <div className="p-2 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <button 
@@ -396,8 +399,8 @@ const ChatWidget: React.FC = () => {
                 </div>
               </TabsContent>
               
-              <TabsContent value="matches" className="flex-grow">
-                <ScrollArea className="h-[412px]">
+              <TabsContent value="matches" className="flex-grow overflow-hidden">
+                <ScrollArea className="h-[370px]">
                   <LiveMatches 
                     matches={matches} 
                     formatMatchData={formatMatchData}
