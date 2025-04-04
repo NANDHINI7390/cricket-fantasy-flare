@@ -196,6 +196,7 @@ async function fetchMatchSchedules() {
 }
 
 async function getChatGPTResponse(context) {
+  // Use the OPENAI_API_KEY environment variable
   if (!OPENAI_API_KEY) {
     return {
       message: "AI analysis is not available at the moment. Here's the raw cricket data instead."
