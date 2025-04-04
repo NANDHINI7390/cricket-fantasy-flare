@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, ChevronDown, BarChart3, Share2, RefreshCw } from "lucide-react";
+import { MessageSquare, X, ChevronDown, Share2, RefreshCw } from "lucide-react";
 import { fetchLiveMatches, fetchLiveScores, CricketMatch } from "@/utils/cricket-api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +23,7 @@ const ChatWidget: React.FC = () => {
   const [aiPowered, setAiPowered] = useState<boolean>(true);
   const [aiError, setAiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Initial welcome message
   useEffect(() => {
@@ -174,18 +175,26 @@ const ChatWidget: React.FC = () => {
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.error || `Edge function returned ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
       const data = await response.json();
       
       // Check if there's an error message in the response
-      if (data.error) {
-        setAiError(data.error);
-        throw new Error(data.error);
+      if (!response.ok || data.error) {
+        const errorMessage = data.error || `Edge function returned ${response.status}`;
+        console.error("Edge function error:", errorMessage);
+        
+        setAiError(errorMessage);
+        
+        // Add an error message to the chat
+        setMessages(prev => [...prev, {
+          id: `ai-error-${Date.now()}`,
+          type: "bot",
+          content: `AI-powered analysis encountered an issue: ${data.message || errorMessage}. Switching to basic mode.`,
+          timestamp: new Date(),
+        }]);
+        
+        // Fall back to basic processing
+        processUserQuery(query.toLowerCase(), matches, setMessages);
+        return;
       }
       
       // Add the AI response to messages
@@ -368,7 +377,7 @@ const ChatWidget: React.FC = () => {
               
               <TabsContent value="chat" className="flex-grow flex flex-col overflow-hidden m-0 p-0">
                 {/* Chat messages */}
-                <ScrollArea className="flex-grow px-4 py-2">
+                <ScrollArea className="flex-grow px-4 py-2" ref={chatContainerRef}>
                   <div className="space-y-2 pb-4">
                     {messages.map(message => (
                       <div key={message.id}>
@@ -403,7 +412,11 @@ const ChatWidget: React.FC = () => {
                         <RefreshCw size={16} />
                       </button>
                       <button
-                        onClick={() => setAiPowered(!aiPowered)}
+                        onClick={() => {
+                          setAiPowered(!aiPowered);
+                          setAiError(null);
+                          toast.success(aiPowered ? "Switched to basic mode" : "Switched to AI mode");
+                        }}
                         className={`text-xs px-2 py-1 rounded-full ${
                           aiPowered 
                             ? "bg-green-100 text-green-800 hover:bg-green-200" 
@@ -414,9 +427,13 @@ const ChatWidget: React.FC = () => {
                       </button>
                     </div>
                     {aiError && (
-                      <div className="text-xs text-orange-500" title={aiError}>
+                      <button 
+                        className="text-xs text-orange-500 hover:text-orange-700" 
+                        title={aiError}
+                        onClick={() => toast.error(`AI Error: ${aiError}`)}
+                      >
                         AI issues detected
-                      </div>
+                      </button>
                     )}
                   </div>
                   <ChatInput 

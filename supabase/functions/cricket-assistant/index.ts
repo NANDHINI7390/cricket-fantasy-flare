@@ -7,8 +7,12 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Use Deno.env.get to retrieve environment variables
 const CRICKET_API_KEY = Deno.env.get('CRICAPI_KEY') || "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+
+console.log("Edge function started");
+console.log("OPENAI_API_KEY set:", OPENAI_API_KEY ? "Yes" : "No");
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -90,7 +94,10 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error('Edge Function Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        message: "Sorry, I couldn't process your request. Please try again later."
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -251,7 +258,7 @@ User query: "${context.query}"
 Respond with the most relevant insights and advice based on the query.`;
 
     console.log("Sending request to OpenAI API...");
-    console.log("Using OpenAI API key:", OPENAI_API_KEY ? "Key is set (masked for security)" : "Key is not set");
+    console.log("OpenAI API key status:", OPENAI_API_KEY ? "Key is set" : "Key is not set");
     
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -272,8 +279,8 @@ Respond with the most relevant insights and advice based on the query.`;
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenAI API response not ok: ${response.status}, ${errorText}`);
-      throw new Error(`OpenAI API response not ok: ${response.status}`);
+      console.error(`OpenAI API error: Status ${response.status}`, errorText);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
     
     const data = await response.json();
@@ -285,7 +292,7 @@ Respond with the most relevant insights and advice based on the query.`;
   } catch (error) {
     console.error("Error getting ChatGPT response:", error);
     return {
-      message: "Sorry, I couldn't analyze the cricket data at this moment. Please try again later."
+      message: `Sorry, I couldn't analyze the cricket data at this moment. Error: ${error.message}`
     };
   }
 }
