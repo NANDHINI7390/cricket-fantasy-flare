@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, ChevronDown, BarChart3 } from "lucide-react";
+import { MessageSquare, X, ChevronDown, BarChart3, Share2, Refresh } from "lucide-react";
 import { fetchLiveMatches, fetchLiveScores, CricketMatch } from "@/utils/cricket-api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,6 +10,9 @@ import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LiveMatches from "./LiveMatches";
 import { formatMatchData, mergeMatchData, processUserQuery } from "./chatHelpers";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const ChatWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -17,6 +20,7 @@ const ChatWidget: React.FC = () => {
   const [matches, setMatches] = useState<CricketMatch[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("chat");
+  const [aiPowered, setAiPowered] = useState<boolean>(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initial welcome message
@@ -25,13 +29,13 @@ const ChatWidget: React.FC = () => {
       {
         id: "welcome",
         type: "bot",
-        content: "👋 Welcome to Cricket Fantasy Assistant! I can help you with live scores, player stats, and team suggestions. Try asking:",
+        content: "👋 Welcome to Cricket Fantasy Assistant! I can help you with live scores, player stats, team suggestions, and AI-powered recommendations. Try asking:",
         timestamp: new Date(),
       },
       {
         id: "suggestions",
         type: "bot",
-        content: "• Show live scores\n• Who should I pick as captain?\n• Best fantasy players today",
+        content: "• Show live scores\n• Best captain picks for today\n• Suggest players for my fantasy team\n• Match predictions based on stats",
         timestamp: new Date(),
       },
     ]);
@@ -103,7 +107,7 @@ const ChatWidget: React.FC = () => {
   };
 
   // Handle user message submission
-  const handleSendMessage = (inputValue: string) => {
+  const handleSendMessage = async (inputValue: string) => {
     // Add user message
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -115,24 +119,152 @@ const ChatWidget: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     const userQuery = inputValue.toLowerCase();
     
-    // Process the query with slight delay for better UX
+    // Start loading state
     setIsLoading(true);
-    setTimeout(() => {
+    
+    try {
       if (userQuery.includes("refresh") || userQuery.includes("update")) {
         // Refresh data
-        fetchCricketData();
+        await fetchCricketData();
         setMessages(prev => [...prev, {
           id: `bot-${Date.now()}`,
           type: "bot",
           content: "Refreshing cricket data...",
           timestamp: new Date(),
         }]);
+      } else if (aiPowered) {
+        // Use AI-powered response via edge function
+        await fetchAIResponse(inputValue);
       } else {
-        // Handle other queries
+        // Fallback to basic response processing
         processUserQuery(userQuery, matches, setMessages);
       }
+    } catch (error) {
+      console.error("Error processing message:", error);
+      setMessages(prev => [...prev, {
+        id: `error-${Date.now()}`,
+        type: "bot",
+        content: "Sorry, I encountered an error processing your request. Please try again later.",
+        timestamp: new Date(),
+      }]);
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
+  };
+
+  // Fetch AI-powered response from edge function
+  const fetchAIResponse = async (query: string) => {
+    try {
+      const response = await fetch(
+        "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-assistant",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Edge function returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Add the AI response to messages
+      setMessages(prev => [...prev, {
+        id: `ai-${Date.now()}`,
+        type: "bot",
+        content: data.message || "I'm sorry, I couldn't process that request at the moment.",
+        timestamp: new Date(),
+      }]);
+      
+      // If the response includes match data, update our matches
+      if (data.cricketData && data.cricketData.length > 0) {
+        setMatches(data.cricketData);
+      }
+      
+      // If query was about scores, show match cards
+      if (query.toLowerCase().includes("score") || query.toLowerCase().includes("match")) {
+        const matchesToShow = data.cricketData?.slice(0, 3) || matches.slice(0, 3);
+        
+        matchesToShow.forEach(match => {
+          setMessages(prev => [...prev, {
+            id: `match-${match.id}-${Date.now()}`,
+            type: "match-update",
+            content: match.name,
+            timestamp: new Date(),
+            matchData: match,
+          }]);
+        });
+      }
+      
+      // If query was about players, show player suggestions
+      if (query.toLowerCase().includes("captain") || query.toLowerCase().includes("player") || query.toLowerCase().includes("team")) {
+        // Handle player suggestions if included in the response
+        if (data.playerStats && data.playerStats.length > 0) {
+          const captain = data.playerStats[0];
+          const viceCaptain = data.playerStats[1];
+          const allrounders = data.playerStats.filter(p => p.typeofplayer?.toLowerCase().includes("all"));
+          
+          setMessages(prev => [...prev, {
+            id: `player-suggestion-${Date.now()}`,
+            type: "player-suggestion",
+            content: "Based on current form and matchups, here are my recommendations:",
+            timestamp: new Date(),
+            playerSuggestions: {
+              captain,
+              viceCaptain,
+              allrounders
+            }
+          }]);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching AI response:", error);
+      
+      // Fallback to basic processing
+      processUserQuery(query.toLowerCase(), matches, setMessages);
+      
+      // Notify user of AI issue
+      setMessages(prev => [...prev, {
+        id: `ai-error-${Date.now()}`,
+        type: "bot",
+        content: "AI-powered analysis is currently unavailable. I've provided basic information instead.",
+        timestamp: new Date(),
+      }]);
+    }
+  };
+
+  // Share link to invite friends
+  const handleShareInvite = () => {
+    const shareUrl = window.location.origin;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'Fantasy Cricket Elite',
+        text: 'Join me on Fantasy Cricket Elite for the ultimate cricket fantasy experience!',
+        url: shareUrl,
+      }).then(() => {
+        toast.success("Share successful!");
+      }).catch((error) => {
+        console.error('Error sharing:', error);
+        copyToClipboard(shareUrl);
+      });
+    } else {
+      copyToClipboard(shareUrl);
+    }
+  };
+  
+  // Copy to clipboard helper
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Invite link copied to clipboard!");
+    }).catch(err => {
+      toast.error("Failed to copy invite link");
+      console.error('Could not copy text: ', err);
+    });
   };
 
   return (
@@ -145,6 +277,7 @@ const ChatWidget: React.FC = () => {
         }`}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
+        aria-label="Toggle chat assistant"
       >
         {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
       </motion.button>
@@ -161,13 +294,47 @@ const ChatWidget: React.FC = () => {
           >
             {/* Chat header */}
             <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
-              <h3 className="font-medium">Cricket Fantasy Assistant</h3>
-              <button 
-                onClick={() => setIsOpen(false)} 
-                className="text-white hover:text-gray-200"
-              >
-                <ChevronDown size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium">Cricket Fantasy AI</h3>
+                {aiPowered && (
+                  <span className="bg-green-500 text-xs px-1.5 py-0.5 rounded-full text-white font-semibold">
+                    AI
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <button className="text-white hover:text-gray-200">
+                      <Share2 size={18} />
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent>
+                    <SheetHeader>
+                      <SheetTitle>Invite Friends</SheetTitle>
+                      <SheetDescription>
+                        Share Fantasy Cricket Elite with your friends and compete together!
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="py-6">
+                      <Button 
+                        onClick={handleShareInvite}
+                        className="w-full flex items-center justify-center gap-2"
+                      >
+                        <Share2 size={16} />
+                        Share Invite Link
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+                <button 
+                  onClick={() => setIsOpen(false)} 
+                  className="text-white hover:text-gray-200"
+                  aria-label="Minimize chat"
+                >
+                  <ChevronDown size={20} />
+                </button>
+              </div>
             </div>
             
             {/* Tabs */}
@@ -201,10 +368,33 @@ const ChatWidget: React.FC = () => {
                 </ScrollArea>
                 
                 {/* Chat input */}
-                <ChatInput 
-                  onSendMessage={handleSendMessage} 
-                  isLoading={isLoading} 
-                />
+                <div className="border-t border-gray-200">
+                  <div className="p-2 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={fetchCricketData}
+                        className="text-blue-600 hover:text-blue-800 p-1 rounded"
+                        title="Refresh cricket data"
+                      >
+                        <Refresh size={16} />
+                      </button>
+                      <button
+                        onClick={() => setAiPowered(!aiPowered)}
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          aiPowered 
+                            ? "bg-green-100 text-green-800 hover:bg-green-200" 
+                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                        }`}
+                      >
+                        {aiPowered ? "AI: On" : "AI: Off"}
+                      </button>
+                    </div>
+                  </div>
+                  <ChatInput 
+                    onSendMessage={handleSendMessage} 
+                    isLoading={isLoading} 
+                  />
+                </div>
               </TabsContent>
               
               <TabsContent value="matches" className="flex-grow">
