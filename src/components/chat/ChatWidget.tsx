@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, ChevronDown, BarChart3, Share2, Refresh } from "lucide-react";
+import { MessageSquare, X, ChevronDown, BarChart3, Share2, RefreshCw } from "lucide-react";
 import { fetchLiveMatches, fetchLiveScores, CricketMatch } from "@/utils/cricket-api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -376,7 +375,7 @@ const ChatWidget: React.FC = () => {
                         className="text-blue-600 hover:text-blue-800 p-1 rounded"
                         title="Refresh cricket data"
                       >
-                        <Refresh size={16} />
+                        <RefreshCw size={16} />
                       </button>
                       <button
                         onClick={() => setAiPowered(!aiPowered)}
