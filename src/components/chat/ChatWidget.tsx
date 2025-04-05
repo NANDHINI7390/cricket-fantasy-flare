@@ -64,16 +64,20 @@ const ChatWidget = () => {
             subtitle: `Runs: ${res.runs}, Fours: ${res.fours}, Sixes: ${res.sixes}, Average: ${res.average}`,
           }] : [],
         };
-      } else if (lowerInput.includes('captain') || lowerInput.includes('vice-captain')) {
-        const res = await fetchData('/api/crick-code/captain-suggestion');
-        response = {
-          from: 'bot',
-          text: res ? `Try picking ${res.captain} as captain and ${res.viceCaptain} as vice-captain today. Top performer: ${res.topPerformer}` : 'No data available.',
-        };
+      } else if (lowerInput.includes('captain')) {
+        const res = await fetchData('/api/captain-suggestions');
+        if (res && res.captain) {
+          response = {
+            from: 'bot',
+            text: `Based on top player performances, you should choose **${res.captain}** as captain. A strong vice-captain choice is **${res.viceCaptain}**. The top performer today is **${res.topPerformer}**.`,
+          };
+        } else {
+          response = { from: 'bot', text: 'I could not find the best captain suggestion at the moment.' };
+        }
       } else {
         response = {
           from: 'bot',
-          text: "Sorry, I didn't understand that. Try asking about today's matches, player stats, or captain suggestions.",
+          text: "I didn't get that. Ask me about today's matches, player stats, or captain recommendations!",
         };
       }
     } catch (err) {
@@ -92,7 +96,7 @@ const ChatWidget = () => {
       <div className="chat-window">
         {messages.map((msg, idx) => (
           <div key={idx} className={`message ${msg.from}`}>
-            {msg.text && <p>{msg.text}</p>}
+            {msg.text && <p dangerouslySetInnerHTML={{ __html: msg.text }} />}
             {msg.cards && (
               <div className="card-list">
                 {msg.cards.map((card: any, i: number) => (
