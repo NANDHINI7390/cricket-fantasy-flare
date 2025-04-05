@@ -4,7 +4,7 @@ import { fetchLiveMatches, fetchLiveScores, getTeamLogoUrl, formatMatchStatus, c
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Award } from "lucide-react";
+import { RefreshCw, Award, BarChart } from "lucide-react";
 import MatchCard from "./MatchCard";
 import MatchDetailsModal from "./MatchDetailsModal";
 import { toast } from "sonner";
@@ -159,6 +159,11 @@ const LiveMatches = () => {
             }
           >
             {category}
+            {category !== "All" && (
+              <Badge variant="secondary" className="ml-2 bg-white/20 text-white">
+                {matches.filter(m => m.category === category).length}
+              </Badge>
+            )}
           </Button>
         ))}
       </div>

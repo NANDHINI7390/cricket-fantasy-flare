@@ -3,6 +3,7 @@ const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 // Endpoints
 const MATCHES_URL = `https://api.cricapi.com/v1/currentMatches?apikey=${API_KEY}`;
 const LIVE_SCORES_URL = `https://api.cricapi.com/v1/cricScore?apikey=${API_KEY}`;
+const SCORECARD_URL = `https://api.cricapi.com/v1/match_scorecard?apikey=${API_KEY}`;
 
 export interface ScoreInfo {
   r?: number;
@@ -31,6 +32,60 @@ export interface CricketMatch {
   tossWinner?: string;
   tossChoice?: string;
   localDateTime?: string; // Added for local time display
+}
+
+// New interface for player batting stats
+export interface BattingStats {
+  batsman: string;
+  dismissal: string;
+  r: number;
+  b: number;
+  fours: number;
+  sixes: number;
+  sr: number;
+}
+
+// New interface for player bowling stats
+export interface BowlingStats {
+  bowler: string;
+  o: number;
+  m: number;
+  r: number;
+  w: number;
+  eco: number;
+  wd: number;
+  nb: number;
+}
+
+// New interface for scorecard data
+export interface ScorecardData {
+  id: string;
+  name: string;
+  matchType: string;
+  status: string;
+  venue: string;
+  date: string;
+  dateTimeGMT: string;
+  teams: string[];
+  teamInfo: {
+    name: string;
+    img: string;
+    shortname?: string;
+  }[];
+  score: ScoreInfo[];
+  tossWinner: string;
+  tossChoice: string;
+  matchWinner?: string;
+  scorecard: {
+    batting: BattingStats[];
+    bowling: BowlingStats[];
+    inning: string;
+  }[];
+  players?: {
+    name: string;
+    role?: string;
+    team?: string;
+  }[];
 }
 
 // Fetches live matches (without ball-by-ball updates)
@@ -164,6 +219,233 @@ const parseScore = (scoreString: string): [number, number, number] =>
   const overs = oversMatch ? parseFloat(oversMatch[1]) : 0;
   
   return [runs, wickets, overs];
+};
+
+// New function to fetch scorecard data
+export const fetchMatchScorecard = async (matchId: string): Promise<ScorecardData | null> => {
+  try {
+    const response = await fetch(`${SCORECARD_URL}&id=${matchId}`);
+    const data = await response.json();
+
+    if (data.status !== "success") {
+      throw new Error(data.reason || "Failed to fetch scorecard");
+    }
+
+    return data.data || null;
+  } catch (error) {
+    console.error("Error fetching match scorecard:", error);
+    return null;
+  }
+};
+
+// Calculate player rating based on batting performance
+export const calculateBattingRating = (batStats: BattingStats): number => {
+  if (!batStats) return 0;
+  
+  // Base score from runs
+  let rating = batStats.r * 1;
+  
+  // Bonus for strike rate
+  if (batStats.sr > 150) {
+    rating += 20;
+  } else if (batStats.sr > 130) {
+    rating += 15;
+  } else if (batStats.sr > 110) {
+    rating += 10;
+  } else if (batStats.sr > 90) {
+    rating += 5;
+  }
+  
+  // Bonus for boundaries
+  rating += (batStats.fours * 2) + (batStats.sixes * 4);
+  
+  // Bonus for big scores
+  if (batStats.r >= 100) {
+    rating += 50;
+  } else if (batStats.r >= 50) {
+    rating += 25;
+  } else if (batStats.r >= 30) {
+    rating += 10;
+  }
+  
+  return rating;
+};
+
+// Calculate player rating based on bowling performance
+export const calculateBowlingRating = (bowlStats: BowlingStats): number => {
+  if (!bowlStats) return 0;
+  
+  // Base score from wickets
+  let rating = bowlStats.w * 25;
+  
+  // Bonus for economy
+  if (bowlStats.eco < 6) {
+    rating += 20;
+  } else if (bowlStats.eco < 7) {
+    rating += 15;
+  } else if (bowlStats.eco < 8) {
+    rating += 10;
+  } else if (bowlStats.eco < 9) {
+    rating += 5;
+  }
+  
+  // Penalty for bad economy
+  if (bowlStats.eco > 10) {
+    rating -= 10;
+  }
+  
+  // Bonus for maidens
+  rating += (bowlStats.m * 5);
+  
+  // Bonuses for wicket milestones
+  if (bowlStats.w >= 5) {
+    rating += 50;
+  } else if (bowlStats.w >= 3) {
+    rating += 25;
+  } else if (bowlStats.w >= 2) {
+    rating += 10;
+  }
+  
+  return rating;
+};
+
+// Analyze scorecard and identify best performers
+export const analyzeScorecardData = (scorecard: ScorecardData): {
+  bestBatsmen: Array<{name: string, stats: BattingStats, rating: number}>;
+  bestBowlers: Array<{name: string, stats: BowlingStats, rating: number}>;
+  bestCaptainPick: {name: string, role: string, rating: number};
+  recommendedTeam: Array<{name: string, role: string, rating: number}>;
+} => {
+  if (!scorecard || !scorecard.scorecard) {
+    return {
+      bestBatsmen: [],
+      bestBowlers: [],
+      bestCaptainPick: {name: "No data", role: "unknown", rating: 0},
+      recommendedTeam: []
+    };
+  }
+  
+  // Process batting performances
+  const batsmen: Array<{name: string, stats: BattingStats, rating: number}> = [];
+  
+  // Process bowling performances
+  const bowlers: Array<{name: string, stats: BowlingStats, rating: number}> = [];
+  
+  // Go through each innings
+  scorecard.scorecard.forEach(inning => {
+    // Process batsmen
+    inning.batting.forEach(batsman => {
+      // Skip entries with no runs or very low contribution
+      if (batsman.r <= 1) return;
+      
+      const rating = calculateBattingRating(batsman);
+      
+      batsmen.push({
+        name: batsman.batsman,
+        stats: batsman,
+        rating
+      });
+    });
+    
+    // Process bowlers
+    inning.bowling.forEach(bowler => {
+      // Skip entries with no overs bowled
+      if (bowler.o <= 0) return;
+      
+      const rating = calculateBowlingRating(bowler);
+      
+      bowlers.push({
+        name: bowler.bowler,
+        stats: bowler,
+        rating
+      });
+    });
+  });
+  
+  // Sort batsmen and bowlers by rating
+  const sortedBatsmen = batsmen.sort((a, b) => b.rating - a.rating);
+  const sortedBowlers = bowlers.sort((a, b) => b.rating - a.rating);
+  
+  // Find the best captain based on highest overall rating
+  let bestCaptain = {name: "No data", role: "unknown", rating: 0};
+  
+  // Consider top batsman
+  if (sortedBatsmen.length > 0) {
+    bestCaptain = {
+      name: sortedBatsmen[0].name,
+      role: "batsman",
+      rating: sortedBatsmen[0].rating
+    };
+  }
+  
+  // Consider top bowler - if better than batsman
+  if (sortedBowlers.length > 0 && sortedBowlers[0].rating > bestCaptain.rating) {
+    bestCaptain = {
+      name: sortedBowlers[0].name,
+      role: "bowler",
+      rating: sortedBowlers[0].rating
+    };
+  }
+  
+  // Build recommended team (max 11 players)
+  const recommendedTeam: Array<{name: string, role: string, rating: number}> = [];
+  
+  // Add top 6 batsmen
+  sortedBatsmen.slice(0, 6).forEach(batsman => {
+    recommendedTeam.push({
+      name: batsman.name,
+      role: "batsman",
+      rating: batsman.rating
+    });
+  });
+  
+  // Add top 5 bowlers 
+  sortedBowlers.slice(0, 5).forEach(bowler => {
+    // Avoid duplicates (in case player is both batsman and bowler)
+    if (!recommendedTeam.some(player => player.name === bowler.name)) {
+      recommendedTeam.push({
+        name: bowler.name,
+        role: "bowler",
+        rating: bowler.rating
+      });
+    }
+  });
+  
+  // If we don't have 11 players, fill with remaining players
+  if (recommendedTeam.length < 11) {
+    // Add remaining batsmen
+    let index = 6;
+    while (recommendedTeam.length < 11 && index < sortedBatsmen.length) {
+      if (!recommendedTeam.some(player => player.name === sortedBatsmen[index].name)) {
+        recommendedTeam.push({
+          name: sortedBatsmen[index].name,
+          role: "batsman",
+          rating: sortedBatsmen[index].rating
+        });
+      }
+      index++;
+    }
+    
+    // Add remaining bowlers
+    index = 5;
+    while (recommendedTeam.length < 11 && index < sortedBowlers.length) {
+      if (!recommendedTeam.some(player => player.name === sortedBowlers[index].name)) {
+        recommendedTeam.push({
+          name: sortedBowlers[index].name,
+          role: "bowler",
+          rating: sortedBowlers[index].rating
+        });
+      }
+      index++;
+    }
+  }
+  
+  return {
+    bestBatsmen: sortedBatsmen.slice(0, 5),
+    bestBowlers: sortedBowlers.slice(0, 5),
+    bestCaptainPick: bestCaptain,
+    recommendedTeam: recommendedTeam.slice(0, 11)
+  };
 };
 
 // Enhanced country flag URL helper with better fallback
