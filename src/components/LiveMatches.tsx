@@ -46,15 +46,36 @@ const LiveMatches = () => {
         };
       });
 
+      // Apply improved categorization
       const categorizedMatches = categorizeMatches(updatedMatches);
-      setMatches(categorizedMatches);
-      setFilteredMatches(categorizedMatches);
+      
+      // Sort matches by start time (upcoming first, then live, then completed)
+      const sortedMatches = categorizedMatches.sort((a, b) => {
+        // First sort by category
+        const categoryOrder = { 'Live': 0, 'Upcoming': 1, 'Completed': 2 };
+        const categoryDiff = categoryOrder[a.category as keyof typeof categoryOrder] - 
+                            categoryOrder[b.category as keyof typeof categoryOrder];
+        
+        if (categoryDiff !== 0) return categoryDiff;
+        
+        // For upcoming matches, sort by start time
+        if (a.category === 'Upcoming' && b.category === 'Upcoming') {
+          const timeA = a.dateTimeGMT ? new Date(a.dateTimeGMT).getTime() : 0;
+          const timeB = b.dateTimeGMT ? new Date(b.dateTimeGMT).getTime() : 0;
+          return timeA - timeB;
+        }
+        
+        return 0;
+      });
+      
+      setMatches(sortedMatches);
+      setFilteredMatches(sortedMatches);
       setLastUpdated(new Date().toLocaleTimeString());
       
-      if (categorizedMatches.length === 0) {
+      if (sortedMatches.length === 0) {
         toast.info("No matches are currently available. Check back later!");
       } else {
-        toast.success(`Found ${categorizedMatches.length} cricket matches`);
+        toast.success(`Found ${sortedMatches.length} cricket matches`);
       }
     } catch (error) {
       console.error("Fetch Matches Error:", error);

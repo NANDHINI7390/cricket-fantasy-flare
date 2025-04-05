@@ -1,4 +1,3 @@
-
 const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 
 // Endpoints
@@ -62,14 +61,20 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
 const formatDateTimeForDisplay = (dateTimeGMT: string): string => {
   try {
     const date = new Date(dateTimeGMT);
-    return date.toLocaleString('en-US', {
+    
+    // Format the date for Indian Standard Time (IST)
+    // IST is UTC+5:30
+    const options: Intl.DateTimeFormatOptions = {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
       minute: 'numeric',
-      hour12: true
-    });
+      hour12: true,
+      timeZone: 'Asia/Kolkata' // Use IST timezone
+    };
+    
+    return new Intl.DateTimeFormat('en-IN', options).format(date);
   } catch (e) {
     console.error("Error formatting date:", e);
     return dateTimeGMT;
@@ -264,7 +269,7 @@ export const formatTossInfo = (match: CricketMatch): string => {
   return `${winnerTeam} won the toss`;
 };
 
-// Helper to format date and time in user's local timezone with improved precision
+// Helper to format date and time in IST timezone with improved precision
 export const formatMatchDateTime = (dateTimeGMT?: string): string => {
   if (!dateTimeGMT) return "Date not available";
   
@@ -277,17 +282,25 @@ export const formatMatchDateTime = (dateTimeGMT?: string): string => {
       return "Invalid date";
     }
     
-    // Format the date in the user's local timezone with improved formatting
-    return new Intl.DateTimeFormat('default', { 
+    // Format the date in IST timezone with improved formatting
+    return new Intl.DateTimeFormat('en-IN', { 
       dateStyle: 'medium', 
       timeStyle: 'short',
-      hour12: true  // Ensure 12-hour format with AM/PM
+      hour12: true,
+      timeZone: 'Asia/Kolkata' // Use IST timezone
     }).format(matchDate);
   } catch (error) {
     console.error("Error formatting date:", error);
     return "Invalid date";
   }
 }
+
+// Helper to calculate IST time from GMT time
+const convertToIST = (dateTimeGMT: string): Date => {
+  const utcDate = new Date(dateTimeGMT);
+  // No need to manually adjust for IST as we're using the timeZone option in DateTimeFormat
+  return utcDate;
+};
 
 // Helper to categorize matches by start time and status with improved time logic
 export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
@@ -301,11 +314,6 @@ export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
       try {
         // Parse match time from GMT string
         const matchTime = new Date(match.dateTimeGMT);
-        
-        // Calculate hours difference
-        const hoursDiff = (matchTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-        
-        console.log(`Match: ${match.name}, Time: ${matchTime.toLocaleString()}, Hours diff: ${hoursDiff}`);
         
         // Add local date time to the match
         const enhancedMatch = {
@@ -334,20 +342,24 @@ export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
           return { ...enhancedMatch, category: "Completed" };
         }
         
-        // If match is scheduled for the future (positive hours difference)
-        if (hoursDiff > 0) {
+        // Calculate time difference in milliseconds
+        const timeDiff = matchTime.getTime() - now.getTime();
+        
+        // If match is scheduled for the future (positive time difference)
+        if (timeDiff > 0) {
           return { ...enhancedMatch, category: "Upcoming" };
         }
         
-        // For past matches that don't have explicit completion status
-        // but are more than 12 hours old, consider them completed
-        if (hoursDiff < -12) {
-          return { ...enhancedMatch, category: "Completed" };
+        // For matches that started within the last 12 hours but don't have explicit status
+        // Consider them as Live
+        if (timeDiff <= 0 && timeDiff > -12 * 60 * 60 * 1000) {
+          return { ...enhancedMatch, category: "Live" };
         }
         
-        // For matches in progress (started less than 12 hours ago)
-        if (hoursDiff <= 0 && hoursDiff > -12) {
-          return { ...enhancedMatch, category: "Live" };
+        // For matches that started more than 12 hours ago but don't have explicit completion status
+        // Consider them as Completed
+        if (timeDiff <= -12 * 60 * 60 * 1000) {
+          return { ...enhancedMatch, category: "Completed" };
         }
         
         // Default fallback - if we can't determine, call it upcoming
