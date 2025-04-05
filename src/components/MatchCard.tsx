@@ -34,11 +34,12 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
                       match.matchEnded || 
                       match.category === "Completed";
   
+  // Add more visually exciting styling based on match status
   const statusClasses = isLive 
-    ? "bg-red-100 text-red-800 animate-pulse-border border-2 border-red-500" 
+    ? "bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium animate-pulse-border border-2 border-red-500" 
     : isCompleted
-      ? "bg-green-100 text-green-800"
-      : "bg-blue-100 text-blue-800";
+      ? "bg-gradient-to-r from-green-500 to-teal-500 text-white font-medium"
+      : "bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-medium";
       
   const team1 = match.teamInfo?.find(t => t.name === match.teams?.[0]);
   const team2 = match.teamInfo?.find(t => t.name === match.teams?.[1]);
@@ -68,7 +69,9 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
           <span className="text-xs text-gray-500">{match.matchType || "T20"}</span>
         </div>
         
-        <h3 className="font-bold text-lg mb-4 text-indigo-900">{match.name}</h3>
+        <h3 className="font-bold text-lg mb-4 bg-gradient-to-r from-indigo-800 to-purple-800 bg-clip-text text-transparent">
+          {match.name}
+        </h3>
         
         <div className="mb-3">
           <div 

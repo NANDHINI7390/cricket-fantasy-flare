@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 
 const corsHeaders = {
@@ -47,6 +48,7 @@ serve(async (req: Request) => {
     // 1. First fetch cricket data from API with detailed error handling
     let cricketData = [];
     try {
+      console.log("Fetching cricket data...");
       cricketData = await fetchCricketData();
       console.log("Fetched cricket data successfully:", cricketData.length > 0 ? "Data available" : "No data");
     } catch (error) {
@@ -58,8 +60,11 @@ serve(async (req: Request) => {
     let playerStats = [];
     if (query.toLowerCase().includes("player") || 
         query.toLowerCase().includes("captain") || 
-        query.toLowerCase().includes("team")) {
+        query.toLowerCase().includes("team") ||
+        query.toLowerCase().includes("pick") ||
+        query.toLowerCase().includes("recommend")) {
       try {
+        console.log("Fetching player stats...");
         playerStats = await fetchPlayerStats();
         console.log("Fetched player stats successfully:", playerStats.length > 0 ? "Data available" : "No data");
       } catch (error) {
@@ -76,6 +81,7 @@ serve(async (req: Request) => {
         query.toLowerCase().includes("today") ||
         query.toLowerCase().includes("match")) {
       try {
+        console.log("Fetching match schedules...");
         schedules = await fetchMatchSchedules();
         console.log("Fetched match schedules successfully:", schedules.length > 0 ? "Data available" : "No data");
       } catch (error) {
@@ -84,23 +90,49 @@ serve(async (req: Request) => {
       }
     }
     
-    // 4. Check if we have any data at all
-    const hasAnyData = cricketData.length > 0 || playerStats.length > 0 || schedules.length > 0;
+    // 4. Get detailed match info for any ongoing matches
+    const matchDetails = [];
+    if (cricketData.length > 0) {
+      try {
+        console.log("Fetching match details for ongoing matches...");
+        const liveMatches = cricketData.filter(match => 
+          match.matchStarted && !match.matchEnded || 
+          match.status.toLowerCase().includes("live"));
+          
+        for (const match of liveMatches.slice(0, 3)) { // Limit to 3 to avoid rate limits
+          try {
+            const details = await fetchMatchInfo(match.id);
+            if (details) {
+              matchDetails.push(details);
+            }
+          } catch (error) {
+            console.error(`Error fetching details for match ${match.id}:`, error);
+          }
+        }
+        console.log(`Fetched ${matchDetails.length} match details`);
+      } catch (error) {
+        console.error("Error processing match details:", error);
+      }
+    }
+    
+    // 5. Check if we have any data at all
+    const hasAnyData = cricketData.length > 0 || playerStats.length > 0 || schedules.length > 0 || matchDetails.length > 0;
     
     if (!hasAnyData) {
       console.log("No cricket data available for analysis");
     }
     
-    // 5. Prepare context for ChatGPT
+    // 6. Prepare context for ChatGPT
     const context = {
       matches: cricketData,
       playerStats: playerStats,
       schedules: schedules,
+      matchDetails: matchDetails,
       query: query,
       currentDate: new Date().toISOString().split('T')[0]
     };
     
-    // 6. Get response from ChatGPT
+    // 7. Get response from ChatGPT
     const aiResponse = await getChatGPTResponse(context, hasAnyData);
     console.log("Got AI response");
     
@@ -110,6 +142,7 @@ serve(async (req: Request) => {
         cricketData: cricketData,
         playerStats: playerStats,
         schedules: schedules,
+        matchDetails: matchDetails,
         hasData: hasAnyData
       }),
       { 
@@ -161,43 +194,19 @@ async function fetchCricketData() {
     
     console.log(`Retrieved ${matchesData.data.length} matches from Cricket API`);
     
-    // Try getting additional data even if we don't have "live" matches
-    const enhancedMatches = [];
-    for (const match of matchesData.data.slice(0, 8)) { // Limit to first 8 matches to avoid overloading
-      try {
-        const scorecardUrl = `https://api.cricapi.com/v1/match_info?apikey=${CRICKET_API_KEY}&id=${match.id}`;
-        console.log(`Fetching scorecard for match ${match.id} - ${match.name}`);
-        
-        const scorecardResponse = await fetch(scorecardUrl);
-        
-        if (scorecardResponse.ok) {
-          const scorecardData = await scorecardResponse.json();
-          if (scorecardData.status === "success" && scorecardData.data) {
-            console.log(`Successfully retrieved scorecard for match ${match.id}`);
-            enhancedMatches.push({
-              ...match,
-              scorecard: scorecardData.data
-            });
-          } else {
-            console.error(`Error in scorecard data for match ${match.id}:`, scorecardData);
-            enhancedMatches.push(match);
-          }
-        } else {
-          console.error(`Error fetching scorecard for match ${match.id}: ${scorecardResponse.status}`);
-          enhancedMatches.push(match);
-        }
-      } catch (error) {
-        console.error(`Error processing scorecard for match ${match.id}:`, error);
-        enhancedMatches.push(match);
-      }
-    }
+    // Enhance match data with additional info
+    const enhancedMatches = matchesData.data.map(match => {
+      // Format match data for easier consumption
+      return {
+        ...match,
+        formattedStartTime: match.dateTimeGMT ? formatDateTime(match.dateTimeGMT) : "Time unknown",
+        isLive: match.matchStarted && !match.matchEnded || 
+                match.status.toLowerCase().includes("live") ||
+                (match.score && match.score.length > 0)
+      };
+    });
     
-    // Append remaining matches
-    if (matchesData.data.length > 8) {
-      enhancedMatches.push(...matchesData.data.slice(8));
-    }
-    
-    return enhancedMatches.length > 0 ? enhancedMatches : matchesData.data;
+    return enhancedMatches;
   } catch (error) {
     console.error("Error fetching cricket data:", error);
     // Try alternate endpoint as fallback
@@ -210,14 +219,79 @@ async function fetchCricketData() {
         const fallbackData = await fallbackResponse.json();
         if (fallbackData.status === "success" && Array.isArray(fallbackData.data)) {
           console.log(`Retrieved ${fallbackData.data.length} matches from fallback API`);
-          return fallbackData.data;
+          
+          // Transform fallback data to match the expected format
+          const transformedData = fallbackData.data.map(match => {
+            return {
+              id: match.id,
+              name: match.name || `${match.t1} vs ${match.t2}`,
+              status: match.status || "Unknown",
+              venue: match.venue || "Unknown venue",
+              date: match.date || new Date().toISOString().split('T')[0],
+              dateTimeGMT: match.dateTimeGMT || new Date().toISOString(),
+              teams: [match.t1, match.t2],
+              teamInfo: [
+                { name: match.t1, img: match.t1img || "" },
+                { name: match.t2, img: match.t2img || "" }
+              ],
+              score: parseScores(match.t1s, match.t2s, match.t1, match.t2),
+              matchStarted: true,
+              matchEnded: match.status.toLowerCase().includes("won") || match.status.toLowerCase().includes("complete"),
+              formattedStartTime: formatDateTime(match.dateTimeGMT || new Date().toISOString()),
+              isLive: !match.status.toLowerCase().includes("won") && !match.status.toLowerCase().includes("complete")
+            };
+          });
+          
+          return transformedData;
         }
       }
+      throw new Error("Fallback API also failed");
     } catch (fallbackError) {
       console.error("Fallback fetch also failed:", fallbackError);
+      return [];
     }
-    return [];
   }
+}
+
+// Helper function to parse scores from t1s and t2s strings
+function parseScores(t1s, t2s, t1, t2) {
+  const scores = [];
+  
+  if (t1s) {
+    const match = t1s.match(/(\d+)\/(\d+)/);
+    if (match) {
+      const runs = parseInt(match[1]);
+      const wickets = parseInt(match[2]);
+      const oversMatch = t1s.match(/\(([^)]+)\)/);
+      const overs = oversMatch ? parseFloat(oversMatch[1]) : 0;
+      
+      scores.push({
+        r: runs,
+        w: wickets,
+        o: overs,
+        inning: `${t1} Inning`
+      });
+    }
+  }
+  
+  if (t2s) {
+    const match = t2s.match(/(\d+)\/(\d+)/);
+    if (match) {
+      const runs = parseInt(match[1]);
+      const wickets = parseInt(match[2]);
+      const oversMatch = t2s.match(/\(([^)]+)\)/);
+      const overs = oversMatch ? parseFloat(oversMatch[1]) : 0;
+      
+      scores.push({
+        r: runs,
+        w: wickets,
+        o: overs,
+        inning: `${t2} Inning`
+      });
+    }
+  }
+  
+  return scores;
 }
 
 async function fetchPlayerStats() {
@@ -264,7 +338,8 @@ async function fetchPlayerStats() {
               console.log(`Successfully retrieved stats for player ${player.name}`);
               return {
                 ...player,
-                stats: statsData.data
+                stats: statsData.data,
+                currentForm: calculatePlayerForm(statsData.data)
               };
             } else {
               console.error(`Error fetching stats for player ${player.name}:`, statsData);
@@ -286,6 +361,56 @@ async function fetchPlayerStats() {
     console.error("Error fetching player stats:", error);
     throw error; // Re-throw to be handled by caller
   }
+}
+
+// Simple function to calculate player form based on recent stats
+function calculatePlayerForm(playerData) {
+  if (!playerData || !playerData.batting || !playerData.bowling) {
+    return { rating: 0, description: "Unknown form" };
+  }
+  
+  let formScore = 0;
+  
+  // Calculate batting form (prioritize recent average and strike rate)
+  if (playerData.batting && playerData.batting.listA) {
+    const avg = parseFloat(playerData.batting.listA.avg) || 0;
+    const strikeRate = parseFloat(playerData.batting.listA.sr) || 0;
+    
+    if (avg > 40) formScore += 3;
+    else if (avg > 30) formScore += 2;
+    else if (avg > 20) formScore += 1;
+    
+    if (strikeRate > 140) formScore += 3;
+    else if (strikeRate > 120) formScore += 2;
+    else if (strikeRate > 100) formScore += 1;
+  }
+  
+  // Calculate bowling form
+  if (playerData.bowling && playerData.bowling.listA) {
+    const avg = parseFloat(playerData.bowling.listA.avg) || 999;
+    const economy = parseFloat(playerData.bowling.listA.econ) || 999;
+    
+    if (avg < 20) formScore += 3;
+    else if (avg < 25) formScore += 2;
+    else if (avg < 30) formScore += 1;
+    
+    if (economy < 6) formScore += 3;
+    else if (economy < 7.5) formScore += 2;
+    else if (economy < 9) formScore += 1;
+  }
+  
+  // Determine form description
+  let description = "Average form";
+  if (formScore >= 8) description = "Excellent form";
+  else if (formScore >= 6) description = "Very good form";
+  else if (formScore >= 4) description = "Good form";
+  else if (formScore >= 2) description = "Decent form";
+  else if (formScore < 2) description = "Poor form";
+  
+  return { 
+    rating: formScore,
+    description
+  };
 }
 
 async function fetchMatchSchedules() {
@@ -316,10 +441,13 @@ async function fetchMatchSchedules() {
     
     console.log(`Retrieved ${schedulesData.data.length} scheduled matches from Cricket API`);
     
-    // Filter to only include upcoming matches
-    const upcomingMatches = schedulesData.data.filter(match => 
-      !match.matchStarted || (match.matchStarted && !match.matchEnded)
-    );
+    // Filter to only include upcoming matches and enhance with formatted times
+    const upcomingMatches = schedulesData.data
+      .filter(match => !match.matchStarted || (match.matchStarted && !match.matchEnded))
+      .map(match => ({
+        ...match,
+        formattedStartTime: match.dateTimeGMT ? formatDateTime(match.dateTimeGMT) : "Time unknown"
+      }));
     
     console.log(`Number of upcoming matches: ${upcomingMatches.length}`);
     
@@ -327,6 +455,114 @@ async function fetchMatchSchedules() {
   } catch (error) {
     console.error("Error fetching match schedules:", error);
     throw error; // Re-throw to be handled by caller
+  }
+}
+
+// Helper function to format date and time clearly
+function formatDateTime(dateTimeString) {
+  try {
+    const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return "Invalid date";
+    
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return dateTimeString;
+  }
+}
+
+// Fetch detailed match info with player performances
+async function fetchMatchInfo(matchId) {
+  try {
+    console.log(`Fetching detailed info for match ${matchId}`);
+    const url = `https://api.cricapi.com/v1/match_info?apikey=${CRICKET_API_KEY}&id=${matchId}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Match info API returned ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (data.status !== "success" || !data.data) {
+      throw new Error("Invalid match info data format");
+    }
+    
+    console.log(`Successfully retrieved detailed info for match ${matchId}`);
+    return {
+      id: matchId,
+      ...data.data,
+      // Extract top performers
+      topPerformers: extractTopPerformers(data.data)
+    };
+  } catch (error) {
+    console.error(`Error fetching match info for ${matchId}:`, error);
+    return null;
+  }
+}
+
+// Extract top performers from match data
+function extractTopPerformers(matchData) {
+  const performers = {
+    batsmen: [],
+    bowlers: []
+  };
+  
+  try {
+    // Extract from scorecard if available
+    if (matchData.scorecard) {
+      matchData.scorecard.forEach(inning => {
+        // Top batsmen
+        if (inning.batting) {
+          inning.batting.forEach(batsman => {
+            if (parseInt(batsman.r) > 20) {
+              performers.batsmen.push({
+                name: batsman.batsman,
+                team: inning.inning.split(" Inning")[0],
+                runs: parseInt(batsman.r),
+                balls: parseInt(batsman.b),
+                fours: parseInt(batsman["4s"]),
+                sixes: parseInt(batsman["6s"]),
+                strikeRate: parseFloat(batsman.sr),
+                isDismissed: batsman.dismissal !== "not out"
+              });
+            }
+          });
+        }
+        
+        // Top bowlers
+        if (inning.bowling) {
+          inning.bowling.forEach(bowler => {
+            if (parseInt(bowler.w) > 0) {
+              performers.bowlers.push({
+                name: bowler.bowler,
+                team: inning.inning.includes("Inning 1") ? matchData.teams[1] : matchData.teams[0],
+                wickets: parseInt(bowler.w),
+                overs: parseFloat(bowler.o),
+                runs: parseInt(bowler.r),
+                economy: parseFloat(bowler.eco),
+                maidens: parseInt(bowler.m)
+              });
+            }
+          });
+        }
+      });
+    }
+    
+    // Sort by performance
+    performers.batsmen.sort((a, b) => b.runs - a.runs);
+    performers.bowlers.sort((a, b) => b.wickets - a.wickets || a.economy - b.economy);
+    
+    return performers;
+  } catch (error) {
+    console.error("Error extracting top performers:", error);
+    return performers;
   }
 }
 
@@ -339,7 +575,7 @@ async function getChatGPTResponse(context, hasData) {
   }
   
   try {
-    // Prepare relevant data for ChatGPT
+    // Prepare relevant match data for ChatGPT
     const matchesSummary = context.matches.map(match => ({
       name: match.name,
       status: match.status,
@@ -347,40 +583,55 @@ async function getChatGPTResponse(context, hasData) {
       score: match.score || [],
       venue: match.venue,
       date: match.date,
+      formattedStartTime: match.formattedStartTime,
       matchStarted: match.matchStarted,
       matchEnded: match.matchEnded,
-      scorecard: match.scorecard ? "Available" : "Not available" // Just indicate if available
+      isLive: match.isLive
     }));
     
+    // Prepare relevant player data
     const playerSummary = context.playerStats.map(player => ({
       name: player.name,
       country: player.country,
       role: player.typeofplayer || "Unknown",
+      currentForm: player.currentForm || { rating: 0, description: "Unknown form" },
       stats: player.stats ? {
         batting: player.stats.batting,
         bowling: player.stats.bowling
       } : "No detailed stats available"
     }));
     
+    // Prepare schedule data
     const schedulesSummary = context.schedules.map(match => ({
       name: match.name,
-      date: match.date,
       teams: match.teams,
-      venue: match.venue
+      venue: match.venue,
+      formattedStartTime: match.formattedStartTime
     }));
     
-    // Create a prompt based on the query
-    let systemPrompt = `You are a cricket fantasy expert assistant. 
+    // Prepare top performers data if available
+    const matchDetailsSummary = context.matchDetails.map(match => ({
+      id: match.id,
+      name: match.name,
+      status: match.status,
+      topPerformers: match.topPerformers
+    }));
+    
+    // Create a detailed system prompt
+    let systemPrompt = `You are an expert cricket fantasy assistant that helps users make decisions for their fantasy cricket teams. 
 You analyze real-time cricket data and provide helpful advice to fantasy cricket players.
-Be concise, insightful, and actionable in your responses.
+Be conversational, specific, and actionable in your responses.
 Current date: ${context.currentDate}
 
 Important guidelines:
-1. Always focus specifically on answering the user's query with cricket insights
-2. Provide specific player names and match details when available
-3. For fantasy recommendations, focus on current form, matchups, and pitch conditions
-4. Do not make up data - be honest when you don't have specific information
-5. Keep responses under 200 words and focused on cricket fantasy advice`;
+1. Always base your recommendations on the ACTUAL LIVE DATA provided, not general knowledge
+2. When suggesting captains or players, include their SPECIFIC STATS from the current match (runs, wickets, strike rate, etc.)
+3. Format match scores and player stats clearly using this format:
+   **Match:** IND vs AUS **Score:** IND 145/3 (17.2 ov) **Captain Pick:** Virat Kohli – 56* (35 balls) **Top Bowling Pick:** Bumrah – 3/18 in 4 overs
+4. For each recommendation, briefly explain WHY you're suggesting that player (current form, matchup advantages, etc.)
+5. Be conversational and engaging - respond like a knowledgeable friend
+6. If a user asks about a specific match, focus your response on that match
+7. If the data doesn't contain what they're looking for, be honest about it`;
 
     // Customize response based on data availability
     let userPrompt = "";
@@ -393,29 +644,42 @@ Unfortunately, I don't have any current cricket matches, player stats, or schedu
 Please respond with some general advice about fantasy cricket related to their query. Acknowledge that you don't have current data but provide general tips that would be helpful. If they're asking specifically about today's matches or current players, apologize for not having real-time data and offer general strategy advice for fantasy cricket instead.`;
     } else {
       // Prepare match data summary
-      const matchDataSummary = matchesSummary.length > 0 
-        ? `Here's the current match data: ${JSON.stringify(matchesSummary)}` 
+      const liveMatchesSummary = matchesSummary.filter(m => m.isLive);
+      const matchDataSection = liveMatchesSummary.length > 0 
+        ? `LIVE MATCHES (${liveMatchesSummary.length}):\n${JSON.stringify(liveMatchesSummary, null, 2)}` 
         : "There are no live matches at the moment.";
         
       // Player data summary
-      const playerDataSummary = playerSummary.length > 0
-        ? `Here's the current player data: ${JSON.stringify(playerSummary)}`
+      const playerDataSection = playerSummary.length > 0
+        ? `PLAYER DATA:\n${JSON.stringify(playerSummary, null, 2)}`
         : "No detailed player data is available.";
         
       // Schedule data summary
-      const scheduleDataSummary = schedulesSummary.length > 0
-        ? `Here's the upcoming match schedule data: ${JSON.stringify(schedulesSummary)}`
+      const scheduleDataSection = schedulesSummary.length > 0
+        ? `UPCOMING MATCHES:\n${JSON.stringify(schedulesSummary, null, 2)}`
         : "No upcoming match schedule data is available.";
+        
+      // Match details with top performers
+      const matchDetailsSection = matchDetailsSummary.length > 0
+        ? `DETAILED MATCH DATA WITH TOP PERFORMERS:\n${JSON.stringify(matchDetailsSummary, null, 2)}`
+        : "No detailed match data with player performances is available.";
         
       // Combine with the user's specific query
       userPrompt = `The user's query is: "${context.query}"
       
 Available cricket data:
-${matchDataSummary}
-${playerDataSummary}
-${scheduleDataSummary}
+${matchDataSection}
 
-Provide a helpful, relevant response to the user's query using this data. If the data doesn't contain what they're looking for, acknowledge that but provide the best advice you can with the available information. Make your response specific to cricket fantasy strategy.`;
+${playerDataSection}
+
+${scheduleDataSection}
+
+${matchDetailsSection}
+
+Based on this REAL-TIME DATA, provide a helpful and specific response to the user's query. 
+If they're asking about captains or player picks, recommend specific players with their current stats.
+Format match scores clearly and explain WHY each player is a good pick.
+Be conversational and engaging - respond like a knowledgeable friend who's watching the matches live.`;
     }
 
     console.log("Sending request to OpenAI API...");
@@ -433,7 +697,7 @@ Provide a helpful, relevant response to the user's query using this data. If the
           { role: "user", content: userPrompt }
         ],
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 800
       })
     });
     

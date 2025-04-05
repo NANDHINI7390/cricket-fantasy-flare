@@ -1,7 +1,8 @@
+
 import { CricketMatch } from "@/utils/cricket-api";
 import { Player } from "@/types/player";
 
-export type MessageType = "user" | "bot" | "match-update" | "player-suggestion";
+export type MessageType = "user" | "bot" | "match-update" | "player-suggestion" | "live-analysis";
 
 export interface Message {
   id: string;
@@ -14,7 +15,26 @@ export interface Message {
     viceCaptain?: Player;
     allrounders?: Player[];
   };
-  isTemporary?: boolean; // Added this property to fix the error
+  isTemporary?: boolean;
+  liveAnalysis?: {
+    matchName: string;
+    teamScores: string[];
+    captainPick?: {
+      name: string;
+      stats: string;
+      reason: string;
+    };
+    bowlingPick?: {
+      name: string;
+      stats: string;
+      reason: string;
+    };
+    otherRecommendations?: Array<{
+      name: string;
+      role: string;
+      reason: string;
+    }>;
+  };
 }
 
 export interface ChatInputProps {
@@ -53,6 +73,29 @@ export interface PlayerSuggestionProps {
     captain?: Player;
     viceCaptain?: Player;
     allrounders?: Player[];
+  };
+  content: string;
+}
+
+export interface LiveAnalysisProps {
+  analysis: {
+    matchName: string;
+    teamScores: string[];
+    captainPick?: {
+      name: string;
+      stats: string;
+      reason: string;
+    };
+    bowlingPick?: {
+      name: string;
+      stats: string;
+      reason: string;
+    };
+    otherRecommendations?: Array<{
+      name: string;
+      role: string;
+      reason: string;
+    }>;
   };
   content: string;
 }

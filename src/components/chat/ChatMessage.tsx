@@ -3,6 +3,7 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatMessageProps } from "./types";
 import PlayerSuggestion from "./PlayerSuggestion";
+import LiveAnalysis from "./LiveAnalysis";
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, formatMatchData }) => {
   switch (message.type) {
@@ -94,6 +95,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, formatMatchData }) =
         <div className="flex justify-start mb-3">
           <PlayerSuggestion 
             playerSuggestions={message.playerSuggestions} 
+            content={message.content} 
+          />
+        </div>
+      );
+    
+    case "live-analysis":
+      if (!message.liveAnalysis) return null;
+      
+      return (
+        <div className="flex justify-start mb-3">
+          <LiveAnalysis 
+            analysis={message.liveAnalysis} 
             content={message.content} 
           />
         </div>

@@ -101,7 +101,7 @@ const LiveMatches = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
           Live & Upcoming Matches
         </h2>
         <div className="flex items-center gap-2">
@@ -129,10 +129,10 @@ const LiveMatches = () => {
             size="sm"
             className={activeFilter === category ? 
               `bg-gradient-to-r ${
-                category === "Live" ? "from-red-600 to-red-700" : 
-                category === "Upcoming" ? "from-purple-600 to-blue-600" : 
-                category === "Completed" ? "from-green-600 to-green-700" :
-                "from-indigo-600 to-blue-600"
+                category === "Live" ? "from-red-600 to-pink-600" : 
+                category === "Upcoming" ? "from-indigo-600 to-blue-600" : 
+                category === "Completed" ? "from-green-600 to-teal-600" :
+                "from-purple-600 to-violet-600"
               } text-white border-none` : 
               "text-gray-700 hover:bg-gradient-to-r hover:from-purple-600/10 hover:to-blue-500/10"
             }
