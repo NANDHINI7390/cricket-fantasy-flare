@@ -27,11 +27,16 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
   // Format match status and styles
   const isLive = match.status === "Live" || 
                  match.status.toLowerCase().includes("live") || 
-                 (match.matchStarted && !match.matchEnded);
+                 (match.matchStarted && !match.matchEnded) ||
+                 match.category === "Live";
+  
+  const isCompleted = match.status.toLowerCase().includes("won") || 
+                      match.matchEnded || 
+                      match.category === "Completed";
   
   const statusClasses = isLive 
     ? "bg-red-100 text-red-800 animate-pulse-border border-2 border-red-500" 
-    : match.status.toLowerCase().includes("won") 
+    : isCompleted
       ? "bg-green-100 text-green-800"
       : "bg-blue-100 text-blue-800";
       
@@ -57,11 +62,13 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
     <Card className={`overflow-hidden hover:shadow-md transition-all ${isLive ? 'border-2 border-red-500 animate-pulse-border' : ''}`}>
       <CardContent className="p-4">
         <div className="flex justify-between items-center mb-3">
-          <Badge className={statusClasses}>{match.status}</Badge>
+          <Badge className={statusClasses}>
+            {isLive ? "LIVE" : isCompleted ? "COMPLETED" : "UPCOMING"}
+          </Badge>
           <span className="text-xs text-gray-500">{match.matchType || "T20"}</span>
         </div>
         
-        <h3 className="font-bold text-lg mb-4">{match.name}</h3>
+        <h3 className="font-bold text-lg mb-4 text-indigo-900">{match.name}</h3>
         
         <div className="mb-3">
           <div 
@@ -80,7 +87,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
               />
               <span className="font-medium text-blue-600 hover:underline">{team1?.name}</span>
             </div>
-            <span className="text-sm font-mono">
+            <span className="text-sm font-mono font-bold">
               {team1Score ? `${team1Score.r || 0}/${team1Score.w || 0} (${team1Score.o || 0})` : ""}
             </span>
           </div>
@@ -101,7 +108,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
               />
               <span className="font-medium text-blue-600 hover:underline">{team2?.name}</span>
             </div>
-            <span className="text-sm font-mono">
+            <span className="text-sm font-mono font-bold">
               {team2Score ? `${team2Score.r || 0}/${team2Score.w || 0} (${team2Score.o || 0})` : ""}
             </span>
           </div>
@@ -118,7 +125,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
         <div className="mt-3 text-center">
           <button 
             onClick={() => onViewDetails(match)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md text-sm font-medium transition-colors"
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-1 rounded-md text-sm font-medium transition-colors"
           >
             View Details
           </button>

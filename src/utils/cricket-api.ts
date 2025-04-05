@@ -1,3 +1,4 @@
+
 const API_KEY = "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 
 // Endpoints
@@ -48,11 +49,30 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
       ...match,
       tossWinner: match.tossWinner || "",
       tossChoice: match.tossChoice || "",
-      localDateTime: match.dateTimeGMT ? new Date(match.dateTimeGMT).toLocaleString() : ""
+      // Format local date time properly
+      localDateTime: match.dateTimeGMT ? formatDateTimeForDisplay(match.dateTimeGMT) : ""
     })) || [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
+  }
+};
+
+// Helper function to format date time consistently
+const formatDateTimeForDisplay = (dateTimeGMT: string): string => {
+  try {
+    const date = new Date(dateTimeGMT);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    });
+  } catch (e) {
+    console.error("Error formatting date:", e);
+    return dateTimeGMT;
   }
 };
 
@@ -112,7 +132,8 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
         matchStarted: match.ms === "live" || match.ms === "result",
         matchEnded: match.ms === "result",
         dateTimeGMT: startTimeGMT,
-        localDateTime: new Date(startTimeGMT).toLocaleString()
+        // Format local date time properly
+        localDateTime: formatDateTimeForDisplay(startTimeGMT)
       };
     });
     
@@ -289,48 +310,49 @@ export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
         // Add local date time to the match
         const enhancedMatch = {
           ...match,
-          localDateTime: matchTime.toLocaleString()
+          localDateTime: formatDateTimeForDisplay(match.dateTimeGMT)
         };
         
-        // Live matches - using status or matchStarted/matchEnded properties
+        // IMPROVED CATEGORIZATION LOGIC
+        
+        // If the status explicitly says "Live" or contains "live"
         if (match.status.toLowerCase() === "live" || 
-            (match.matchStarted && !match.matchEnded)) {
+            match.status.toLowerCase().includes("live")) {
           return { ...enhancedMatch, category: "Live" };
         }
         
-        // For matches with matchStarted=true but status doesn't say "Live",
-        // check if the match time is within the last 6 hours
-        if (match.matchStarted && hoursDiff <= 0 && hoursDiff > -6) {
+        // If match has started and not ended (considering API data)
+        if (match.matchStarted === true && match.matchEnded !== true) {
           return { ...enhancedMatch, category: "Live" };
         }
         
-        // Upcoming matches (within next 48 hours)
-        if (hoursDiff > 0 && hoursDiff <= 48) {
+        // If status contains "won" or "drawn" or similar completion terms, or matchEnded is true
+        if (match.status.toLowerCase().includes("won") || 
+            match.status.toLowerCase().includes("drawn") ||
+            match.status.toLowerCase().includes("abandoned") ||
+            match.matchEnded === true) {
+          return { ...enhancedMatch, category: "Completed" };
+        }
+        
+        // If match is scheduled for the future (positive hours difference)
+        if (hoursDiff > 0) {
           return { ...enhancedMatch, category: "Upcoming" };
         }
         
-        // Recently completed matches (within last 48 hours)
-        if (hoursDiff < 0 && hoursDiff >= -48 && 
-            (match.matchEnded || match.status.toLowerCase().includes("won"))) {
+        // For past matches that don't have explicit completion status
+        // but are more than 12 hours old, consider them completed
+        if (hoursDiff < -12) {
           return { ...enhancedMatch, category: "Completed" };
         }
         
-        // Matches outside of the 48-hour window (future or past)
-        if (hoursDiff > 48) {
-          return { ...enhancedMatch, category: "Upcoming" };
+        // For matches in progress (started less than 12 hours ago)
+        if (hoursDiff <= 0 && hoursDiff > -12) {
+          return { ...enhancedMatch, category: "Live" };
         }
         
-        if (hoursDiff < -48 && 
-            (match.matchEnded || match.status.toLowerCase().includes("won"))) {
-          return { ...enhancedMatch, category: "Completed" };
-        }
-        
-        // Default categorization based on match status
-        if (match.status.toLowerCase().includes("won") || match.matchEnded) {
-          return { ...enhancedMatch, category: "Completed" };
-        }
-        
+        // Default fallback - if we can't determine, call it upcoming
         return { ...enhancedMatch, category: "Upcoming" };
+        
       } catch (error) {
         console.error(`Error categorizing match: ${match.name}`, error);
         return null;

@@ -1,4 +1,3 @@
-
 import { CricketMatch } from "@/utils/cricket-api";
 import { Player } from "@/types/player";
 
@@ -15,6 +14,7 @@ export interface Message {
     viceCaptain?: Player;
     allrounders?: Player[];
   };
+  isTemporary?: boolean; // Added this property to fix the error
 }
 
 export interface ChatInputProps {

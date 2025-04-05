@@ -101,7 +101,7 @@ const LiveMatches = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent">
           Live & Upcoming Matches
         </h2>
         <div className="flex items-center gap-2">
@@ -128,7 +128,12 @@ const LiveMatches = () => {
             onClick={() => filterMatches(category)}
             size="sm"
             className={activeFilter === category ? 
-              "bg-gradient-to-r from-purple-600 to-blue-500 text-white border-none" : 
+              `bg-gradient-to-r ${
+                category === "Live" ? "from-red-600 to-red-700" : 
+                category === "Upcoming" ? "from-purple-600 to-blue-600" : 
+                category === "Completed" ? "from-green-600 to-green-700" :
+                "from-indigo-600 to-blue-600"
+              } text-white border-none` : 
               "text-gray-700 hover:bg-gradient-to-r hover:from-purple-600/10 hover:to-blue-500/10"
             }
           >
@@ -154,7 +159,7 @@ const LiveMatches = () => {
           <Button 
             onClick={fetchMatches} 
             variant="outline"
-            className="bg-gradient-to-r from-purple-600/20 to-blue-500/20 hover:from-purple-600/30 hover:to-blue-500/30"
+            className="bg-gradient-to-r from-purple-600/20 to-blue-500/20 hover:from-purple-600/30 hover:to-blue-600/30"
           >
             <RefreshCw size={16} className="mr-2" />
             Refresh Data

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 
 const corsHeaders = {
@@ -136,8 +135,8 @@ serve(async (req: Request) => {
 
 async function fetchCricketData() {
   try {
-    // Fetch live matches with better error handling
-    const matchesUrl = `https://api.cricapi.com/v1/currentMatches?apikey=${CRICKET_API_KEY}&offset=0&per_page=10`;
+    // Direct approach with specific parameters to ensure we get results
+    const matchesUrl = `https://api.cricapi.com/v1/currentMatches?apikey=${CRICKET_API_KEY}&offset=0&per_page=25`;
     console.log("Fetching cricket data from:", matchesUrl);
     
     const matchesResponse = await fetch(matchesUrl);
@@ -162,46 +161,62 @@ async function fetchCricketData() {
     
     console.log(`Retrieved ${matchesData.data.length} matches from Cricket API`);
     
-    // Check if we have any live matches
-    const liveMatches = matchesData.data.filter(match => match.matchStarted && !match.matchEnded);
-    console.log(`Number of live matches: ${liveMatches.length}`);
-    
-    // Fetch additional scorecard data for live matches
-    const enhancedMatches = await Promise.all(
-      liveMatches.map(async (match) => {
-        try {
-          const scorecardUrl = `https://api.cricapi.com/v1/match_info?apikey=${CRICKET_API_KEY}&id=${match.id}`;
-          console.log(`Fetching scorecard for match ${match.id}`);
-          
-          const scorecardResponse = await fetch(scorecardUrl);
-          
-          if (scorecardResponse.ok) {
-            const scorecardData = await scorecardResponse.json();
-            if (scorecardData.status === "success") {
-              console.log(`Successfully retrieved scorecard for match ${match.id}`);
-              return {
-                ...match,
-                scorecard: scorecardData.data
-              };
-            } else {
-              console.error(`Error fetching scorecard for match ${match.id}:`, scorecardData);
-            }
+    // Try getting additional data even if we don't have "live" matches
+    const enhancedMatches = [];
+    for (const match of matchesData.data.slice(0, 8)) { // Limit to first 8 matches to avoid overloading
+      try {
+        const scorecardUrl = `https://api.cricapi.com/v1/match_info?apikey=${CRICKET_API_KEY}&id=${match.id}`;
+        console.log(`Fetching scorecard for match ${match.id} - ${match.name}`);
+        
+        const scorecardResponse = await fetch(scorecardUrl);
+        
+        if (scorecardResponse.ok) {
+          const scorecardData = await scorecardResponse.json();
+          if (scorecardData.status === "success" && scorecardData.data) {
+            console.log(`Successfully retrieved scorecard for match ${match.id}`);
+            enhancedMatches.push({
+              ...match,
+              scorecard: scorecardData.data
+            });
           } else {
-            console.error(`Error fetching scorecard for match ${match.id}: ${scorecardResponse.status}`);
+            console.error(`Error in scorecard data for match ${match.id}:`, scorecardData);
+            enhancedMatches.push(match);
           }
-          
-          return match;
-        } catch (error) {
-          console.error(`Error fetching scorecard for match ${match.id}:`, error);
-          return match;
+        } else {
+          console.error(`Error fetching scorecard for match ${match.id}: ${scorecardResponse.status}`);
+          enhancedMatches.push(match);
         }
-      })
-    );
+      } catch (error) {
+        console.error(`Error processing scorecard for match ${match.id}:`, error);
+        enhancedMatches.push(match);
+      }
+    }
+    
+    // Append remaining matches
+    if (matchesData.data.length > 8) {
+      enhancedMatches.push(...matchesData.data.slice(8));
+    }
     
     return enhancedMatches.length > 0 ? enhancedMatches : matchesData.data;
   } catch (error) {
     console.error("Error fetching cricket data:", error);
-    throw error; // Re-throw to be handled by caller
+    // Try alternate endpoint as fallback
+    try {
+      const fallbackUrl = `https://api.cricapi.com/v1/cricScore?apikey=${CRICKET_API_KEY}`;
+      console.log("Trying fallback endpoint:", fallbackUrl);
+      const fallbackResponse = await fetch(fallbackUrl);
+      
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData.status === "success" && Array.isArray(fallbackData.data)) {
+          console.log(`Retrieved ${fallbackData.data.length} matches from fallback API`);
+          return fallbackData.data;
+        }
+      }
+    } catch (fallbackError) {
+      console.error("Fallback fetch also failed:", fallbackError);
+    }
+    return [];
   }
 }
 
@@ -333,7 +348,8 @@ async function getChatGPTResponse(context, hasData) {
       venue: match.venue,
       date: match.date,
       matchStarted: match.matchStarted,
-      matchEnded: match.matchEnded
+      matchEnded: match.matchEnded,
+      scorecard: match.scorecard ? "Available" : "Not available" // Just indicate if available
     }));
     
     const playerSummary = context.playerStats.map(player => ({
@@ -357,7 +373,14 @@ async function getChatGPTResponse(context, hasData) {
     let systemPrompt = `You are a cricket fantasy expert assistant. 
 You analyze real-time cricket data and provide helpful advice to fantasy cricket players.
 Be concise, insightful, and actionable in your responses.
-Current date: ${context.currentDate}`;
+Current date: ${context.currentDate}
+
+Important guidelines:
+1. Always focus specifically on answering the user's query with cricket insights
+2. Provide specific player names and match details when available
+3. For fantasy recommendations, focus on current form, matchups, and pitch conditions
+4. Do not make up data - be honest when you don't have specific information
+5. Keep responses under 200 words and focused on cricket fantasy advice`;
 
     // Customize response based on data availability
     let userPrompt = "";
