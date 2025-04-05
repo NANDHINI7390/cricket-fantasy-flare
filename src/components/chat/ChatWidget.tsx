@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, ChevronDown, Share2, RefreshCw } from "lucide-react";
+import { MessageSquare, X, ChevronDown, Share2, RefreshCw, AlertTriangle } from "lucide-react";
 import { fetchLiveMatches, fetchLiveScores, CricketMatch } from "@/utils/cricket-api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +22,7 @@ const ChatWidget: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [aiPowered, setAiPowered] = useState<boolean>(true);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [dataLoadingStatus, setDataLoadingStatus] = useState<string>("idle");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -64,15 +65,20 @@ const ChatWidget: React.FC = () => {
   // Fetch cricket match data
   const fetchCricketData = async () => {
     setIsLoading(true);
+    setDataLoadingStatus("loading");
     try {
       const [liveMatches, liveScores] = await Promise.all([
         fetchLiveMatches(),
         fetchLiveScores()
       ]);
       
+      console.log("Fetched matches data:", liveMatches.length);
+      console.log("Fetched scores data:", liveScores.length);
+      
       // Combine data from both APIs to get the most complete information
       const combinedMatches = mergeMatchData(liveMatches, liveScores);
       setMatches(combinedMatches);
+      setDataLoadingStatus(combinedMatches.length > 0 ? "success" : "empty");
       
       // Add a match update message if there are matches
       if (combinedMatches.length > 0) {
@@ -98,6 +104,7 @@ const ChatWidget: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching cricket data:", error);
+      setDataLoadingStatus("error");
       setMessages(prev => [
         ...prev,
         {
@@ -114,6 +121,8 @@ const ChatWidget: React.FC = () => {
 
   // Handle user message submission
   const handleSendMessage = async (inputValue: string) => {
+    if (!inputValue.trim()) return;
+    
     // Add user message
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -164,6 +173,15 @@ const ChatWidget: React.FC = () => {
   // Fetch AI-powered response from edge function
   const fetchAIResponse = async (query: string) => {
     try {
+      // Show thinking message
+      setMessages(prev => [...prev, {
+        id: `thinking-${Date.now()}`,
+        type: "bot",
+        content: "Thinking...",
+        timestamp: new Date(),
+        isTemporary: true // Mark as temporary so we can replace it
+      }]);
+
       const response = await fetch(
         "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-assistant",
         {
@@ -175,7 +193,11 @@ const ChatWidget: React.FC = () => {
         }
       );
 
+      // Remove thinking message
+      setMessages(prev => prev.filter(m => !m.isTemporary));
+
       const data = await response.json();
+      console.log("AI response:", data);
       
       // Check if there's an error message in the response
       if (!response.ok || data.error) {
@@ -207,26 +229,41 @@ const ChatWidget: React.FC = () => {
       
       // If the response includes match data, update our matches
       if (data.cricketData && data.cricketData.length > 0) {
+        console.log("Updating matches with data from AI response");
         setMatches(data.cricketData);
       }
       
       // If query was about scores, show match cards
       if (query.toLowerCase().includes("score") || query.toLowerCase().includes("match")) {
-        const matchesToShow = data.cricketData?.slice(0, 3) || matches.slice(0, 3);
+        const matchesToShow = data.cricketData?.length > 0 
+          ? data.cricketData.slice(0, 3) 
+          : matches.slice(0, 3);
         
-        matchesToShow.forEach(match => {
+        if (matchesToShow.length > 0) {
+          matchesToShow.forEach(match => {
+            setMessages(prev => [...prev, {
+              id: `match-${match.id}-${Date.now()}`,
+              type: "match-update",
+              content: match.name,
+              timestamp: new Date(),
+              matchData: match,
+            }]);
+          });
+        } else if (data.hasData === false) {
+          // If AI knows there's no data
           setMessages(prev => [...prev, {
-            id: `match-${match.id}-${Date.now()}`,
-            type: "match-update",
-            content: match.name,
+            id: `no-matches-${Date.now()}`,
+            type: "bot",
+            content: "I don't have any current match data available. Check back later or try refreshing.",
             timestamp: new Date(),
-            matchData: match,
           }]);
-        });
+        }
       }
       
       // If query was about players, show player suggestions
-      if (query.toLowerCase().includes("captain") || query.toLowerCase().includes("player") || query.toLowerCase().includes("team")) {
+      if (query.toLowerCase().includes("captain") || 
+          query.toLowerCase().includes("player") || 
+          query.toLowerCase().includes("team")) {
         // Handle player suggestions if included in the response
         if (data.playerStats && data.playerStats.length > 0) {
           const captain = data.playerStats[0];
@@ -249,6 +286,9 @@ const ChatWidget: React.FC = () => {
     } catch (error) {
       console.error("Error fetching AI response:", error);
       setAiError(error.message);
+      
+      // Remove thinking message
+      setMessages(prev => prev.filter(m => !m.isTemporary));
       
       // Fallback to basic processing
       processUserQuery(query.toLowerCase(), matches, setMessages);
@@ -293,13 +333,62 @@ const ChatWidget: React.FC = () => {
     });
   };
 
+  // Render error notice
+  const renderErrorNotice = () => {
+    if (!aiError) return null;
+    
+    return (
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2">
+        <div className="flex items-start">
+          <AlertTriangle className="text-yellow-500 mr-2 mt-0.5 flex-shrink-0" size={16} />
+          <div className="text-xs text-yellow-800">
+            <p className="font-medium">AI Service Issue</p>
+            <p>Limited functionality available. Using basic mode.</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render data status
+  const renderDataStatus = () => {
+    if (dataLoadingStatus === "idle" || dataLoadingStatus === "success") return null;
+    
+    let statusMessage = "";
+    let statusColor = "";
+    
+    switch (dataLoadingStatus) {
+      case "loading":
+        statusMessage = "Loading cricket data...";
+        statusColor = "text-blue-600";
+        break;
+      case "empty":
+        statusMessage = "No cricket matches found";
+        statusColor = "text-orange-600";
+        break;
+      case "error":
+        statusMessage = "Failed to load cricket data";
+        statusColor = "text-red-600";
+        break;
+    }
+    
+    return (
+      <div className={`text-xs ${statusColor} mb-1 flex items-center`}>
+        {dataLoadingStatus === "loading" ? (
+          <div className="animate-spin h-3 w-3 mr-1 border border-current rounded-full border-t-transparent"></div>
+        ) : null}
+        {statusMessage}
+      </div>
+    );
+  };
+
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end">
       {/* Chat toggle button */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={`rounded-full p-3 shadow-lg focus:outline-none ${
-          isOpen ? "bg-red-500 text-white" : "bg-blue-600 text-white"
+          isOpen ? "bg-red-500 text-white" : "bg-gradient-to-r from-purple-600 to-blue-500 text-white"
         }`}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -319,7 +408,7 @@ const ChatWidget: React.FC = () => {
             className="bg-white rounded-lg shadow-xl w-80 sm:w-96 h-[500px] mb-2 flex flex-col overflow-hidden"
           >
             {/* Chat header */}
-            <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
+            <div className="bg-gradient-to-r from-purple-600 to-blue-500 text-white px-4 py-3 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium">Cricket Fantasy AI</h3>
                 {aiPowered && !aiError && (
@@ -350,7 +439,7 @@ const ChatWidget: React.FC = () => {
                     <div className="py-6">
                       <Button 
                         onClick={handleShareInvite}
-                        className="w-full flex items-center justify-center gap-2"
+                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600"
                       >
                         <Share2 size={16} />
                         Share Invite Link
@@ -376,6 +465,14 @@ const ChatWidget: React.FC = () => {
               </TabsList>
               
               <TabsContent value="chat" className="flex-grow flex flex-col overflow-hidden m-0 p-0">
+                {/* Error notice */}
+                {renderErrorNotice()}
+                
+                {/* Data status */}
+                <div className="px-4 pt-1">
+                  {renderDataStatus()}
+                </div>
+                
                 {/* Chat messages */}
                 <ScrollArea className="flex-grow px-4 py-2" ref={chatContainerRef}>
                   <div className="space-y-2 pb-4">

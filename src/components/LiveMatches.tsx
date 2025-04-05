@@ -15,6 +15,7 @@ const LiveMatches = () => {
   const [activeFilter, setActiveFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<CricketMatch | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
 
   useEffect(() => {
     fetchMatches();
@@ -30,6 +31,9 @@ const LiveMatches = () => {
         throw new Error("Invalid response format from API");
       }
 
+      console.log("Fetched matches:", liveMatches.length);
+      console.log("Fetched scores:", liveScores.length);
+
       // Combine data from both API calls
       const updatedMatches = liveMatches.map((match) => {
         const scoreData = liveScores.find((s) => s.id === match.id);
@@ -37,16 +41,20 @@ const LiveMatches = () => {
           ...match, 
           score: scoreData?.score || match.score || [],
           teams: match.teams || scoreData?.teams || [],
-          teamInfo: match.teamInfo || scoreData?.teamInfo || []
+          teamInfo: match.teamInfo || scoreData?.teamInfo || [],
+          localDateTime: match.localDateTime || scoreData?.localDateTime
         };
       });
 
       const categorizedMatches = categorizeMatches(updatedMatches);
       setMatches(categorizedMatches);
       setFilteredMatches(categorizedMatches);
+      setLastUpdated(new Date().toLocaleTimeString());
       
       if (categorizedMatches.length === 0) {
         toast.info("No matches are currently available. Check back later!");
+      } else {
+        toast.success(`Found ${categorizedMatches.length} cricket matches`);
       }
     } catch (error) {
       console.error("Fetch Matches Error:", error);
@@ -93,16 +101,23 @@ const LiveMatches = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Live & Upcoming Matches</h2>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={fetchMatches}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw size={16} />
-          Refresh
-        </Button>
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+          Live & Upcoming Matches
+        </h2>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">
+            Last updated: {lastUpdated}
+          </span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchMatches}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -112,6 +127,10 @@ const LiveMatches = () => {
             variant={activeFilter === category ? "default" : "outline"}
             onClick={() => filterMatches(category)}
             size="sm"
+            className={activeFilter === category ? 
+              "bg-gradient-to-r from-purple-600 to-blue-500 text-white border-none" : 
+              "text-gray-700 hover:bg-gradient-to-r hover:from-purple-600/10 hover:to-blue-500/10"
+            }
           >
             {category}
           </Button>
@@ -132,7 +151,11 @@ const LiveMatches = () => {
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No matches found</h3>
           <p className="text-gray-500 mb-6">There are no matches available for the selected category.</p>
-          <Button onClick={fetchMatches} variant="outline">
+          <Button 
+            onClick={fetchMatches} 
+            variant="outline"
+            className="bg-gradient-to-r from-purple-600/20 to-blue-500/20 hover:from-purple-600/30 hover:to-blue-500/30"
+          >
             <RefreshCw size={16} className="mr-2" />
             Refresh Data
           </Button>

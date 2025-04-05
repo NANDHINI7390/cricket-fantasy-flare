@@ -30,6 +30,7 @@ export interface CricketMatch {
   category?: string;
   tossWinner?: string;
   tossChoice?: string;
+  localDateTime?: string; // Added for local time display
 }
 
 // Fetches live matches (without ball-by-ball updates)
@@ -42,10 +43,12 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
       throw new Error(data.reason || "Failed to fetch live matches");
     }
 
+    // Add local date/time to each match
     return data.data?.map((match: any) => ({
       ...match,
       tossWinner: match.tossWinner || "",
-      tossChoice: match.tossChoice || ""
+      tossChoice: match.tossChoice || "",
+      localDateTime: match.dateTimeGMT ? new Date(match.dateTimeGMT).toLocaleString() : ""
     })) || [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
@@ -96,6 +99,8 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
         });
       }
       
+      const startTimeGMT = match.dateTimeGMT || new Date().toISOString();
+      
       return {
         ...match,
         teams: [team1Name, team2Name],
@@ -105,7 +110,9 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
         ],
         score: scoreObjects.length > 0 ? scoreObjects : undefined,
         matchStarted: match.ms === "live" || match.ms === "result",
-        matchEnded: match.ms === "result"
+        matchEnded: match.ms === "result",
+        dateTimeGMT: startTimeGMT,
+        localDateTime: new Date(startTimeGMT).toLocaleString()
       };
     });
     
@@ -117,7 +124,8 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
 };
 
 // Helper function to parse score strings like "292/8 (50)"
-const parseScore = (scoreString: string): [number, number, number] => {
+const parseScore = (scoreString: string): [number, number, number] =>
+{
   if (!scoreString) return [0, 0, 0];
   
   // Extract runs/wickets part
@@ -235,7 +243,7 @@ export const formatTossInfo = (match: CricketMatch): string => {
   return `${winnerTeam} won the toss`;
 };
 
-// Helper to format date and time in user's local timezone
+// Helper to format date and time in user's local timezone with improved precision
 export const formatMatchDateTime = (dateTimeGMT?: string): string => {
   if (!dateTimeGMT) return "Date not available";
   
@@ -243,10 +251,16 @@ export const formatMatchDateTime = (dateTimeGMT?: string): string => {
     // Create a Date object from the GMT string
     const matchDate = new Date(dateTimeGMT);
     
-    // Format the date in the user's local timezone
+    // Check if date is valid
+    if (isNaN(matchDate.getTime())) {
+      return "Invalid date";
+    }
+    
+    // Format the date in the user's local timezone with improved formatting
     return new Intl.DateTimeFormat('default', { 
       dateStyle: 'medium', 
       timeStyle: 'short',
+      hour12: true  // Ensure 12-hour format with AM/PM
     }).format(matchDate);
   } catch (error) {
     console.error("Error formatting date:", error);
@@ -254,7 +268,7 @@ export const formatMatchDateTime = (dateTimeGMT?: string): string => {
   }
 }
 
-// Helper to categorize matches by start time and status
+// Helper to categorize matches by start time and status with improved time logic
 export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
   // Current time in user's local timezone
   const now = new Date();
@@ -272,39 +286,51 @@ export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
         
         console.log(`Match: ${match.name}, Time: ${matchTime.toLocaleString()}, Hours diff: ${hoursDiff}`);
         
-        // Live matches
+        // Add local date time to the match
+        const enhancedMatch = {
+          ...match,
+          localDateTime: matchTime.toLocaleString()
+        };
+        
+        // Live matches - using status or matchStarted/matchEnded properties
         if (match.status.toLowerCase() === "live" || 
             (match.matchStarted && !match.matchEnded)) {
-          return { ...match, category: "Live" };
+          return { ...enhancedMatch, category: "Live" };
+        }
+        
+        // For matches with matchStarted=true but status doesn't say "Live",
+        // check if the match time is within the last 6 hours
+        if (match.matchStarted && hoursDiff <= 0 && hoursDiff > -6) {
+          return { ...enhancedMatch, category: "Live" };
         }
         
         // Upcoming matches (within next 48 hours)
         if (hoursDiff > 0 && hoursDiff <= 48) {
-          return { ...match, category: "Upcoming" };
+          return { ...enhancedMatch, category: "Upcoming" };
         }
         
         // Recently completed matches (within last 48 hours)
         if (hoursDiff < 0 && hoursDiff >= -48 && 
             (match.matchEnded || match.status.toLowerCase().includes("won"))) {
-          return { ...match, category: "Completed" };
+          return { ...enhancedMatch, category: "Completed" };
         }
         
         // Matches outside of the 48-hour window (future or past)
         if (hoursDiff > 48) {
-          return { ...match, category: "Upcoming" };
+          return { ...enhancedMatch, category: "Upcoming" };
         }
         
         if (hoursDiff < -48 && 
             (match.matchEnded || match.status.toLowerCase().includes("won"))) {
-          return { ...match, category: "Completed" };
+          return { ...enhancedMatch, category: "Completed" };
         }
         
         // Default categorization based on match status
         if (match.status.toLowerCase().includes("won") || match.matchEnded) {
-          return { ...match, category: "Completed" };
+          return { ...enhancedMatch, category: "Completed" };
         }
         
-        return { ...match, category: "Upcoming" };
+        return { ...enhancedMatch, category: "Upcoming" };
       } catch (error) {
         console.error(`Error categorizing match: ${match.name}`, error);
         return null;

@@ -3,3 +3,6 @@ project_id = "yefrdovbporfjdhfojyx"
 
 [functions.cricket-assistant]
 verify_jwt = false
+
+[functions.fetch-cricket-matches]
+verify_jwt = false
