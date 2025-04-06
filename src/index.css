@@ -89,4 +89,61 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: rgba(148, 163, 184, 0.8);
   }
+
+  /* Step transition animations */
+  @keyframes fadeIn {
+    from { 
+      opacity: 0; 
+      transform: translateY(20px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+  
+  @keyframes fadeOut {
+    from { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+    to { 
+      opacity: 0; 
+      transform: translateY(-20px); 
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  
+  .animate-fadeOut {
+    animation: fadeOut 0.3s ease-in forwards;
+  }
+
+  /* Modal overlay fade animation */
+  .dialog-overlay-fade {
+    animation: overlayFadeIn 0.2s ease-out forwards;
+  }
+
+  @keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  /* Modal content slide up animation */
+  .dialog-content-slide {
+    animation: contentSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes contentSlideUp {
+    from { 
+      opacity: 0;
+      transform: translate(-50%, -45%);
+    }
+    to { 
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+  }
 }

@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SelectedPlayer, PlayerRole } from "@/types/player";
 import { FantasyTeam } from "@/types/team";
 
@@ -55,6 +56,11 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [viceCaptainId, setViceCaptainId] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [transitionClass, setTransitionClass] = useState("");
+
+  // Refs for scrolling and steppers
+  const contentRef = useRef<HTMLDivElement>(null);
+  const nextStepTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const { data: matches, isLoading: matchesLoading } = useQuery({
     queryKey: ["cricket-matches"],
@@ -79,6 +85,31 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   const hasTeamLimitExceeded = Object.values(teamCounts).some(count => count > maxPlayersPerTeam);
 
+  // Check if player selection is complete
+  const isSelectionComplete = selectedPlayersCount === 11 && captainId && viceCaptainId && !hasTeamLimitExceeded;
+
+  // Animation for step transition
+  const applyStepTransition = (newStep: number) => {
+    // Add exiting animation
+    setTransitionClass("animate-fadeOut");
+    
+    // After short delay, change step and add entering animation
+    setTimeout(() => {
+      setStep(newStep);
+      setTransitionClass("animate-fadeIn");
+      
+      // Clear transition class after animation completes
+      setTimeout(() => {
+        setTransitionClass("");
+      }, 500);
+      
+      // Scroll to top of content when changing steps
+      if (contentRef.current) {
+        contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 300);
+  };
+
   useEffect(() => {
     if (open) {
       // Reset form when modal opens
@@ -91,8 +122,36 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       setSearchQuery("");
       setCaptainId("");
       setViceCaptainId("");
+      setTransitionClass("");
+      
+      // Clear any pending timeouts
+      if (nextStepTimeout.current) {
+        clearTimeout(nextStepTimeout.current);
+      }
     }
   }, [open]);
+
+  // Automatically proceed to next step when selection is complete
+  useEffect(() => {
+    if (step === 2 && isSelectionComplete && !nextStepTimeout.current) {
+      // Show success toast
+      toast.success("Team selection complete! Proceeding to review...");
+      
+      // Set timeout to proceed to next step after toast is shown
+      nextStepTimeout.current = setTimeout(() => {
+        applyStepTransition(3);
+        nextStepTimeout.current = null;
+      }, 1500);
+    }
+    
+    return () => {
+      // Clean up timeout if component unmounts
+      if (nextStepTimeout.current) {
+        clearTimeout(nextStepTimeout.current);
+        nextStepTimeout.current = null;
+      }
+    };
+  }, [isSelectionComplete, step]);
 
   // Filter players based on search query
   useEffect(() => {
@@ -206,6 +265,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         toast.error("Please select a match");
         return;
       }
+      applyStepTransition(2);
     } else if (step === 2) {
       if (selectedPlayersCount !== 11) {
         toast.error("Please select exactly 11 players");
@@ -223,18 +283,17 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         toast.error("Please select a vice-captain");
         return;
       }
-    }
-
-    setStep(prev => prev + 1);
-    
-    // Generate invite code when reaching the invite step
-    if (step === 3) {
+      applyStepTransition(3);
+    } else if (step === 3) {
+      applyStepTransition(4);
       generateInviteCode();
     }
   };
 
   const handlePrevStep = () => {
-    setStep(prev => Math.max(1, prev - 1));
+    if (step > 1) {
+      applyStepTransition(step - 1);
+    }
   };
 
   const handleSubmit = async () => {
@@ -279,8 +338,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       existingLeagues.push(newLeague);
       localStorage.setItem('fantasy_leagues', JSON.stringify(existingLeagues));
       
-      // Close modal and reset
-      onOpenChange(false);
+      // Show success and transition to final step
+      applyStepTransition(4);
     } catch (error) {
       console.error(error);
       toast.error("Failed to create league");
@@ -296,11 +355,43 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       .catch(() => toast.error("Failed to copy invite link"));
   };
 
+  // Add CSS classes for step transitions
+  useEffect(() => {
+    if (!open) return;
+    
+    // Add step transition classes to index.css
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      @keyframes fadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-20px); }
+      }
+      
+      .animate-fadeIn {
+        animation: fadeIn 0.4s ease-out forwards;
+      }
+      
+      .animate-fadeOut {
+        animation: fadeOut 0.3s ease-in forwards;
+      }
+    `;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, [open]);
+
   const renderStep = () => {
     switch (step) {
       case 1:
         return (
-          <div className="space-y-6">
+          <div className={`space-y-6 ${transitionClass}`}>
             <div className="space-y-3">
               <div className="flex items-center gap-2 mb-2">
                 <div className="bg-primary/10 p-2.5 rounded-full">
@@ -380,7 +471,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         
       case 2:
         return (
-          <div className="space-y-4">
+          <div className={`space-y-4 ${transitionClass}`}>
             <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-lg shadow-md">
               <h3 className="text-lg font-medium">Select Your Dream Team</h3>
               <Badge variant="outline" className="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-bold border-white">
@@ -410,79 +501,81 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto p-1 custom-scrollbar">
-              {filteredPlayers.map((player) => (
-                <Card 
-                  key={player.id} 
-                  className={`border overflow-hidden transition-all hover:shadow-md ${
-                    player.selected 
-                      ? 'border-primary bg-primary/5 shadow-md' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{player.name}</div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs border-gray-200 bg-gray-50">
-                            {player.team}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs capitalize border-gray-200 bg-gray-50">
-                            {player.role}
-                          </Badge>
-                          <span className="text-xs text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded">
-                            {player.credits} Cr
-                          </span>
+            <ScrollArea className="h-[50vh] pr-4 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-1">
+                {filteredPlayers.map((player) => (
+                  <Card 
+                    key={player.id} 
+                    className={`border overflow-hidden transition-all hover:shadow-md ${
+                      player.selected 
+                        ? 'border-primary bg-primary/5 shadow-md' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{player.name}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs border-gray-200 bg-gray-50">
+                              {player.team}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs capitalize border-gray-200 bg-gray-50">
+                              {player.role}
+                            </Badge>
+                            <span className="text-xs text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded">
+                              {player.credits} Cr
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {player.selected && (
+                            <div className="flex gap-1.5">
+                              <Button 
+                                size="sm" 
+                                variant={player.isCaptain ? "default" : "outline"}
+                                onClick={() => handleSetCaptain(player.id)}
+                                className={`text-xs h-8 w-8 p-0 font-bold rounded-full ${player.isCaptain ? 'bg-green-600 hover:bg-green-700 border-green-600' : 'border-gray-300'}`}
+                              >
+                                C
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant={player.isViceCaptain ? "default" : "outline"}
+                                onClick={() => handleSetViceCaptain(player.id)}
+                                className={`text-xs h-8 w-8 p-0 font-bold rounded-full ${player.isViceCaptain ? 'bg-blue-600 hover:bg-blue-700 border-blue-600' : 'border-gray-300'}`}
+                              >
+                                VC
+                              </Button>
+                            </div>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant={player.selected ? "destructive" : "default"}
+                            onClick={() => handlePlayerSelection(player.id)}
+                            className={`h-9 ${player.selected ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
+                          >
+                            {player.selected ? "Remove" : "Select"}
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        {player.selected && (
-                          <div className="flex gap-1.5">
-                            <Button 
-                              size="sm" 
-                              variant={player.isCaptain ? "default" : "outline"}
-                              onClick={() => handleSetCaptain(player.id)}
-                              className={`text-xs h-8 w-8 p-0 font-bold rounded-full ${player.isCaptain ? 'bg-green-600 hover:bg-green-700 border-green-600' : 'border-gray-300'}`}
-                            >
-                              C
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant={player.isViceCaptain ? "default" : "outline"}
-                              onClick={() => handleSetViceCaptain(player.id)}
-                              className={`text-xs h-8 w-8 p-0 font-bold rounded-full ${player.isViceCaptain ? 'bg-blue-600 hover:bg-blue-700 border-blue-600' : 'border-gray-300'}`}
-                            >
-                              VC
-                            </Button>
-                          </div>
-                        )}
-                        <Button 
-                          size="sm" 
-                          variant={player.selected ? "destructive" : "default"}
-                          onClick={() => handlePlayerSelection(player.id)}
-                          className={`h-9 ${player.selected ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
-                        >
-                          {player.selected ? "Remove" : "Select"}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              
-              {filteredPlayers.length === 0 && (
-                <div className="col-span-2 flex flex-col items-center justify-center py-10 text-gray-500">
-                  <Search className="h-12 w-12 mb-2 opacity-20" />
-                  <p>No players found matching "{searchQuery}"</p>
-                  <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
-                    Clear search
-                  </Button>
-                </div>
-              )}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {filteredPlayers.length === 0 && (
+                  <div className="col-span-2 flex flex-col items-center justify-center py-10 text-gray-500">
+                    <Search className="h-12 w-12 mb-2 opacity-20" />
+                    <p>No players found matching "{searchQuery}"</p>
+                    <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
+                      Clear search
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
             
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100 shadow-sm">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100 shadow-sm mt-4">
               <div className="text-sm font-medium text-blue-800 mb-2">Team Selection Rules:</div>
               <ul className="grid grid-cols-2 gap-3">
                 <li className={`flex items-center text-sm ${selectedPlayersCount === 11 ? "text-green-600" : "text-gray-600"}`}>
@@ -521,91 +614,93 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       case 3:
         const selectedMatch = matches?.find(m => m.match_id === selectedMatchId);
         return (
-          <div className="space-y-5">
+          <div className={`space-y-5 ${transitionClass}`}>
             <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-5 rounded-lg text-center shadow-lg">
               <h3 className="text-xl font-bold mb-1">Almost There!</h3>
               <p className="text-purple-100">Review your league details before creating</p>
             </div>
             
-            <div className="space-y-4">
-              <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center mb-3">
-                  <Trophy className="h-5 w-5 text-yellow-500 mr-2" />
-                  <h4 className="font-semibold text-lg">League Details</h4>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <p className="text-sm text-gray-500">League Name</p>
-                    <p className="font-medium">{leagueName}</p>
+            <ScrollArea className="h-[50vh] pr-4">
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center mb-3">
+                    <Trophy className="h-5 w-5 text-yellow-500 mr-2" />
+                    <h4 className="font-semibold text-lg">League Details</h4>
                   </div>
                   
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <p className="text-sm text-gray-500">Type</p>
-                    <div className="flex items-center">
-                      <Badge variant={isPublic ? "default" : "secondary"} className="mt-1">
-                        {isPublic ? "Public" : "Private"}
-                      </Badge>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-3 rounded-md">
+                      <p className="text-sm text-gray-500">League Name</p>
+                      <p className="font-medium">{leagueName}</p>
                     </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center mb-3">
-                  <Users className="h-5 w-5 text-blue-500 mr-2" />
-                  <h4 className="font-semibold text-lg">Match</h4>
-                </div>
-                
-                {selectedMatch && (
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-md border border-blue-100">
-                    <div className="font-bold text-gray-800 flex justify-between items-center">
-                      <span>{selectedMatch.team1_name}</span>
-                      <span className="text-sm bg-white px-2 py-1 rounded text-gray-500">VS</span>
-                      <span>{selectedMatch.team2_name}</span>
-                    </div>
-                    <div className="text-sm text-gray-600 mt-2 text-center">{selectedMatch.time}</div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center mb-3">
-                  <Users className="h-5 w-5 text-green-500 mr-2" />
-                  <h4 className="font-semibold text-lg">Your Team</h4>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-h-[30vh] overflow-y-auto pr-1 custom-scrollbar">
-                  {selectedPlayers.map(player => (
-                    <div 
-                      key={player.id}
-                      className="flex items-center justify-between bg-gray-50 p-2.5 rounded-md border hover:border-gray-300 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{player.name}</span>
-                        <Badge variant="outline" className="text-xs border-gray-200 bg-white">
-                          {player.team}
+                    
+                    <div className="bg-gray-50 p-3 rounded-md">
+                      <p className="text-sm text-gray-500">Type</p>
+                      <div className="flex items-center">
+                        <Badge variant={isPublic ? "default" : "secondary"} className="mt-1">
+                          {isPublic ? "Public" : "Private"}
                         </Badge>
                       </div>
-                      <div className="flex gap-1">
-                        {player.isCaptain && (
-                          <Badge className="bg-green-600">C</Badge>
-                        )}
-                        {player.isViceCaptain && (
-                          <Badge className="bg-blue-600">VC</Badge>
-                        )}
-                      </div>
                     </div>
-                  ))}
+                  </div>
+                </div>
+                
+                <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center mb-3">
+                    <Users className="h-5 w-5 text-blue-500 mr-2" />
+                    <h4 className="font-semibold text-lg">Match</h4>
+                  </div>
+                  
+                  {selectedMatch && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-md border border-blue-100">
+                      <div className="font-bold text-gray-800 flex justify-between items-center">
+                        <span>{selectedMatch.team1_name}</span>
+                        <span className="text-sm bg-white px-2 py-1 rounded text-gray-500">VS</span>
+                        <span>{selectedMatch.team2_name}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-2 text-center">{selectedMatch.time}</div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center mb-3">
+                    <Users className="h-5 w-5 text-green-500 mr-2" />
+                    <h4 className="font-semibold text-lg">Your Team</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
+                    {selectedPlayers.map(player => (
+                      <div 
+                        key={player.id}
+                        className="flex items-center justify-between bg-gray-50 p-2.5 rounded-md border hover:border-gray-300 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{player.name}</span>
+                          <Badge variant="outline" className="text-xs border-gray-200 bg-white">
+                            {player.team}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1">
+                          {player.isCaptain && (
+                            <Badge className="bg-green-600">C</Badge>
+                          )}
+                          {player.isViceCaptain && (
+                            <Badge className="bg-blue-600">VC</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            </ScrollArea>
           </div>
         );
         
       case 4:
         return (
-          <div className="space-y-8 text-center">
+          <div className={`space-y-8 text-center ${transitionClass}`}>
             <div className="mx-auto bg-gradient-to-r from-green-400 to-emerald-500 w-20 h-20 rounded-full flex items-center justify-center shadow-lg">
               <Check className="h-10 w-10 text-white" />
             </div>
@@ -658,7 +753,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         
         {/* Step progress indicators */}
         {step < 4 && (
-          <div className="flex justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b">
+          <div className="flex justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b sticky top-0 z-10">
             {[1, 2, 3].map((stepNumber) => (
               <div key={stepNumber} className="flex-1 flex flex-col items-center p-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 transition-colors
@@ -680,13 +775,13 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
           </div>
         )}
         
-        <div className="p-6 bg-gradient-to-br from-white to-gray-50">
+        <div className="p-6 bg-gradient-to-br from-white to-gray-50" ref={contentRef}>
           {renderStep()}
         </div>
         
-        {/* Navigation buttons */}
+        {/* Navigation buttons - Fixed at bottom to always stay visible */}
         {step < 4 && (
-          <div className="flex justify-between p-4 border-t bg-gray-50">
+          <div className="flex justify-between p-4 border-t bg-gray-50 sticky bottom-0">
             <Button
               variant="outline"
               onClick={step > 1 ? handlePrevStep : () => onOpenChange(false)}
@@ -708,7 +803,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             <Button
               onClick={step === 3 ? handleSubmit : handleNextStep}
               className={`w-28 shadow-sm transition-all ${step === 3 ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-              disabled={isSubmitting}
+              disabled={isSubmitting || (step === 2 && !isSelectionComplete)}
             >
               {isSubmitting ? (
                 <>

@@ -1,8 +1,14 @@
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import LeagueFeatureCards from "./league/LeagueFeatureCards";
+import CreateLeagueModal from "./league/CreateLeagueModal";
+import { Button } from "./ui/button";
+import { Users, Sparkles } from "lucide-react";
 
 const CreateLeague = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <section className="py-16 relative overflow-hidden">
       {/* Background gradient and decorations */}
@@ -45,9 +51,28 @@ const CreateLeague = () => {
           >
             Create custom leagues, invite friends, and battle for the top spot on the leaderboard with our intuitive fantasy cricket platform.
           </motion.p>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="mt-8"
+          >
+            <Button 
+              onClick={() => setIsModalOpen(true)}
+              size="lg" 
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium px-8 py-6 h-auto text-lg shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
+            >
+              <Sparkles className="mr-2 h-5 w-5" /> Create Your League Now
+            </Button>
+          </motion.div>
         </div>
 
         <LeagueFeatureCards />
+        
+        {/* Modal for league creation */}
+        <CreateLeagueModal open={isModalOpen} onOpenChange={setIsModalOpen} />
       </div>
     </section>
   );
