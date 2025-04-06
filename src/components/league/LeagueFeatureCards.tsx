@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, ChevronRight, CricketBall, Share2, Shield, Trophy, Users } from "lucide-react";
+import { ArrowRight, ChevronRight, Award, Share2, Shield, Trophy, Users } from "lucide-react";
 import { Button } from "../ui/button";
 import CreateLeagueModal from "./CreateLeagueModal";
 import { toast } from "sonner";
@@ -45,7 +45,7 @@ const LeagueFeatureCards = () => {
     },
     {
       id: "track",
-      icon: <CricketBall className="w-10 h-10 text-green-600" />,
+      icon: <Award className="w-10 h-10 text-green-600" />,
       title: "Track Points in Real-Time",
       description: "Watch your team earn points live during matches.",
       action: "View Demo"

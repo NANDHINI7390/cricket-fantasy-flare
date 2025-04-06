@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { SelectedPlayer } from "@/types/player";
+import { SelectedPlayer, PlayerRole } from "@/types/player";
 import { FantasyTeam } from "@/types/team";
 
 type CreateLeagueModalProps = {
@@ -26,7 +25,7 @@ type Match = {
   time: string;
 };
 
-const mockPlayers = [
+const mockPlayers: SelectedPlayer[] = [
   { id: "1", name: "Virat Kohli", team: "IND", role: "batsman", credits: 10, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
   { id: "2", name: "Rohit Sharma", team: "IND", role: "batsman", credits: 9.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
   { id: "3", name: "Jasprit Bumrah", team: "IND", role: "bowler", credits: 9, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
