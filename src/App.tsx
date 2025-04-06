@@ -15,6 +15,7 @@ import Leaderboard from "./pages/Leaderboard";
 import MyTeams from "./pages/MyTeams";
 import Profile from "./pages/Profile";
 import Wallet from "./pages/Wallet";
+import JoinLeague from "./pages/JoinLeague";
 import { useEffect } from "react";
 import { initSentry } from "./integrations/sentry/config";
 import * as Sentry from '@sentry/react';
@@ -67,6 +68,7 @@ const App = () => (
                   <Route path="/my-teams" element={<MyTeams />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/wallet" element={<Wallet />} />
+                  <Route path="/join-league/:code" element={<JoinLeague />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>
