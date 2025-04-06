@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,20 +27,20 @@ type Match = {
 };
 
 const mockPlayers: SelectedPlayer[] = [
-  { id: "1", name: "Virat Kohli", team: "IND", role: "batsman", credits: 10, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "2", name: "Rohit Sharma", team: "IND", role: "batsman", credits: 9.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "3", name: "Jasprit Bumrah", team: "IND", role: "bowler", credits: 9, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "4", name: "Hardik Pandya", team: "IND", role: "allrounder", credits: 8.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "5", name: "Ravindra Jadeja", team: "IND", role: "allrounder", credits: 8.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "6", name: "KL Rahul", team: "IND", role: "batsman", credits: 8, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "7", name: "Rishabh Pant", team: "IND", role: "wicketkeeper", credits: 8.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "8", name: "Babar Azam", team: "PAK", role: "batsman", credits: 10, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "9", name: "Shaheen Afridi", team: "PAK", role: "bowler", credits: 9, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "10", name: "Mohammad Rizwan", team: "PAK", role: "wicketkeeper", credits: 9, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "11", name: "Shadab Khan", team: "PAK", role: "allrounder", credits: 8.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "12", name: "Naseem Shah", team: "PAK", role: "bowler", credits: 8, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "13", name: "Fakhar Zaman", team: "PAK", role: "batsman", credits: 8, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
-  { id: "14", name: "Haris Rauf", team: "PAK", role: "bowler", credits: 8, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "1", name: "Virat Kohli", team: "IND", role: "batsman" as PlayerRole, credits: 10, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "2", name: "Rohit Sharma", team: "IND", role: "batsman" as PlayerRole, credits: 9.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "3", name: "Jasprit Bumrah", team: "IND", role: "bowler" as PlayerRole, credits: 9, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "4", name: "Hardik Pandya", team: "IND", role: "allrounder" as PlayerRole, credits: 8.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "5", name: "Ravindra Jadeja", team: "IND", role: "allrounder" as PlayerRole, credits: 8.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "6", name: "KL Rahul", team: "IND", role: "batsman" as PlayerRole, credits: 8, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "7", name: "Rishabh Pant", team: "IND", role: "wicketkeeper" as PlayerRole, credits: 8.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "8", name: "Babar Azam", team: "PAK", role: "batsman" as PlayerRole, credits: 10, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "9", name: "Shaheen Afridi", team: "PAK", role: "bowler" as PlayerRole, credits: 9, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "10", name: "Mohammad Rizwan", team: "PAK", role: "wicketkeeper" as PlayerRole, credits: 9, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "11", name: "Shadab Khan", team: "PAK", role: "allrounder" as PlayerRole, credits: 8.5, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "12", name: "Naseem Shah", team: "PAK", role: "bowler" as PlayerRole, credits: 8, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "13", name: "Fakhar Zaman", team: "PAK", role: "batsman" as PlayerRole, credits: 8, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
+  { id: "14", name: "Haris Rauf", team: "PAK", role: "bowler" as PlayerRole, credits: 8, image_url: null, stats: null, created_at: "", updated_at: "", selected: false },
 ];
 
 const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
@@ -277,51 +278,75 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     switch (step) {
       case 1:
         return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="league-name">League Name</Label>
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="bg-primary/10 p-2 rounded-full">
+                  <Trophy className="h-5 w-5 text-primary" />
+                </div>
+                <Label htmlFor="league-name" className="text-lg font-semibold">League Name</Label>
+              </div>
               <Input
                 id="league-name"
                 placeholder="Enter a name for your league"
                 value={leagueName}
                 onChange={(e) => setLeagueName(e.target.value)}
+                className="h-12 text-base"
               />
             </div>
             
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
+            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-5 w-5 text-blue-500" />
+                <Label htmlFor="public-league" className="text-lg font-semibold">League Visibility</Label>
+              </div>
+              <div className="flex items-center space-x-2 bg-white p-3 rounded-md border">
                 <Switch
                   id="public-league"
                   checked={isPublic}
                   onCheckedChange={setIsPublic}
                 />
-                <Label htmlFor="public-league">Public League</Label>
+                <div>
+                  <Label htmlFor="public-league" className="font-medium">{isPublic ? "Public League" : "Private League"}</Label>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {isPublic ? 
+                      "Anyone can find and join this league" : 
+                      "Only people with the invite link can join this league"}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-gray-500">
-                {isPublic ? 
-                  "Anyone can find and join this league" : 
-                  "Only people with the invite link can join this league"}
-              </p>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="match-select">Select Match</Label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="bg-blue-100 p-2 rounded-full">
+                  <Users className="h-5 w-5 text-blue-600" />
+                </div>
+                <Label htmlFor="match-select" className="text-lg font-semibold">Select Match</Label>
+              </div>
               <Select
                 onValueChange={(value) => setSelectedMatchId(value)}
                 value={selectedMatchId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a match" />
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder="Select a match for your league" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   {matchesLoading ? (
-                    <div className="flex items-center justify-center p-2">
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
                       <span>Loading matches...</span>
                     </div>
                   ) : (
                     matches?.map((match) => (
-                      <SelectItem key={match.match_id} value={match.match_id}>
-                        {match.team1_name} vs {match.team2_name} ({match.time})
+                      <SelectItem 
+                        key={match.match_id} 
+                        value={match.match_id}
+                        className="py-3"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">{match.team1_name} vs {match.team2_name}</span>
+                          <span className="text-xs text-gray-500">{match.time}</span>
+                        </div>
                       </SelectItem>
                     ))
                   )}
@@ -334,39 +359,47 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       case 2:
         return (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">Select 11 Players</h3>
-              <div className="text-sm">
-                <span className={selectedPlayersCount === 11 ? "text-green-500 font-bold" : "text-gray-500"}>
-                  {selectedPlayersCount}/11
-                </span>
+            <div className="flex items-center justify-between bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg">
+              <h3 className="text-lg font-medium">Select Your Dream Team</h3>
+              <div className="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-bold">
+                {selectedPlayersCount}/11
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto p-1">
               {players.map((player) => (
                 <Card 
                   key={player.id} 
-                  className={`border overflow-hidden ${
-                    player.selected ? 'border-primary bg-primary/5' : 'border-gray-200'
+                  className={`border overflow-hidden transition-all ${
+                    player.selected 
+                      ? 'border-primary bg-primary/5 shadow-md' 
+                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                   }`}
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-medium">{player.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {player.team} • {player.role}
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {player.team}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {player.role}
+                          </Badge>
+                          <span className="text-xs text-yellow-600 font-medium">
+                            {player.credits} Cr
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         {player.selected && (
-                          <>
+                          <div className="flex gap-1">
                             <Button 
                               size="sm" 
                               variant={player.isCaptain ? "default" : "outline"}
                               onClick={() => handleSetCaptain(player.id)}
-                              className="text-xs px-2 h-8"
+                              className={`text-xs px-2 h-8 ${player.isCaptain ? 'bg-green-600 hover:bg-green-700' : ''}`}
                             >
                               C
                             </Button>
@@ -374,17 +407,17 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                               size="sm" 
                               variant={player.isViceCaptain ? "default" : "outline"}
                               onClick={() => handleSetViceCaptain(player.id)}
-                              className="text-xs px-2 h-8"
+                              className={`text-xs px-2 h-8 ${player.isViceCaptain ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
                             >
                               VC
                             </Button>
-                          </>
+                          </div>
                         )}
                         <Button 
                           size="sm" 
                           variant={player.selected ? "destructive" : "default"}
                           onClick={() => handlePlayerSelection(player.id)}
-                          className="w-20 h-8"
+                          className={`w-20 h-8 ${player.selected ? '' : 'bg-green-600 hover:bg-green-700'}`}
                         >
                           {player.selected ? "Remove" : "Select"}
                         </Button>
@@ -395,32 +428,36 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               ))}
             </div>
             
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-sm font-medium">Selection Rules:</div>
-              <ul className="text-xs text-gray-600 space-y-1 mt-1">
-                <li className="flex items-center">
-                  <span className={selectedPlayersCount === 11 ? "text-green-500" : "text-gray-700"}>
-                    <Check className="h-3 w-3 inline mr-1" />
-                    Select exactly 11 players
-                  </span>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+              <div className="text-sm font-medium text-blue-800 mb-2">Team Selection Rules:</div>
+              <ul className="grid grid-cols-2 gap-2">
+                <li className={`flex items-center text-sm ${selectedPlayersCount === 11 ? "text-green-600" : "text-gray-600"}`}>
+                  {selectedPlayersCount === 11 ? 
+                    <Check className="h-4 w-4 mr-1" /> : 
+                    <div className="h-4 w-4 rounded-full border border-gray-300 mr-1"></div>
+                  }
+                  11 players total
                 </li>
-                <li className="flex items-center">
-                  <span className={!hasTeamLimitExceeded ? "text-green-500" : "text-gray-700"}>
-                    <Check className="h-3 w-3 inline mr-1" />
-                    Maximum 7 players from one team
-                  </span>
+                <li className={`flex items-center text-sm ${!hasTeamLimitExceeded ? "text-green-600" : "text-gray-600"}`}>
+                  {!hasTeamLimitExceeded ? 
+                    <Check className="h-4 w-4 mr-1" /> : 
+                    <div className="h-4 w-4 rounded-full border border-gray-300 mr-1"></div>
+                  }
+                  Max 7 per team
                 </li>
-                <li className="flex items-center">
-                  <span className={captainId ? "text-green-500" : "text-gray-700"}>
-                    <Check className="h-3 w-3 inline mr-1" />
-                    Select 1 Captain (2x points)
-                  </span>
+                <li className={`flex items-center text-sm ${captainId ? "text-green-600" : "text-gray-600"}`}>
+                  {captainId ? 
+                    <Check className="h-4 w-4 mr-1" /> : 
+                    <div className="h-4 w-4 rounded-full border border-gray-300 mr-1"></div>
+                  }
+                  1 Captain (2x points)
                 </li>
-                <li className="flex items-center">
-                  <span className={viceCaptainId ? "text-green-500" : "text-gray-700"}>
-                    <Check className="h-3 w-3 inline mr-1" />
-                    Select 1 Vice-Captain (1.5x points)
-                  </span>
+                <li className={`flex items-center text-sm ${viceCaptainId ? "text-green-600" : "text-gray-600"}`}>
+                  {viceCaptainId ? 
+                    <Check className="h-4 w-4 mr-1" /> : 
+                    <div className="h-4 w-4 rounded-full border border-gray-300 mr-1"></div>
+                  }
+                  1 Vice-Captain (1.5x)
                 </li>
               </ul>
             </div>
@@ -430,43 +467,76 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       case 3:
         const selectedMatch = matches?.find(m => m.match_id === selectedMatchId);
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Review Your League</h3>
+          <div className="space-y-5">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-5 rounded-lg text-center">
+              <h3 className="text-xl font-bold mb-1">Almost There!</h3>
+              <p className="text-purple-100">Review your league details before creating</p>
+            </div>
             
-            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-              <div>
-                <span className="text-sm text-gray-500">League Name:</span>
-                <div className="font-medium">{leagueName}</div>
-              </div>
-              
-              <div>
-                <span className="text-sm text-gray-500">League Type:</span>
-                <div className="font-medium">{isPublic ? "Public" : "Private"}</div>
-              </div>
-              
-              <div>
-                <span className="text-sm text-gray-500">Match:</span>
-                <div className="font-medium">
-                  {selectedMatch ? `${selectedMatch.team1_name} vs ${selectedMatch.team2_name}` : ""}
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-lg border shadow-sm">
+                <div className="flex items-center mb-3">
+                  <Trophy className="h-5 w-5 text-yellow-500 mr-2" />
+                  <h4 className="font-semibold text-lg">League Details</h4>
                 </div>
-                <div className="text-sm text-gray-500">{selectedMatch?.time}</div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">League Name</p>
+                    <p className="font-medium">{leagueName}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-500">Type</p>
+                    <div className="flex items-center">
+                      <Badge variant={isPublic ? "default" : "secondary"} className="mt-1">
+                        {isPublic ? "Public" : "Private"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
               </div>
               
-              <div>
-                <span className="text-sm text-gray-500">Team:</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+              <div className="bg-white p-4 rounded-lg border shadow-sm">
+                <div className="flex items-center mb-3">
+                  <Users className="h-5 w-5 text-blue-500 mr-2" />
+                  <h4 className="font-semibold text-lg">Match</h4>
+                </div>
+                
+                {selectedMatch && (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-md">
+                    <div className="font-bold text-lg text-gray-800">
+                      {selectedMatch.team1_name} vs {selectedMatch.team2_name}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">{selectedMatch.time}</div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg border shadow-sm">
+                <div className="flex items-center mb-3">
+                  <Users className="h-5 w-5 text-green-500 mr-2" />
+                  <h4 className="font-semibold text-lg">Your Team</h4>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 mt-2">
                   {selectedPlayers.map(player => (
                     <div 
                       key={player.id}
-                      className="text-sm flex items-center justify-between bg-white p-2 rounded border"
+                      className="flex items-center justify-between bg-gray-50 p-2 rounded border"
                     >
-                      <span>{player.name}</span>
-                      {player.isCaptain && (
-                        <Badge variant="default" className="ml-1">C</Badge>
-                      )}
-                      {player.isViceCaptain && (
-                        <Badge variant="secondary" className="ml-1">VC</Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{player.name}</span>
+                        <Badge variant="outline" className="text-xs">{player.team}</Badge>
+                      </div>
+                      <div className="flex gap-1">
+                        {player.isCaptain && (
+                          <Badge className="bg-green-600">C</Badge>
+                        )}
+                        {player.isViceCaptain && (
+                          <Badge variant="secondary" className="bg-blue-600 text-white">VC</Badge>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -477,32 +547,32 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         
       case 4:
         return (
-          <div className="space-y-6 text-center">
-            <div className="mx-auto bg-green-100 w-16 h-16 rounded-full flex items-center justify-center">
-              <Check className="h-8 w-8 text-green-600" />
+          <div className="space-y-8 text-center">
+            <div className="mx-auto bg-gradient-to-r from-green-400 to-green-600 w-20 h-20 rounded-full flex items-center justify-center shadow-lg">
+              <Check className="h-10 w-10 text-white" />
             </div>
             
             <div>
-              <h3 className="text-xl font-bold">League Created!</h3>
-              <p className="text-gray-500 mt-1">Share this invite code with friends</p>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">League Created!</h3>
+              <p className="text-gray-600">Share this invite code with friends to join your league</p>
             </div>
             
-            <div className="bg-gray-100 p-4 rounded-lg flex items-center justify-between">
-              <span className="font-mono font-medium text-lg">{inviteCode}</span>
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg flex flex-col items-center border border-purple-100">
+              <span className="font-mono font-bold text-xl bg-white px-4 py-2 rounded-md border mb-4 tracking-wide">{inviteCode}</span>
               <Button
-                size="sm"
                 variant="outline"
                 onClick={copyInviteLink}
+                className="w-full bg-white border-purple-200 hover:bg-purple-50"
               >
-                <Share2 className="h-4 w-4 mr-1" />
-                Copy Link
+                <Share2 className="h-4 w-4 mr-2" />
+                Copy Invite Link
               </Button>
             </div>
             
             <div className="pt-4">
               <Button
                 onClick={() => onOpenChange(false)}
-                className="w-full"
+                className="w-full text-lg py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
               >
                 Done
               </Button>
@@ -517,33 +587,44 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>
-            {step < 4 ? `Create Fantasy League ${step}/3` : "Invite Friends"}
+      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-5">
+          <DialogTitle className="text-xl font-bold text-center">
+            {step < 4 ? `Create Your Fantasy League ${step}/3` : "Invite Friends"}
           </DialogTitle>
-        </DialogHeader>
+        </div>
         
         {/* Step progress indicators */}
         {step < 4 && (
-          <div className="flex justify-between mb-4">
+          <div className="flex justify-between p-2 bg-gray-50 border-b">
             {[1, 2, 3].map((stepNumber) => (
-              <div 
-                key={stepNumber}
-                className={`flex-1 h-2 rounded-full mx-1 ${
-                  stepNumber === step ? 'bg-primary' : 
-                  stepNumber < step ? 'bg-primary/70' : 'bg-gray-200'
-                }`}
-              />
+              <div key={stepNumber} className="flex-1 flex flex-col items-center p-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1
+                  ${stepNumber < step ? 'bg-green-600 text-white' : 
+                    stepNumber === step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}
+                `}>
+                  {stepNumber < step ? (
+                    <Check className="h-5 w-5" />
+                  ) : (
+                    stepNumber
+                  )}
+                </div>
+                <span className="text-xs font-medium text-gray-600">
+                  {stepNumber === 1 ? "Setup" : 
+                   stepNumber === 2 ? "Team" : "Review"}
+                </span>
+              </div>
             ))}
           </div>
         )}
         
-        {renderStep()}
+        <div className="p-6">
+          {renderStep()}
+        </div>
         
         {/* Navigation buttons */}
         {step < 4 && (
-          <div className="flex justify-between mt-4">
+          <div className="flex justify-between p-4 border-t bg-gray-50">
             <Button
               variant="outline"
               onClick={step > 1 ? handlePrevStep : () => onOpenChange(false)}
@@ -564,7 +645,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             
             <Button
               onClick={step === 3 ? handleSubmit : handleNextStep}
-              className="w-28"
+              className={`w-28 ${step === 3 ? 'bg-green-600 hover:bg-green-700' : ''}`}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -574,7 +655,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 </>
               ) : (
                 <>
-                  {step === 3 ? "Create League" : "Next"} 
+                  {step === 3 ? "Create" : "Continue"} 
                   {step < 3 && <ChevronRight className="h-4 w-4 ml-1" />}
                 </>
               )}
