@@ -31,82 +31,97 @@ const LeagueFeatureCards = () => {
   const cardData = [
     {
       id: "create",
-      icon: <Trophy className="w-10 h-10 text-purple-600" />,
+      icon: <Trophy className="w-10 h-10 text-purple-400" />,
       title: "Start Your Own League",
       description: "Create your own fantasy league and invite friends to join.",
       action: "Create League"
     },
     {
       id: "teams",
-      icon: <Users className="w-10 h-10 text-blue-600" />,
+      icon: <Users className="w-10 h-10 text-blue-400" />,
       title: "Choose Match & Create Team",
       description: "Select an upcoming match and build your fantasy team.",
       action: "Build Team"
     },
     {
       id: "track",
-      icon: <Award className="w-10 h-10 text-green-600" />,
+      icon: <Award className="w-10 h-10 text-pink-400" />,
       title: "Track Points in Real-Time",
       description: "Watch your team earn points live during matches.",
       action: "View Demo"
     }
   ];
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {cardData.map((card, index) => (
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
+        {cardData.map((card) => (
           <motion.div
             key={card.id}
-            initial={{ opacity: 0, y: 20, rotate: -5 }}
-            whileHover={{ scale: 1.03, rotate: 0, boxShadow: "0 8px 20px rgba(0,0,0,0.1)" }}
-            whileTap={{ scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, rotate: 0 }}
-            transition={{ 
-              delay: index * 0.1, 
-              type: "spring", 
-              stiffness: 80, 
-              damping: 12
+            variants={item}
+            whileHover={{ 
+              y: -8, 
+              boxShadow: "0 15px 30px rgba(0,0,0,0.15)",
+              background: "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)"
             }}
-            className="bg-white p-6 rounded-xl shadow-sm transition-transform cursor-pointer"
+            className="bg-white bg-opacity-10 backdrop-blur-sm border border-white border-opacity-10 p-6 rounded-xl cursor-pointer transition-all hover:border-white hover:border-opacity-20 group"
             onClick={() => handleCardClick(card.id)}
           >
-            <motion.div
-              initial={{ scale: 0 }} 
-              animate={{ scale: 1 }} 
-              transition={{ 
-                delay: 0.2 + index * 0.1, 
-                type: "spring", 
-                stiffness: 100 
-              }} 
-              className="w-16 h-16 rounded-lg flex items-center justify-center mb-4"
-            >
+            <div className="bg-gradient-to-br from-white to-white/30 bg-opacity-10 w-16 h-16 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
               {card.icon}
-            </motion.div>
-            <h3 className="text-xl font-semibold mb-2 text-gray-800">{card.title}</h3>
-            <p className="text-gray-600 mb-4">{card.description}</p>
-            <div className="flex items-center text-primary font-medium">
+            </div>
+            <h3 className="text-xl font-semibold mb-3 text-white">{card.title}</h3>
+            <p className="text-indigo-100 text-opacity-80 mb-4 group-hover:text-opacity-100 transition-colors">{card.description}</p>
+            <div className="flex items-center text-indigo-200 font-medium group-hover:text-white transition-colors">
               <span>{card.action}</span>
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="h-4 w-4 ml-1 group-hover:ml-2 transition-all" />
             </div>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
       
-      <div className="text-center">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.5 }}
+        className="text-center"
+      >
         <Button
           onClick={() => setCreateLeagueOpen(true)}
-          className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg transform transition hover:-translate-y-1"
+          className="relative overflow-hidden group border-none bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg"
         >
-          <Trophy className="h-5 w-5 mr-2" />
+          <span className="absolute top-0 left-0 w-full h-full bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-0 transition-transform duration-700"></span>
+          <Trophy className="h-5 w-5 mr-2 inline-block" />
           Create League Now
         </Button>
         
-        <div className="mt-4 text-sm text-gray-500 flex items-center justify-center">
+        <div className="mt-4 text-sm text-indigo-200 flex items-center justify-center">
           <Share2 className="h-4 w-4 mr-1" />
           <span>Invite friends to play together and win exciting prizes!</span>
         </div>
-      </div>
+      </motion.div>
       
       <CreateLeagueModal 
         open={createLeagueOpen} 

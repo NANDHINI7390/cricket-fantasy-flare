@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,5 +16,52 @@
     50% {
       border-color: rgba(239, 68, 68, 0.4); /* red-500 with lower opacity */
     }
+  }
+  
+  /* Slow pulse animation */
+  .animate-pulse-slow {
+    animation: pulse-slow 2s infinite;
+  }
+  
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  
+  /* Growing underline effect */
+  .link-underline {
+    position: relative;
+  }
+  
+  .link-underline:after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    transform: scaleX(0);
+    height: 2px;
+    bottom: -2px;
+    left: 0;
+    background-color: currentColor;
+    transform-origin: bottom right;
+    transition: transform 0.3s ease-out;
+  }
+  
+  .link-underline:hover:after {
+    transform: scaleX(1);
+    transform-origin: bottom left;
+  }
+  
+  /* Card hover effects */
+  .feature-card {
+    transition: all 0.3s ease;
+  }
+  
+  .feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
   }
 }
