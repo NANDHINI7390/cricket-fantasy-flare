@@ -1,7 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as Sentry from '@sentry/react';
-import { Transaction, TransactionStatus, TransactionType } from "@/types/transaction";
+import { Transaction, TransactionStatus, TransactionType, PaymentMethod, PaymentDetails } from "@/types/transaction";
 
 export interface WalletDetails {
   balance: number;
@@ -78,7 +77,8 @@ export const getWalletTransactions = async (): Promise<Transaction[]> => {
       return {
         ...tx,
         type: txType as TransactionType,
-        status: txStatus as TransactionStatus
+        status: txStatus as TransactionStatus,
+        payment_method: tx.payment_method as PaymentMethod || 'other'
       };
     });
   } catch (error) {
@@ -103,7 +103,7 @@ export const getWalletDetails = async (): Promise<WalletDetails> => {
   };
 };
 
-export const addMoney = async (amount: number): Promise<boolean> => {
+export const addMoney = async (amount: number, paymentDetails: PaymentDetails): Promise<boolean> => {
   try {
     const { data: user } = await supabase.auth.getUser();
     
@@ -122,9 +122,12 @@ export const addMoney = async (amount: number): Promise<boolean> => {
       throw walletError;
     }
     
-    // Start a transaction using Edge Function (this would be a placeholder for now)
-    // In real implementation, this would interact with a payment gateway
-    const description = `Added ₹${amount} to wallet`;
+    // Generate payment description based on method
+    let description = `Added ₹${amount} to wallet`;
+    if (paymentDetails.method) {
+      const methodName = paymentDetails.method.charAt(0).toUpperCase() + paymentDetails.method.slice(1);
+      description += ` via ${methodName}`;
+    }
     
     // Create a transaction record
     const { data: txData, error: txError } = await supabase
@@ -134,7 +137,9 @@ export const addMoney = async (amount: number): Promise<boolean> => {
         amount,
         type: 'deposit',
         status: 'completed', // In real app, this would start as 'pending'
-        description
+        description,
+        payment_method: paymentDetails.method,
+        payment_details: paymentDetails.details
       })
       .select('id')
       .single();
@@ -184,7 +189,7 @@ export const addMoney = async (amount: number): Promise<boolean> => {
   }
 };
 
-export const withdrawMoney = async (amount: number): Promise<boolean> => {
+export const withdrawMoney = async (amount: number, paymentDetails: PaymentDetails): Promise<boolean> => {
   try {
     const { data: user } = await supabase.auth.getUser();
     
@@ -207,9 +212,14 @@ export const withdrawMoney = async (amount: number): Promise<boolean> => {
       throw new Error("Insufficient balance");
     }
     
-    // Create transaction record
-    const description = `Withdrew ₹${amount} from wallet`;
+    // Generate withdrawal description based on method
+    let description = `Withdrew ₹${amount} from wallet`;
+    if (paymentDetails.method) {
+      const methodName = paymentDetails.method.charAt(0).toUpperCase() + paymentDetails.method.slice(1);
+      description += ` to ${methodName}`;
+    }
     
+    // Create transaction record
     const { error: txError } = await supabase
       .from('transactions')
       .insert({
@@ -217,7 +227,9 @@ export const withdrawMoney = async (amount: number): Promise<boolean> => {
         amount: -amount, // Negative amount for withdrawal
         type: 'withdrawal',
         status: 'completed', // In real app, this would start as 'pending'
-        description
+        description,
+        payment_method: paymentDetails.method,
+        payment_details: paymentDetails.details
       });
       
     if (txError) {

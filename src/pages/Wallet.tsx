@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -11,7 +12,8 @@ import {
   Trophy,
   Calendar,
   ExternalLink,
-  Filter
+  Filter,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,9 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { getWalletDetails, addMoney, withdrawMoney } from "@/utils/wallet-service";
-import { Transaction } from "@/types/transaction";
+import { Transaction, PaymentMethod } from "@/types/transaction";
 import { format } from "date-fns";
 import PageNavigation from "@/components/PageNavigation";
+import PaymentMethodSelector from "@/components/PaymentMethodSelector";
 
 // Format currency to Indian Rupees
 const formatCurrency = (amount: number) => {
@@ -72,6 +75,11 @@ const Wallet = () => {
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
   const [isAdding, setIsAdding] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [addPaymentMethod, setAddPaymentMethod] = useState<PaymentMethod>('upi');
+  const [addPaymentDetails, setAddPaymentDetails] = useState<Record<string, any>>({});
+  const [withdrawPaymentMethod, setWithdrawPaymentMethod] = useState<PaymentMethod>('upi');
+  const [withdrawPaymentDetails, setWithdrawPaymentDetails] = useState<Record<string, any>>({});
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -112,15 +120,24 @@ const Wallet = () => {
 
     try {
       setIsAdding(true);
-      const success = await addMoney(addAmount);
+      const success = await addMoney(addAmount, {
+        method: addPaymentMethod,
+        details: addPaymentDetails
+      });
       
       if (success) {
-        toast.success(`Added ${formatCurrency(addAmount)} to your wallet`);
-        // Refresh wallet data
-        const walletDetails = await getWalletDetails();
-        setBalance(walletDetails.balance);
-        setTransactions(walletDetails.transactions);
-        setAddAmount(100); // Reset amount
+        setShowPaymentSuccess(true);
+        setTimeout(() => {
+          setShowPaymentSuccess(false);
+          
+          // Refresh wallet data
+          getWalletDetails().then(walletDetails => {
+            setBalance(walletDetails.balance);
+            setTransactions(walletDetails.transactions);
+            setAddAmount(100); // Reset amount
+            setAddPaymentDetails({}); // Reset payment details
+          });
+        }, 3000);
       } else {
         toast.error("Failed to add money");
       }
@@ -150,7 +167,10 @@ const Wallet = () => {
 
     try {
       setIsWithdrawing(true);
-      const success = await withdrawMoney(withdrawAmount);
+      const success = await withdrawMoney(withdrawAmount, {
+        method: withdrawPaymentMethod,
+        details: withdrawPaymentDetails
+      });
       
       if (success) {
         toast.success(`Withdrawn ${formatCurrency(withdrawAmount)} from your wallet`);
@@ -159,6 +179,7 @@ const Wallet = () => {
         setBalance(walletDetails.balance);
         setTransactions(walletDetails.transactions);
         setWithdrawAmount(0); // Reset amount
+        setWithdrawPaymentDetails({}); // Reset payment details
       } else {
         toast.error("Failed to withdraw money");
       }
@@ -199,6 +220,22 @@ const Wallet = () => {
           <h1 className="text-3xl font-bold text-gray-900">My Wallet</h1>
           <p className="text-gray-600">Manage your funds and track transactions</p>
         </header>
+
+        {showPaymentSuccess && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-white rounded-lg shadow-xl p-6 flex items-center justify-center max-w-md w-full"
+          >
+            <div className="text-center">
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Payment Successful!</h3>
+              <p className="text-gray-600 mb-4">Your wallet has been credited with {formatCurrency(addAmount)}</p>
+              <div className="text-green-600 font-semibold text-lg">New Balance: {formatCurrency(balance + addAmount)}</div>
+            </div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Balance Card */}
@@ -275,6 +312,17 @@ const Wallet = () => {
                         </Button>
                       ))}
                     </div>
+                    
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium mb-2 block">Select Payment Method</Label>
+                      <PaymentMethodSelector
+                        selectedMethod={addPaymentMethod}
+                        onMethodChange={setAddPaymentMethod}
+                        details={addPaymentDetails}
+                        onDetailsChange={setAddPaymentDetails}
+                      />
+                    </div>
+                    
                     <Button
                       onClick={handleAddMoney}
                       disabled={isAdding || addAmount <= 0}
@@ -305,6 +353,17 @@ const Wallet = () => {
                       />
                       <p className="text-xs text-gray-500">Available balance: {formatCurrency(balance)}</p>
                     </div>
+                    
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium mb-2 block">Select Withdrawal Method</Label>
+                      <PaymentMethodSelector
+                        selectedMethod={withdrawPaymentMethod}
+                        onMethodChange={setWithdrawPaymentMethod}
+                        details={withdrawPaymentDetails}
+                        onDetailsChange={setWithdrawPaymentDetails}
+                      />
+                    </div>
+                    
                     <Button
                       onClick={handleWithdrawMoney}
                       disabled={isWithdrawing || withdrawAmount <= 0 || withdrawAmount > balance}
@@ -379,6 +438,11 @@ const Wallet = () => {
                             </div>
                             {transaction.description && (
                               <p className="text-xs text-gray-500 mt-1">{transaction.description}</p>
+                            )}
+                            {transaction.payment_method && (
+                              <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full mt-1 inline-block">
+                                {transaction.payment_method.charAt(0).toUpperCase() + transaction.payment_method.slice(1)}
+                              </span>
                             )}
                           </div>
                         </div>
