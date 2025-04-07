@@ -50,10 +50,29 @@ const LiveMatches = () => {
         };
       });
 
-      // Apply improved categorization
-      const categorizedMatches = categorizeMatches(updatedMatches);
+      // Filter out matches older than a week for completed matches
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       
-      // Sort matches - first Live, then Upcoming by time, then Completed
+      const recentMatches = updatedMatches.filter(match => {
+        // Skip filtering for Live and upcoming matches
+        if (match.status === "Live" || !match.matchStarted) {
+          return true;
+        }
+        
+        // For completed matches, check if they ended recently
+        if (match.matchEnded && match.dateTimeGMT) {
+          const matchDate = new Date(match.dateTimeGMT);
+          return matchDate > oneWeekAgo;
+        }
+        
+        return true;
+      });
+
+      // Apply improved categorization
+      const categorizedMatches = categorizeMatches(recentMatches);
+      
+      // Sort matches - first Live, then Upcoming by time, then Recent Completed
       const sortedMatches = categorizedMatches.sort((a, b) => {
         // Priority order: Live > Upcoming > Completed
         const categoryOrder = { 'Live': 0, 'Upcoming': 1, 'Completed': 2 };
@@ -69,6 +88,13 @@ const LiveMatches = () => {
           const timeA = a.dateTimeGMT ? new Date(a.dateTimeGMT).getTime() : 0;
           const timeB = b.dateTimeGMT ? new Date(b.dateTimeGMT).getTime() : 0;
           return timeA - timeB;
+        }
+        
+        if (a.category === 'Completed') {
+          // For completed matches, show most recent first
+          const timeA = a.dateTimeGMT ? new Date(a.dateTimeGMT).getTime() : 0;
+          const timeB = b.dateTimeGMT ? new Date(b.dateTimeGMT).getTime() : 0;
+          return timeB - timeA; // Reverse order (newest first)
         }
         
         if (a.category === 'Live' && b.category === 'Live') {

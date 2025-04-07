@@ -25,7 +25,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
 
   // Format match status and styles
   const isLive = match.status === "Live" || 
-                 match.status.toLowerCase().includes("live") || 
+                 match.status.toLowerCase().includes('live') || 
                  (match.matchStarted && !match.matchEnded) ||
                  match.category === "Live";
   
@@ -100,10 +100,23 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
     }
     
     if (isCompleted) {
+      const matchDate = match.dateTimeGMT ? new Date(match.dateTimeGMT) : null;
+      const now = new Date();
+      const diffDays = matchDate ? Math.floor((now.getTime() - matchDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      
+      let timeAgoText = "Completed";
+      if (diffDays === 0) {
+        timeAgoText = "Today";
+      } else if (diffDays === 1) {
+        timeAgoText = "Yesterday";
+      } else if (diffDays < 7) {
+        timeAgoText = `${diffDays} days ago`;
+      }
+      
       return (
         <div className="flex items-center text-green-600 text-sm font-medium">
           <Award className="h-3.5 w-3.5 mr-1" />
-          COMPLETED
+          {timeAgoText}
         </div>
       );
     }

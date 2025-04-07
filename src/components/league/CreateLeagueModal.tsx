@@ -57,6 +57,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [inviteCode, setInviteCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transitionClass, setTransitionClass] = useState("");
+  const [showContinueButton, setShowContinueButton] = useState(false);
 
   // Refs for scrolling and steppers
   const contentRef = useRef<HTMLDivElement>(null);
@@ -66,10 +67,26 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     queryKey: ["cricket-matches"],
     queryFn: async () => {
       // In a real app, fetch from your API
+      const currentDate = new Date();
       return [
-        { match_id: "m1", team1_name: "India", team2_name: "Pakistan", time: "Tomorrow, 2:30 PM" },
-        { match_id: "m2", team1_name: "Australia", team2_name: "England", time: "Apr 10, 10:00 AM" },
-        { match_id: "m3", team1_name: "South Africa", team2_name: "New Zealand", time: "Apr 12, 3:00 PM" },
+        { 
+          match_id: "m1", 
+          team1_name: "India", 
+          team2_name: "Pakistan", 
+          time: "Tomorrow, 2:30 PM" 
+        },
+        { 
+          match_id: "m2", 
+          team1_name: "Australia", 
+          team2_name: "England", 
+          time: `${currentDate.getDate()+1} Apr, 10:00 AM` 
+        },
+        { 
+          match_id: "m3", 
+          team1_name: "South Africa", 
+          team2_name: "New Zealand", 
+          time: `${currentDate.getDate()+3} Apr, 3:00 PM` 
+        },
       ] as Match[];
     },
   });
@@ -123,6 +140,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       setCaptainId("");
       setViceCaptainId("");
       setTransitionClass("");
+      setShowContinueButton(false);
       
       // Clear any pending timeouts
       if (nextStepTimeout.current) {
@@ -131,26 +149,19 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     }
   }, [open]);
 
-  // Automatically proceed to next step when selection is complete
+  // Track selection completion and show continue button immediately
   useEffect(() => {
-    if (step === 2 && isSelectionComplete && !nextStepTimeout.current) {
-      // Show success toast
-      toast.success("Team selection complete! Proceeding to review...");
-      
-      // Set timeout to proceed to next step after toast is shown
-      nextStepTimeout.current = setTimeout(() => {
-        applyStepTransition(3);
-        nextStepTimeout.current = null;
-      }, 1500);
-    }
-    
-    return () => {
-      // Clean up timeout if component unmounts
-      if (nextStepTimeout.current) {
-        clearTimeout(nextStepTimeout.current);
-        nextStepTimeout.current = null;
+    if (step === 2) {
+      if (isSelectionComplete) {
+        // Show continue button when selection is complete
+        setShowContinueButton(true);
+        
+        // Show success toast
+        toast.success("Team selection complete! Click Continue to proceed.");
+      } else {
+        setShowContinueButton(false);
       }
-    };
+    }
   }, [isSelectionComplete, step]);
 
   // Filter players based on search query
@@ -379,6 +390,17 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       .animate-fadeOut {
         animation: fadeOut 0.3s ease-in forwards;
       }
+      
+      /* Highlight pulse for continue button */
+      @keyframes pulse-highlight {
+        0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+      }
+      
+      .pulse-highlight {
+        animation: pulse-highlight 1.5s infinite;
+      }
     `;
     document.head.appendChild(styleElement);
     
@@ -501,7 +523,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               </div>
             </div>
             
-            <ScrollArea className="h-[50vh] pr-4 rounded-lg">
+            <ScrollArea className="h-[42vh] pr-4 rounded-lg">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-1">
                 {filteredPlayers.map((player) => (
                   <Card 
@@ -607,6 +629,21 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                   1 Vice-Captain (1.5x)
                 </li>
               </ul>
+            </div>
+            
+            {/* Always show continue button - but enable it only when selection is complete */}
+            <div className="mt-4 flex justify-center">
+              <Button
+                onClick={handleNextStep}
+                disabled={!isSelectionComplete}
+                className={`w-full py-6 text-lg font-medium ${
+                  showContinueButton ? 'pulse-highlight bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700' : 
+                  'bg-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Continue to Review
+                <ChevronRight className="ml-2 h-5 w-5" />
+              </Button>
             </div>
           </div>
         );
@@ -800,23 +837,29 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               )}
             </Button>
             
-            <Button
-              onClick={step === 3 ? handleSubmit : handleNextStep}
-              className={`w-28 shadow-sm transition-all ${step === 3 ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-              disabled={isSubmitting || (step === 2 && !isSelectionComplete)}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  {step === 3 ? "Create" : "Continue"} 
-                  {step < 3 && <ChevronRight className="h-4 w-4 ml-1.5" />}
-                </>
-              )}
-            </Button>
+            {step === 2 && !isSelectionComplete ? (
+              <div className="text-sm text-gray-500 font-medium">
+                Select 11 players, 1 Captain & 1 Vice-Captain
+              </div>
+            ) : (
+              <Button
+                onClick={step === 3 ? handleSubmit : handleNextStep}
+                className={`min-w-28 shadow-sm transition-all ${step === 3 ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                disabled={isSubmitting || (step === 2 && !isSelectionComplete)}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    {step === 3 ? "Create" : "Continue"} 
+                    {step < 3 && <ChevronRight className="h-4 w-4 ml-1.5" />}
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         )}
       </DialogContent>
