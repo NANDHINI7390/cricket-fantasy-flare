@@ -6,6 +6,7 @@ import { getTeamLogoUrl, formatTossInfo, formatMatchDateTime, CricketMatch } fro
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useCountdown } from "@/hooks/useCountdown";
+import { Clock, Calendar, Award } from "lucide-react";
 
 interface MatchCardProps {
   match: CricketMatch;
@@ -17,9 +18,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
   const { formattedTime, days, hours, minutes, seconds, isExpired } = useCountdown(match.dateTimeGMT || "");
   
   const handleTeamClick = (teamName: string) => {
-    // Log the navigation for debugging
     console.log(`Navigate to team profile: ${teamName}`);
-    // Navigate to the team profile page
     navigate(`/team/${encodeURIComponent(teamName)}`);
     toast.info(`Viewing ${teamName} profile`);
   };
@@ -34,6 +33,8 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
                       match.matchEnded || 
                       match.category === "Completed";
   
+  const isUpcoming = !isLive && !isCompleted;
+  
   // Add more visually exciting styling based on match status
   const statusClasses = isLive 
     ? "bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium animate-pulse-border border-2 border-red-500" 
@@ -47,14 +48,82 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
   const team1Score = match.score?.find(s => s.inning?.includes(team1?.name || ""));
   const team2Score = match.score?.find(s => s.inning?.includes(team2?.name || ""));
 
-  // Format countdown display
-  const renderCountdown = () => {
-    if (!match.dateTimeGMT || isExpired || isLive) return null;
+  // Format time display similar to Dream11
+  const formatTimeDisplay = () => {
+    if (isLive) return "LIVE NOW";
+    if (isCompleted) return "COMPLETED";
+    
+    const matchDate = match.dateTimeGMT ? new Date(match.dateTimeGMT) : null;
+    if (!matchDate) return "Upcoming";
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const isToday = matchDate.getDate() === today.getDate() && 
+                    matchDate.getMonth() === today.getMonth() && 
+                    matchDate.getFullYear() === today.getFullYear();
+                    
+    const isTomorrow = matchDate.getDate() === tomorrow.getDate() && 
+                      matchDate.getMonth() === tomorrow.getMonth() && 
+                      matchDate.getFullYear() === tomorrow.getFullYear();
+    
+    // Format the time (HH:MM AM/PM)
+    const timeStr = matchDate.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+    
+    if (isToday) return `Today, ${timeStr}`;
+    if (isTomorrow) return `Tomorrow, ${timeStr}`;
+    
+    // For other dates, show date and time
+    const dateStr = matchDate.toLocaleDateString('en-US', { 
+      day: 'numeric', 
+      month: 'short'
+    });
+    
+    return `${dateStr}, ${timeStr}`;
+  };
+
+  // Render countdown or time
+  const renderTimeInfo = () => {
+    if (isLive) {
+      return (
+        <div className="flex items-center text-red-600 text-sm font-medium animate-pulse-slow">
+          <div className="h-2 w-2 bg-red-600 rounded-full mr-2"></div>
+          LIVE NOW
+        </div>
+      );
+    }
+    
+    if (isCompleted) {
+      return (
+        <div className="flex items-center text-green-600 text-sm font-medium">
+          <Award className="h-3.5 w-3.5 mr-1" />
+          COMPLETED
+        </div>
+      );
+    }
+    
+    if (days > 0) {
+      return (
+        <div className="flex items-center text-blue-600 text-sm">
+          <Calendar className="h-3.5 w-3.5 mr-1" />
+          {formatTimeDisplay()}
+        </div>
+      );
+    }
     
     return (
-      <div className="text-xs text-center mt-2">
-        <p className="text-gray-500">Starts in: {days > 0 ? `${days}d ` : ''}{hours}h {minutes}m {seconds}s</p>
-        <p className="font-medium text-blue-600">{formattedTime}</p>
+      <div className="flex items-center text-blue-600 text-sm">
+        <Clock className="h-3.5 w-3.5 mr-1" />
+        {formatTimeDisplay()}
+        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+          {`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`}
+        </span>
       </div>
     );
   };
@@ -123,14 +192,16 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
           </div>
         )}
         
-        {renderCountdown()}
-        
-        <div className="mt-3 text-center">
+        <div className="mt-3 flex flex-col space-y-3">
+          <div className="text-center">
+            {renderTimeInfo()}
+          </div>
+          
           <button 
             onClick={() => onViewDetails(match)}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-1 rounded-md text-sm font-medium transition-colors"
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors w-full"
           >
-            View Details
+            {isLive ? "View Live Match" : isUpcoming ? "Create Team" : "View Scorecard"}
           </button>
         </div>
       </CardContent>

@@ -4,7 +4,7 @@ import { fetchLiveMatches, fetchLiveScores, getTeamLogoUrl, formatMatchStatus, c
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Award, BarChart } from "lucide-react";
+import { RefreshCw, Award, BarChart, ChevronLeft, ChevronRight } from "lucide-react";
 import MatchCard from "./MatchCard";
 import MatchDetailsModal from "./MatchDetailsModal";
 import { toast } from "sonner";
@@ -16,6 +16,10 @@ const LiveMatches = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<CricketMatch | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const matchesPerPage = 3;
 
   useEffect(() => {
     fetchMatches();
@@ -49,20 +53,31 @@ const LiveMatches = () => {
       // Apply improved categorization
       const categorizedMatches = categorizeMatches(updatedMatches);
       
-      // Sort matches by start time (upcoming first, then live, then completed)
+      // Sort matches - first Live, then Upcoming by time, then Completed
       const sortedMatches = categorizedMatches.sort((a, b) => {
-        // First sort by category
+        // Priority order: Live > Upcoming > Completed
         const categoryOrder = { 'Live': 0, 'Upcoming': 1, 'Completed': 2 };
-        const categoryDiff = categoryOrder[a.category as keyof typeof categoryOrder] - 
-                            categoryOrder[b.category as keyof typeof categoryOrder];
+        const categoryDiff = 
+          categoryOrder[a.category as keyof typeof categoryOrder] - 
+          categoryOrder[b.category as keyof typeof categoryOrder];
         
         if (categoryDiff !== 0) return categoryDiff;
         
-        // For upcoming matches, sort by start time
+        // For matches with same category:
         if (a.category === 'Upcoming' && b.category === 'Upcoming') {
+          // Sort upcoming matches by start time (closer first)
           const timeA = a.dateTimeGMT ? new Date(a.dateTimeGMT).getTime() : 0;
           const timeB = b.dateTimeGMT ? new Date(b.dateTimeGMT).getTime() : 0;
           return timeA - timeB;
+        }
+        
+        if (a.category === 'Live' && b.category === 'Live') {
+          // For live matches, prioritize by match type (T20 > ODI > Test)
+          const typeOrder = { 't20': 0, 'odi': 1, 'test': 2, 'other': 3 };
+          const typeA = a.matchType?.toLowerCase() || 'other';
+          const typeB = b.matchType?.toLowerCase() || 'other';
+          return (typeOrder[typeA as keyof typeof typeOrder] || 3) - 
+                 (typeOrder[typeB as keyof typeof typeOrder] || 3);
         }
         
         return 0;
@@ -71,6 +86,7 @@ const LiveMatches = () => {
       setMatches(sortedMatches);
       setFilteredMatches(sortedMatches);
       setLastUpdated(new Date().toLocaleTimeString());
+      setCurrentPage(1); // Reset to first page when new data loads
       
       if (sortedMatches.length === 0) {
         toast.info("No matches are currently available. Check back later!");
@@ -89,6 +105,7 @@ const LiveMatches = () => {
 
   const filterMatches = (category: string) => {
     setActiveFilter(category);
+    setCurrentPage(1); // Reset to first page when filter changes
     setFilteredMatches(
       category === "All" 
         ? matches 
@@ -102,6 +119,71 @@ const LiveMatches = () => {
 
   const closeModal = () => {
     setSelectedMatch(null);
+  };
+
+  // Calculate pagination values
+  const indexOfLastMatch = currentPage * matchesPerPage;
+  const indexOfFirstMatch = indexOfLastMatch - matchesPerPage;
+  const currentMatches = filteredMatches.slice(indexOfFirstMatch, indexOfLastMatch);
+  const totalPages = Math.ceil(filteredMatches.length / matchesPerPage);
+
+  // Pagination controls
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const renderPagination = () => {
+    return (
+      <div className="flex items-center justify-center gap-2 mt-6">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={goToPreviousPage}
+          disabled={currentPage === 1}
+          className="flex items-center gap-1"
+        >
+          <ChevronLeft size={16} />
+          Prev
+        </Button>
+        
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrentPage(page)}
+              className={`w-8 h-8 p-0 ${
+                currentPage === page 
+                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white' 
+                  : 'text-gray-700'
+              }`}
+            >
+              {page}
+            </Button>
+          ))}
+        </div>
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={goToNextPage}
+          disabled={currentPage === totalPages}
+          className="flex items-center gap-1"
+        >
+          Next
+          <ChevronRight size={16} />
+        </Button>
+      </div>
+    );
   };
 
   if (loading) {
@@ -169,15 +251,23 @@ const LiveMatches = () => {
       </div>
 
       {filteredMatches.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMatches.map((match) => (
-            <MatchCard 
-              key={match.id} 
-              match={match} 
-              onViewDetails={handleViewDetails} 
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentMatches.map((match) => (
+              <MatchCard 
+                key={match.id} 
+                match={match} 
+                onViewDetails={handleViewDetails} 
+              />
+            ))}
+          </div>
+          
+          {totalPages > 1 && renderPagination()}
+          
+          <div className="text-center mt-6 text-sm text-gray-500">
+            Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches
+          </div>
+        </>
       ) : (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No matches found</h3>

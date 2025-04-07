@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import LeagueFeatureCards from "./league/LeagueFeatureCards";
 import CreateLeagueModal from "./league/CreateLeagueModal";
 import { Button } from "./ui/button";
-import { Users, Sparkles } from "lucide-react";
+import { Users, Sparkles, Trophy, Calendar, Shield } from "lucide-react";
 
 const CreateLeague = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,15 +57,68 @@ const CreateLeague = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="mt-8"
+            className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Button 
               onClick={() => setIsModalOpen(true)}
               size="lg" 
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium px-8 py-6 h-auto text-lg shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium px-8 py-6 h-auto text-lg shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl w-full sm:w-auto"
             >
               <Sparkles className="mr-2 h-5 w-5" /> Create Your League Now
             </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-2 border-white/30 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 px-8 py-6 h-auto text-lg transition-all duration-300 rounded-xl w-full sm:w-auto"
+            >
+              <Calendar className="mr-2 h-5 w-5" /> Upcoming Contests
+            </Button>
+          </motion.div>
+        </div>
+
+        {/* Feature highlights */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 hover:shadow-lg"
+          >
+            <div className="bg-gradient-to-br from-green-500 to-emerald-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4 shadow-md">
+              <Trophy className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Win Big Prizes</h3>
+            <p className="text-indigo-100">Compete for exciting rewards and climb the leaderboard with your fantasy skills.</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 hover:shadow-lg"
+          >
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4 shadow-md">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Play With Friends</h3>
+            <p className="text-indigo-100">Create private leagues and invite friends to join the fantasy cricket action.</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 hover:shadow-lg"
+          >
+            <div className="bg-gradient-to-br from-purple-500 to-pink-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4 shadow-md">
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Expert Analysis</h3>
+            <p className="text-indigo-100">Get AI-powered insights to build the perfect team and maximize your points.</p>
           </motion.div>
         </div>
 
