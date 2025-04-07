@@ -23,6 +23,16 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
     toast.info(`Viewing ${teamName} profile`);
   };
 
+  const handleActionButtonClick = () => {
+    if (isLive) {
+      onViewDetails(match);
+    } else if (isUpcoming) {
+      navigate(`/create-team?match=${match.id}`);
+    } else {
+      onViewDetails(match);
+    }
+  };
+
   // Format match status and styles
   const isLive = match.status === "Live" || 
                  match.status.toLowerCase().includes('live') || 
@@ -141,6 +151,12 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
     );
   };
 
+  const getActionButtonText = () => {
+    if (isLive) return "View Live Match";
+    if (isUpcoming) return "Create Team";
+    return "View Scorecard";
+  };
+
   return (
     <Card className={`overflow-hidden hover:shadow-md transition-all ${isLive ? 'border-2 border-red-500 animate-pulse-border' : ''}`}>
       <CardContent className="p-4">
@@ -211,11 +227,20 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
           </div>
           
           <button 
-            onClick={() => onViewDetails(match)}
+            onClick={handleActionButtonClick}
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors w-full"
           >
-            {isLive ? "View Live Match" : isUpcoming ? "Create Team" : "View Scorecard"}
+            {getActionButtonText()}
           </button>
+          
+          {isUpcoming && (
+            <button 
+              onClick={() => navigate("/contests")}
+              className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors w-full"
+            >
+              Join Contests
+            </button>
+          )}
         </div>
       </CardContent>
     </Card>
