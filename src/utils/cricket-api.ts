@@ -605,18 +605,7 @@ export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
         
         // IMPROVED CATEGORIZATION LOGIC
         
-        // If the status explicitly says "Live" or contains "live"
-        if (match.status.toLowerCase() === "live" || 
-            match.status.toLowerCase().includes("live")) {
-          return { ...enhancedMatch, category: "Live" };
-        }
-        
-        // If match has started and not ended (considering API data)
-        if (match.matchStarted === true && match.matchEnded !== true) {
-          return { ...enhancedMatch, category: "Live" };
-        }
-        
-        // If status contains "won" or "drawn" or similar completion terms, or matchEnded is true
+        // If match has definitively ended based on explicit status
         if (match.status.toLowerCase().includes("won") || 
             match.status.toLowerCase().includes("drawn") ||
             match.status.toLowerCase().includes("abandoned") ||
@@ -627,25 +616,51 @@ export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
         // Calculate time difference in milliseconds
         const timeDiff = matchTime.getTime() - now.getTime();
         
-        // If match is scheduled for the future (positive time difference)
+        // If match is in the future (positive time difference) - it's Upcoming
         if (timeDiff > 0) {
           return { ...enhancedMatch, category: "Upcoming" };
         }
         
-        // For matches that started within the last 12 hours but don't have explicit status
-        // Consider them as Live
-        if (timeDiff <= 0 && timeDiff > -12 * 60 * 60 * 1000) {
+        // If match has explicit "Live" status
+        if (match.status.toLowerCase() === "live" || 
+            match.status.toLowerCase().includes("live")) {
           return { ...enhancedMatch, category: "Live" };
         }
         
-        // For matches that started more than 12 hours ago but don't have explicit completion status
-        // Consider them as Completed
-        if (timeDiff <= -12 * 60 * 60 * 1000) {
-          return { ...enhancedMatch, category: "Completed" };
+        // Match has started but no explicit completion status and started within last 8 hours
+        // Cricket matches typically last 3-8 hours depending on format
+        if ((match.matchStarted === true || timeDiff <= 0) && 
+            timeDiff > -8 * 60 * 60 * 1000 && 
+            match.matchEnded !== true) {
+          
+          // Check for match type to determine if it might still be live
+          if (match.matchType?.toLowerCase() === 't20') {
+            // T20 matches last about 3.5-4 hours
+            if (timeDiff > -4 * 60 * 60 * 1000) {
+              return { ...enhancedMatch, category: "Live" };
+            }
+          } else if (match.matchType?.toLowerCase() === 'odi') {
+            // ODI matches last about 8 hours
+            if (timeDiff > -8 * 60 * 60 * 1000) {
+              return { ...enhancedMatch, category: "Live" };
+            }
+          } else if (match.matchType?.toLowerCase() === 'test') {
+            // Test matches last multiple days, check if day's play is in progress
+            const currentHour = now.getHours();
+            // Typical playing hours are between 10:00 and 18:00 local time
+            if (currentHour >= 10 && currentHour < 18) {
+              return { ...enhancedMatch, category: "Live" };
+            }
+          } else {
+            // For unknown match types, use a 6-hour window
+            if (timeDiff > -6 * 60 * 60 * 1000) {
+              return { ...enhancedMatch, category: "Live" };
+            }
+          }
         }
         
-        // Default fallback - if we can't determine, call it upcoming
-        return { ...enhancedMatch, category: "Upcoming" };
+        // If match started more than 8 hours ago, it's most likely completed
+        return { ...enhancedMatch, category: "Completed" };
         
       } catch (error) {
         console.error(`Error categorizing match: ${match.name}`, error);

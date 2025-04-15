@@ -73,12 +73,19 @@ export const getWalletTransactions = async (): Promise<Transaction[]> => {
         txStatus = 'completed';
       }
       
+      // Validate payment method
+      let paymentMethod = tx.payment_method;
+      if (paymentMethod && !['upi', 'card', 'netbanking', 'wallet', 'other'].includes(paymentMethod)) {
+        console.warn(`Unknown payment method: ${paymentMethod}, defaulting to 'other'`);
+        paymentMethod = 'other';
+      }
+      
       // Return a properly typed Transaction object
       return {
         ...tx,
         type: txType as TransactionType,
         status: txStatus as TransactionStatus,
-        payment_method: tx.payment_method as PaymentMethod || 'other'
+        payment_method: paymentMethod as PaymentMethod | undefined
       };
     });
   } catch (error) {
