@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -57,79 +56,60 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [inviteCode, setInviteCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transitionClass, setTransitionClass] = useState("");
-  const [showContinueButton, setShowContinueButton] = useState(false);
+  const [creditsUsed, setCreditsUsed] = useState(0);
 
-  // Refs for scrolling and steppers
   const contentRef = useRef<HTMLDivElement>(null);
-  const nextStepTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const { data: matches, isLoading: matchesLoading } = useQuery({
     queryKey: ["cricket-matches"],
     queryFn: async () => {
-      // In a real app, fetch from your API
       const currentDate = new Date();
       return [
-        { 
-          match_id: "m1", 
-          team1_name: "India", 
-          team2_name: "Pakistan", 
-          time: "Tomorrow, 2:30 PM" 
-        },
-        { 
-          match_id: "m2", 
-          team1_name: "Australia", 
-          team2_name: "England", 
-          time: `${currentDate.getDate()+1} Apr, 10:00 AM` 
-        },
-        { 
-          match_id: "m3", 
-          team1_name: "South Africa", 
-          team2_name: "New Zealand", 
-          time: `${currentDate.getDate()+3} Apr, 3:00 PM` 
-        },
+        { match_id: "m1", team1_name: "India", team2_name: "Pakistan", time: "Tomorrow, 2:30 PM" },
+        { match_id: "m2", team1_name: "Australia", team2_name: "England", time: `${currentDate.getDate() + 1} Apr, 10:00 AM` },
+        { match_id: "m3", team1_name: "South Africa", team2_name: "New Zealand", time: `${currentDate.getDate() + 3} Apr, 3:00 PM` },
       ] as Match[];
     },
   });
 
-  const selectedPlayers = players.filter(p => p.selected);
+  const selectedPlayers = players.filter((p) => p.selected);
   const selectedPlayersCount = selectedPlayers.length;
   const maxPlayersPerTeam = 7;
-  
-  const teamCounts = selectedPlayers.reduce((acc, player) => {
-    acc[player.team] = (acc[player.team] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const maxCredits = 100;
 
-  const hasTeamLimitExceeded = Object.values(teamCounts).some(count => count > maxPlayersPerTeam);
+  const teamCounts = selectedPlayers.reduce(
+    (acc, player) => {
+      acc[player.team] = (acc[player.team] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
-  // Check if player selection is complete
-  const isSelectionComplete = selectedPlayersCount === 11 && captainId && viceCaptainId && !hasTeamLimitExceeded;
+  const hasTeamLimitExceeded = Object.values(teamCounts).some((count) => count > maxPlayersPerTeam);
+  const roleCounts = selectedPlayers.reduce(
+    (acc, player) => {
+      acc[player.role] = (acc[player.role] || 0) + 1;
+      return acc;
+    },
+    {} as Record<PlayerRole, number>
+  );
 
-  // Animation for step transition
-  const applyStepTransition = (newStep: number) => {
-    // Add exiting animation
-    setTransitionClass("animate-fadeOut");
-    
-    // After short delay, change step and add entering animation
-    setTimeout(() => {
-      setStep(newStep);
-      setTransitionClass("animate-fadeIn");
-      
-      // Clear transition class after animation completes
-      setTimeout(() => {
-        setTransitionClass("");
-      }, 500);
-      
-      // Scroll to top of content when changing steps
-      if (contentRef.current) {
-        contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    }, 300);
+  const isSelectionValid = () => {
+    return (
+      selectedPlayersCount === 11 &&
+      captainId &&
+      viceCaptainId &&
+      !hasTeamLimitExceeded &&
+      creditsUsed <= maxCredits &&
+      roleCounts.batsman >= 3 &&
+      roleCounts.bowler >= 3 &&
+      roleCounts.allrounder >= 1 &&
+      roleCounts.wicketkeeper >= 1
+    );
   };
 
   useEffect(() => {
     if (open) {
-      // Reset form when modal opens
       setStep(1);
       setLeagueName("");
       setIsPublic(false);
@@ -139,46 +119,45 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       setSearchQuery("");
       setCaptainId("");
       setViceCaptainId("");
+      setInviteCode("");
       setTransitionClass("");
-      setShowContinueButton(false);
-      
-      // Clear any pending timeouts
-      if (nextStepTimeout.current) {
-        clearTimeout(nextStepTimeout.current);
-      }
+      setCreditsUsed(0);
     }
   }, [open]);
 
-  // Track selection completion and show continue button immediately
   useEffect(() => {
-    if (step === 2) {
-      if (isSelectionComplete) {
-        // Show continue button when selection is complete
-        setShowContinueButton(true);
-        
-        // Show success toast
-        toast.success("Team selection complete! Click Continue to proceed.");
-      } else {
-        setShowContinueButton(false);
-      }
-    }
-  }, [isSelectionComplete, step]);
+    const totalCredits = selectedPlayers.reduce((sum, player) => sum + player.credits, 0);
+    setCreditsUsed(totalCredits);
+  }, [selectedPlayers]);
 
-  // Filter players based on search query
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredPlayers(players);
     } else {
       const query = searchQuery.toLowerCase();
       const filtered = players.filter(
-        player => 
-          player.name.toLowerCase().includes(query) || 
+        (player) =>
+          player.name.toLowerCase().includes(query) ||
           player.team.toLowerCase().includes(query) ||
           player.role.toLowerCase().includes(query)
       );
       setFilteredPlayers(filtered);
     }
   }, [searchQuery, players]);
+
+  const applyStepTransition = (newStep: number) => {
+    setTransitionClass("animate-slideOut");
+    setTimeout(() => {
+      setStep(newStep);
+      setTransitionClass("animate-slideIn");
+      setTimeout(() => {
+        setTransitionClass("");
+      }, 500);
+      if (contentRef.current) {
+        contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 300);
+  };
 
   const generateInviteCode = () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -187,83 +166,81 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   };
 
   const handlePlayerSelection = (playerId: string) => {
-    const updatedPlayers = players.map(player => {
-      if (player.id === playerId) {
-        // If already selected, toggle off
-        if (player.selected) {
-          // If this player was captain or vice-captain, clear those roles
-          if (player.id === captainId) setCaptainId("");
-          if (player.id === viceCaptainId) setViceCaptainId("");
-          return { ...player, selected: false, isCaptain: false, isViceCaptain: false };
+    const player = players.find((p) => p.id === playerId);
+    if (!player) return;
+
+    const updatedPlayers = players.map((p) => {
+      if (p.id === playerId) {
+        if (p.selected) {
+          if (p.id === captainId) setCaptainId("");
+          if (p.id === viceCaptainId) setViceCaptainId("");
+          return { ...p, selected: false, isCaptain: false, isViceCaptain: false };
         }
 
-        // If trying to select but already have 11 players, show error
-        if (selectedPlayersCount >= 11 && !player.selected) {
+        if (selectedPlayersCount >= 11) {
           toast.error("You can only select 11 players");
-          return player;
+          return p;
         }
 
-        // Check team limit before selecting
-        const playerTeam = player.team;
-        if ((teamCounts[playerTeam] || 0) >= maxPlayersPerTeam) {
+        if ((teamCounts[player.team] || 0) >= maxPlayersPerTeam) {
           toast.error(`You can only select ${maxPlayersPerTeam} players from one team`);
-          return player;
+          return p;
         }
 
-        return { ...player, selected: true };
+        const newCredits = creditsUsed + player.credits;
+        if (newCredits > maxCredits) {
+          toast.error(`Credit limit exceeded! Available: ${maxCredits - creditsUsed}`);
+          return p;
+        }
+
+        return { ...p, selected: true };
       }
-      return player;
+      return p;
     });
-    
+
     setPlayers(updatedPlayers);
   };
 
   const handleSetCaptain = (playerId: string) => {
-    // Make sure player is selected first
-    if (!players.find(p => p.id === playerId)?.selected) {
+    const player = players.find((p) => p.id === playerId);
+    if (!player?.selected) {
       toast.error("Player must be selected to be captain");
       return;
     }
 
-    // If this player is vice-captain, remove that role
     if (playerId === viceCaptainId) {
       setViceCaptainId("");
     }
 
     setCaptainId(playerId);
-    
-    // Update the players state to reflect captain status
-    const updatedPlayers = players.map(player => ({
-      ...player,
-      isCaptain: player.id === playerId,
-      isViceCaptain: player.id === viceCaptainId
-    }));
-    
-    setPlayers(updatedPlayers);
+    setPlayers((prev) =>
+      prev.map((p) => ({
+        ...p,
+        isCaptain: p.id === playerId,
+        isViceCaptain: p.id === viceCaptainId,
+      }))
+    );
   };
 
   const handleSetViceCaptain = (playerId: string) => {
-    // Make sure player is selected first
-    if (!players.find(p => p.id === playerId)?.selected) {
+    const player = players.find((p) => p.id === playerId);
+    if (!player?.selected) {
       toast.error("Player must be selected to be vice-captain");
       return;
     }
 
-    // If this player is captain, remove that role
     if (playerId === captainId) {
       setCaptainId("");
     }
 
     setViceCaptainId(playerId);
-    
-    // Update the players state to reflect vice-captain status
-    const updatedPlayers = players.map(player => ({
-      ...player,
-      isCaptain: player.id === captainId,
-      isViceCaptain: player.id === playerId
-    }));
-    
-    setPlayers(updatedPlayers);
+    setPlayers((prev) =>
+      prev.map((p) => ({
+        ...p,
+        isCaptain: p.id === captainId,
+        isViceCaptain: p.id === playerId,
+      }))
+    );
   };
 
   const handleNextStep = () => {
@@ -286,6 +263,10 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         toast.error(`You can only select ${maxPlayersPerTeam} players from one team`);
         return;
       }
+      if (creditsUsed > maxCredits) {
+        toast.error(`Credit limit exceeded! Used: ${creditsUsed}/${maxCredits}`);
+        return;
+      }
       if (!captainId) {
         toast.error("Please select a captain");
         return;
@@ -294,10 +275,20 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         toast.error("Please select a vice-captain");
         return;
       }
+      if (
+        roleCounts.batsman < 3 ||
+        roleCounts.bowler < 3 ||
+        roleCounts.allrounder < 1 ||
+        roleCounts.wicketkeeper < 1
+      ) {
+        toast.error(
+          "Team composition invalid! Minimum: 3 Batsmen, 3 Bowlers, 1 All-rounder, 1 Wicketkeeper"
+        );
+        return;
+      }
       applyStepTransition(3);
     } else if (step === 3) {
-      applyStepTransition(4);
-      generateInviteCode();
+      handleSubmit();
     }
   };
 
@@ -309,33 +300,28 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
     try {
-      // Prepare team data
       const team: Partial<FantasyTeam> = {
         name: `${leagueName} Team`,
         match_id: selectedMatchId,
         captain_id: captainId,
         vice_captain_id: viceCaptainId,
-        players: selectedPlayers
+        players: selectedPlayers,
       };
-      
-      // In a real app, you would save to database here
-      console.log("Creating League:", { 
-        name: leagueName, 
-        isPublic, 
+
+      console.log("Creating League:", {
+        name: leagueName,
+        isPublic,
         matchId: selectedMatchId,
         team,
-        inviteCode
+        inviteCode,
       });
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      generateInviteCode();
       toast.success("League created successfully!");
-      
-      // Save to localStorage for demo purposes
-      const existingLeagues = JSON.parse(localStorage.getItem('fantasy_leagues') || '[]');
+
+      const existingLeagues = JSON.parse(localStorage.getItem("fantasy_leagues") || "[]");
       const newLeague = {
         id: Math.random().toString(36).substring(2, 9),
         name: leagueName,
@@ -343,13 +329,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         matchId: selectedMatchId,
         team,
         inviteCode,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
-      
+
       existingLeagues.push(newLeague);
-      localStorage.setItem('fantasy_leagues', JSON.stringify(existingLeagues));
-      
-      // Show success and transition to final step
+      localStorage.setItem("fantasy_leagues", JSON.stringify(existingLeagues));
+
       applyStepTransition(4);
     } catch (error) {
       console.error(error);
@@ -361,49 +346,48 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   const copyInviteLink = () => {
     const link = `${window.location.origin}/join-league/${inviteCode}`;
-    navigator.clipboard.writeText(link)
-      .then(() => toast.success("Invite link copied to clipboard"))
-      .catch(() => toast.error("Failed to copy invite link"));
+    navigator.clipboard.writeText(link).then(() => toast.success("Invite link copied!"));
   };
 
-  // Add CSS classes for step transitions
   useEffect(() => {
     if (!open) return;
-    
-    // Add step transition classes to index.css
-    const styleElement = document.createElement('style');
+    const styleElement = document.createElement("style");
     styleElement.innerHTML = `
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
       }
-      
-      @keyframes fadeOut {
-        from { opacity: 1; transform: translateY(0); }
-        to { opacity: 0; transform: translateY(-20px); }
+      @keyframes slideOut {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(-20px); }
       }
-      
-      .animate-fadeIn {
-        animation: fadeIn 0.4s ease-out forwards;
+      .animate-slideIn {
+        animation: slideIn 0.5s ease-out forwards;
       }
-      
-      .animate-fadeOut {
-        animation: fadeOut 0.3s ease-in forwards;
+      .animate-slideOut {
+        animation: slideOut 0.3s ease-in forwards;
       }
-      
-      /* Highlight pulse for continue button */
-      @keyframes pulse-highlight {
-        0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+      .pulse-glow {
+        animation: pulse-glow 2s infinite;
       }
-      
-      .pulse-highlight {
-        animation: pulse-highlight 1.5s infinite;
+      @keyframes pulse-glow {
+        0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        70% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #60a5fa;
+        border-radius: 8px;
       }
     `;
     document.head.appendChild(styleElement);
-    
     return () => {
       document.head.removeChild(styleElement);
     };
@@ -414,73 +398,64 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       case 1:
         return (
           <div className={`space-y-6 ${transitionClass}`}>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="bg-primary/10 p-2.5 rounded-full">
-                  <Trophy className="h-5 w-5 text-primary" />
-                </div>
-                <Label htmlFor="league-name" className="text-lg font-semibold">League Name</Label>
+            <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-5 rounded-xl shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <Trophy className="h-6 w-6 text-orange-500" />
+                <Label className="text-xl font-bold text-gray-800">Name Your League</Label>
               </div>
               <Input
-                id="league-name"
-                placeholder="Enter a name for your league"
+                placeholder="E.g., Cricket Champions League"
                 value={leagueName}
                 onChange={(e) => setLeagueName(e.target.value)}
-                className="h-12 text-base bg-white border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-12 bg-white/80 backdrop-blur-sm border-orange-200 focus:border-orange-400 text-lg rounded-lg shadow-inner"
               />
             </div>
-            
-            <div className="space-y-3 bg-gray-50 p-5 rounded-lg border border-gray-100">
-              <div className="flex items-center gap-2 mb-1">
-                <Users className="h-5 w-5 text-blue-600" />
-                <Label htmlFor="public-league" className="text-lg font-semibold">League Visibility</Label>
+
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-5 rounded-xl shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <Users className="h-6 w-6 text-blue-500" />
+                <Label className="text-xl font-bold text-gray-800">League Type</Label>
               </div>
-              <div className="flex items-center space-x-2 bg-white p-4 rounded-md border border-gray-200 shadow-sm">
-                <Switch
-                  id="public-league"
-                  checked={isPublic}
-                  onCheckedChange={setIsPublic}
-                />
+              <div className="flex items-center justify-between bg-white/80 p-4 rounded-lg shadow-inner border border-blue-100">
                 <div>
-                  <Label htmlFor="public-league" className="font-medium">{isPublic ? "Public League" : "Private League"}</Label>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {isPublic ? 
-                      "Anyone can find and join this league" : 
-                      "Only people with the invite link can join this league"}
+                  <Label className="text-base font-semibold">
+                    {isPublic ? "Public League" : "Private League"}
+                  </Label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {isPublic
+                      ? "Open to everyone"
+                      : "Invite-only with a unique code"}
                   </p>
                 </div>
+                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
               </div>
             </div>
-            
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="bg-blue-100 p-2.5 rounded-full">
-                  <Users className="h-5 w-5 text-blue-600" />
-                </div>
-                <Label htmlFor="match-select" className="text-lg font-semibold">Select Match</Label>
+
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <Users className="h-6 w-6 text-green-500" />
+                <Label className="text-xl font-bold text-gray-800">Choose Match</Label>
               </div>
-              <Select
-                onValueChange={(value) => setSelectedMatchId(value)}
-                value={selectedMatchId}>
-                <SelectTrigger className="h-12 bg-white border-gray-200">
-                  <SelectValue placeholder="Select a match for your league" />
+              <Select onValueChange={setSelectedMatchId} value={selectedMatchId}>
+                <SelectTrigger className="h-12 bg-white/80 border-green-200 focus:border-green-400 text-lg rounded-lg shadow-inner">
+                  <SelectValue placeholder="Pick a match" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px] bg-white">
+                <SelectContent className="bg-white rounded-lg shadow-lg max-h-64">
                   {matchesLoading ? (
-                    <div className="flex items-center justify-center p-4">
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                      <span>Loading matches...</span>
+                    <div className="p-4 text-center">
+                      <Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />
+                      Loading...
                     </div>
                   ) : (
                     matches?.map((match) => (
-                      <SelectItem 
-                        key={match.match_id} 
+                      <SelectItem
+                        key={match.match_id}
                         value={match.match_id}
-                        className="py-3"
+                        className="py-3 px-4 hover:bg-green-50"
                       >
-                        <div className="flex flex-col">
-                          <span className="font-medium">{match.team1_name} vs {match.team2_name}</span>
-                          <span className="text-xs text-gray-500">{match.time}</span>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold">{match.team1_name} vs {match.team2_name}</span>
+                          <span className="text-sm text-gray-500">{match.time}</span>
                         </div>
                       </SelectItem>
                     ))
@@ -490,288 +465,271 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             </div>
           </div>
         );
-        
+
       case 2:
         return (
           <div className={`space-y-4 ${transitionClass}`}>
-            <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-lg shadow-md">
-              <h3 className="text-lg font-medium">Select Your Dream Team</h3>
-              <Badge variant="outline" className="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-bold border-white">
-                {selectedPlayersCount}/11
-              </Badge>
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 rounded-xl shadow-lg flex justify-between items-center">
+              <h3 className="text-lg font-bold">Build Your Dream Team</h3>
+              <div className="flex items-center gap-4">
+                <Badge className="bg-yellow-400 text-purple-900">
+                  {selectedPlayersCount}/11
+                </Badge>
+                <Badge className="bg-green-400 text-purple-900">
+                  Credits: {maxCredits - creditsUsed}/{maxCredits}
+                </Badge>
+              </div>
             </div>
-            
+
             <div className="relative">
-              <div className="flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-4">
-                <div className="px-3 text-gray-400">
-                  <Search className="h-5 w-5" />
-                </div>
+              <div className="flex items-center bg-white/90 border border-purple-200 rounded-lg shadow-sm">
+                <Search className="h-5 w-5 text-purple-500 mx-3" />
                 <Input
-                  placeholder="Search players by name, team or role"
+                  placeholder="Search players..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-12 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="h-12 border-0 focus:ring-0 bg-transparent"
                 />
                 {searchQuery && (
-                  <button 
+                  <Button
+                    variant="ghost"
                     onClick={() => setSearchQuery("")}
-                    className="px-3 text-gray-400 hover:text-gray-600"
+                    className="p-2"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
+                    <X className="h-4 w-4 text-purple-500" />
+                  </Button>
                 )}
               </div>
             </div>
-            
-            <ScrollArea className="h-[42vh] pr-4 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-1">
+
+            <ScrollArea className="h-[45vh] custom-scrollbar rounded-lg">
+              <div className="grid grid-cols-1 gap-3 p-1">
                 {filteredPlayers.map((player) => (
-                  <Card 
-                    key={player.id} 
-                    className={`border overflow-hidden transition-all hover:shadow-md ${
-                      player.selected 
-                        ? 'border-primary bg-primary/5 shadow-md' 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                  <Card
+                    key={player.id}
+                    className={`bg-white/95 backdrop-blur-sm border ${
+                      player.selected
+                        ? "border-purple-400 shadow-purple-200 shadow-md"
+                        : "border-gray-200"
+                    } rounded-lg overflow-hidden hover:shadow-lg transition-all`}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="text-purple-600 font-bold">{player.name[0]}</span>
+                        </div>
                         <div>
-                          <div className="font-medium">{player.name}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs border-gray-200 bg-gray-50">
-                              {player.team}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs capitalize border-gray-200 bg-gray-50">
-                              {player.role}
-                            </Badge>
-                            <span className="text-xs text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded">
-                              {player.credits} Cr
-                            </span>
+                          <div className="font-semibold text-gray-800">{player.name}</div>
+                          <div className="flex gap-2 mt-1">
+                            <Badge className="bg-purple-100 text-purple-700">{player.team}</Badge>
+                            <Badge className="bg-blue-100 text-blue-700 capitalize">{player.role}</Badge>
+                            <Badge className="bg-yellow-100 text-yellow-700">{player.credits} Cr</Badge>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          {player.selected && (
-                            <div className="flex gap-1.5">
-                              <Button 
-                                size="sm" 
-                                variant={player.isCaptain ? "default" : "outline"}
-                                onClick={() => handleSetCaptain(player.id)}
-                                className={`text-xs h-8 w-8 p-0 font-bold rounded-full ${player.isCaptain ? 'bg-green-600 hover:bg-green-700 border-green-600' : 'border-gray-300'}`}
-                              >
-                                C
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant={player.isViceCaptain ? "default" : "outline"}
-                                onClick={() => handleSetViceCaptain(player.id)}
-                                className={`text-xs h-8 w-8 p-0 font-bold rounded-full ${player.isViceCaptain ? 'bg-blue-600 hover:bg-blue-700 border-blue-600' : 'border-gray-300'}`}
-                              >
-                                VC
-                              </Button>
-                            </div>
-                          )}
-                          <Button 
-                            size="sm" 
-                            variant={player.selected ? "destructive" : "default"}
-                            onClick={() => handlePlayerSelection(player.id)}
-                            className={`h-9 ${player.selected ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
-                          >
-                            {player.selected ? "Remove" : "Select"}
-                          </Button>
-                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {player.selected && (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant={player.isCaptain ? "default" : "outline"}
+                              onClick={() => handleSetCaptain(player.id)}
+                              className={`w-8 h-8 rounded-full p-0 ${
+                                player.isCaptain
+                                  ? "bg-green-500 hover:bg-green-600"
+                                  : "border-purple-300"
+                              }`}
+                            >
+                              C
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={player.isViceCaptain ? "default" : "outline"}
+                              onClick={() => handleSetViceCaptain(player.id)}
+                              className={`w-8 h-8 rounded-full p-0 ${
+                                player.isViceCaptain
+                                  ? "bg-blue-500 hover:bg-blue-600"
+                                  : "border-purple-300"
+                              }`}
+                            >
+                              VC
+                            </Button>
+                          </div>
+                        )}
+                        <Button
+                          size="sm"
+                          variant={player.selected ? "destructive" : "default"}
+                          onClick={() => handlePlayerSelection(player.id)}
+                          className={`h-8 ${
+                            player.selected
+                              ? "bg-red-500 hover:bg-red-600"
+                              : "bg-purple-500 hover:bg-purple-600"
+                          }`}
+                        >
+                          {player.selected ? "Remove" : "Add"}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
-                
-                {filteredPlayers.length === 0 && (
-                  <div className="col-span-2 flex flex-col items-center justify-center py-10 text-gray-500">
-                    <Search className="h-12 w-12 mb-2 opacity-20" />
-                    <p>No players found matching "{searchQuery}"</p>
-                    <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
-                      Clear search
+                {!filteredPlayers.length && (
+                  <div className="text-center py-10 text-gray-500">
+                    <Search className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                    <p>No players found for "{searchQuery}"</p>
+                    <Button
+                      variant="link"
+                      onClick={() => setSearchQuery("")}
+                      className="mt-2"
+                    >
+                      Clear Search
                     </Button>
                   </div>
                 )}
               </div>
             </ScrollArea>
-            
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100 shadow-sm mt-4">
-              <div className="text-sm font-medium text-blue-800 mb-2">Team Selection Rules:</div>
-              <ul className="grid grid-cols-2 gap-3">
-                <li className={`flex items-center text-sm ${selectedPlayersCount === 11 ? "text-green-600" : "text-gray-600"}`}>
-                  {selectedPlayersCount === 11 ? 
-                    <Check className="h-4 w-4 mr-1" /> : 
-                    <div className="h-4 w-4 rounded-full border border-gray-300 mr-1"></div>
-                  }
-                  11 players total
-                </li>
-                <li className={`flex items-center text-sm ${!hasTeamLimitExceeded ? "text-green-600" : "text-gray-600"}`}>
-                  {!hasTeamLimitExceeded ? 
-                    <Check className="h-4 w-4 mr-1" /> : 
-                    <div className="h-4 w-4 rounded-full border border-gray-300 mr-1"></div>
-                  }
+
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-100 shadow-sm">
+              <h4 className="font-semibold text-purple-800 mb-2">Team Composition</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className={`flex items-center gap-2 ${selectedPlayersCount === 11 ? "text-green-600" : ""}`}>
+                  <Check className={`h-4 w-4 ${selectedPlayersCount === 11 ? "" : "text-gray-400"}`} />
+                  Players: {selectedPlayersCount}/11
+                </div>
+                <div className={`flex items-center gap-2 ${creditsUsed <= maxCredits ? "text-green-600" : "text-red-600"}`}>
+                  <Check className={`h-4 w-4 ${creditsUsed <= maxCredits ? "" : "text-gray-400"}`} />
+                  Credits: {creditsUsed}/{maxCredits}
+                </div>
+                <div className={`flex items-center gap-2 ${roleCounts.batsman >= 3 ? "text-green-600" : ""}`}>
+                  <Check className={`h-4 w-4 ${roleCounts.batsman >= 3 ? "" : "text-gray-400"}`} />
+                  Batsmen: {roleCounts.batsman || 0}/3+
+                </div>
+                <div className={`flex items-center gap-2 ${roleCounts.bowler >= 3 ? "text-green-600" : ""}`}>
+                  <Check className={`h-4 w-4 ${roleCounts.bowler >= 3 ? "" : "text-gray-400"}`} />
+                  Bowlers: {roleCounts.bowler || 0}/3+
+                </div>
+                <div className={`flex items-center gap-2 ${roleCounts.allrounder >= 1 ? "text-green-600" : ""}`}>
+                  <Check className={`h-4 w-4 ${roleCounts.allrounder >= 1 ? "" : "text-gray-400"}`} />
+                  All-rounders: {roleCounts.allrounder || 0}/1+
+                </div>
+                <div className={`flex items-center gap-2 ${roleCounts.wicketkeeper >= 1 ? "text-green-600" : ""}`}>
+                  <Check className={`h-4 w-4 ${roleCounts.wicketkeeper >= 1 ? "" : "text-gray-400"}`} />
+                  Wicketkeepers: {roleCounts.wicketkeeper || 0}/1+
+                </div>
+                <div className={`flex items-center gap-2 ${!hasTeamLimitExceeded ? "text-green-600" : ""}`}>
+                  <Check className={`h-4 w-4 ${!hasTeamLimitExceeded ? "" : "text-gray-400"}`} />
                   Max 7 per team
-                </li>
-                <li className={`flex items-center text-sm ${captainId ? "text-green-600" : "text-gray-600"}`}>
-                  {captainId ? 
-                    <Check className="h-4 w-4 mr-1" /> : 
-                    <div className="h-4 w-4 rounded-full border border-gray-300 mr-1"></div>
-                  }
-                  1 Captain (2x points)
-                </li>
-                <li className={`flex items-center text-sm ${viceCaptainId ? "text-green-600" : "text-gray-600"}`}>
-                  {viceCaptainId ? 
-                    <Check className="h-4 w-4 mr-1" /> : 
-                    <div className="h-4 w-4 rounded-full border border-gray-300 mr-1"></div>
-                  }
-                  1 Vice-Captain (1.5x)
-                </li>
-              </ul>
-            </div>
-            
-            {/* Always show continue button - but enable it only when selection is complete */}
-            <div className="mt-4 flex justify-center">
-              <Button
-                onClick={handleNextStep}
-                disabled={!isSelectionComplete}
-                className={`w-full py-6 text-lg font-medium ${
-                  showContinueButton ? 'pulse-highlight bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700' : 
-                  'bg-gray-400 cursor-not-allowed'
-                }`}
-              >
-                Continue to Review
-                <ChevronRight className="ml-2 h-5 w-5" />
-              </Button>
+                </div>
+                <div className={`flex items-center gap-2 ${captainId && viceCaptainId ? "text-green-600" : ""}`}>
+                  <Check className={`h-4 w-4 ${captainId && viceCaptainId ? "" : "text-gray-400"}`} />
+                  Captain & Vice-Captain
+                </div>
+              </div>
             </div>
           </div>
         );
-        
+
       case 3:
-        const selectedMatch = matches?.find(m => m.match_id === selectedMatchId);
+        const selectedMatch = matches?.find((m) => m.match_id === selectedMatchId);
         return (
           <div className={`space-y-5 ${transitionClass}`}>
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-5 rounded-lg text-center shadow-lg">
-              <h3 className="text-xl font-bold mb-1">Almost There!</h3>
-              <p className="text-purple-100">Review your league details before creating</p>
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-5 rounded-xl shadow-lg text-center">
+              <h3 className="text-xl font-bold">Review Your League</h3>
+              <p className="text-green-100 mt-1">Everything set? Let’s create it!</p>
             </div>
-            
-            <ScrollArea className="h-[50vh] pr-4">
+
+            <ScrollArea className="h-[50vh] custom-scrollbar">
               <div className="space-y-4">
-                <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center mb-3">
-                    <Trophy className="h-5 w-5 text-yellow-500 mr-2" />
-                    <h4 className="font-semibold text-lg">League Details</h4>
+                <Card className="bg-white/95 p-4 rounded-xl shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Trophy className="h-5 w-5 text-orange-500" />
+                    <h4 className="font-bold text-lg text-gray-800">League Info</h4>
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-3 rounded-md">
-                      <p className="text-sm text-gray-500">League Name</p>
-                      <p className="font-medium">{leagueName}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-orange-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600">Name</p>
+                      <p className="font-semibold">{leagueName}</p>
                     </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded-md">
-                      <p className="text-sm text-gray-500">Type</p>
-                      <div className="flex items-center">
-                        <Badge variant={isPublic ? "default" : "secondary"} className="mt-1">
-                          {isPublic ? "Public" : "Private"}
-                        </Badge>
-                      </div>
+                    <div className="bg-orange-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600">Type</p>
+                      <Badge className={isPublic ? "bg-green-500" : "bg-blue-500"}>
+                        {isPublic ? "Public" : "Private"}
+                      </Badge>
                     </div>
                   </div>
-                </div>
-                
-                <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center mb-3">
-                    <Users className="h-5 w-5 text-blue-500 mr-2" />
-                    <h4 className="font-semibold text-lg">Match</h4>
+                </Card>
+
+                <Card className="bg-white/95 p-4 rounded-xl shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Users className="h-5 w-5 text-blue-500" />
+                    <h4 className="font-bold text-lg text-gray-800">Match</h4>
                   </div>
-                  
                   {selectedMatch && (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-md border border-blue-100">
-                      <div className="font-bold text-gray-800 flex justify-between items-center">
-                        <span>{selectedMatch.team1_name}</span>
-                        <span className="text-sm bg-white px-2 py-1 rounded text-gray-500">VS</span>
-                        <span>{selectedMatch.team2_name}</span>
-                      </div>
-                      <div className="text-sm text-gray-600 mt-2 text-center">{selectedMatch.time}</div>
+                    <div className="bg-blue-50 p-4 rounded-lg text-center">
+                      <div className="font-bold text-lg">{selectedMatch.team1_name} vs {selectedMatch.team2_name}</div>
+                      <p className="text-sm text-gray-600 mt-1">{selectedMatch.time}</p>
                     </div>
                   )}
-                </div>
-                
-                <div className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center mb-3">
-                    <Users className="h-5 w-5 text-green-500 mr-2" />
-                    <h4 className="font-semibold text-lg">Your Team</h4>
+                </Card>
+
+                <Card className="bg-white/95 p-4 rounded-xl shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Users className="h-5 w-5 text-purple-500" />
+                    <h4 className="font-bold text-lg text-gray-800">Your Team</h4>
                   </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
-                    {selectedPlayers.map(player => (
-                      <div 
+                  <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto custom-scrollbar">
+                    {selectedPlayers.map((player) => (
+                      <div
                         key={player.id}
-                        className="flex items-center justify-between bg-gray-50 p-2.5 rounded-md border hover:border-gray-300 transition-colors"
+                        className="flex items-center justify-between bg-purple-50 p-3 rounded-lg"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{player.name}</span>
-                          <Badge variant="outline" className="text-xs border-gray-200 bg-white">
-                            {player.team}
-                          </Badge>
+                          <span className="font-semibold">{player.name}</span>
+                          <Badge className="bg-purple-100 text-purple-700">{player.team}</Badge>
                         </div>
                         <div className="flex gap-1">
-                          {player.isCaptain && (
-                            <Badge className="bg-green-600">C</Badge>
-                          )}
-                          {player.isViceCaptain && (
-                            <Badge className="bg-blue-600">VC</Badge>
-                          )}
+                          {player.isCaptain && <Badge className="bg-green-500">C</Badge>}
+                          {player.isViceCaptain && <Badge className="bg-blue-500">VC</Badge>}
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
               </div>
             </ScrollArea>
           </div>
         );
-        
+
       case 4:
         return (
-          <div className={`space-y-8 text-center ${transitionClass}`}>
-            <div className="mx-auto bg-gradient-to-r from-green-400 to-emerald-500 w-20 h-20 rounded-full flex items-center justify-center shadow-lg">
-              <Check className="h-10 w-10 text-white" />
+          <div className={`space-y-6 text-center ${transitionClass}`}>
+            <div className="mx-auto bg-green-500 w-16 h-16 rounded-full flex items-center justify-center shadow-lg">
+              <Check className="h-8 w-8 text-white" />
             </div>
-            
             <div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">League Created!</h3>
-              <p className="text-gray-600">Share this invite code with friends to join your league</p>
+              <h3 className="text-2xl font-bold text-gray-800">League Created!</h3>
+              <p className="text-gray-600 mt-2">Invite friends to join the fun!</p>
             </div>
-            
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg flex flex-col items-center border border-purple-100 shadow-md">
-              <span className="font-mono font-bold text-xl bg-white px-4 py-2 rounded-md border border-gray-200 mb-4 tracking-wide shadow-sm">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl shadow-sm">
+              <div className="font-mono text-2xl font-bold bg-white p-3 rounded-lg shadow-inner mb-4">
                 {inviteCode}
-              </span>
+              </div>
               <Button
-                variant="outline"
                 onClick={copyInviteLink}
-                className="w-full bg-white border-purple-200 hover:bg-purple-50 transition-colors"
+                className="w-full bg-green-500 hover:bg-green-600"
               >
                 <Share2 className="h-4 w-4 mr-2" />
                 Copy Invite Link
               </Button>
             </div>
-            
-            <div className="pt-4">
-              <Button
-                onClick={() => onOpenChange(false)}
-                className="w-full text-lg py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-md"
-              >
-                Done
-              </Button>
-            </div>
+            <Button
+              onClick={() => onOpenChange(false)}
+              className="w-full bg-purple-500 hover:bg-purple-600"
+            >
+              Done
+            </Button>
           </div>
         );
-        
+
       default:
         return null;
     }
@@ -779,87 +737,75 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px] p-0 overflow-hidden border bg-white rounded-xl shadow-xl">
-        <div className="absolute inset-0 bg-black/50 -z-10" onClick={() => onOpenChange(false)} />
-        
-        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-5">
-          <DialogTitle className="text-xl font-bold text-center">
-            {step < 4 ? `Create Your Fantasy League ${step}/3` : "Invite Friends"}
+      <DialogContent className="sm:max-w-[700px] p-0 bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-5">
+          <DialogTitle className="text-2xl font-bold text-white text-center">
+            {step < 4 ? `Create Fantasy League (${step}/3)` : "Invite Friends"}
           </DialogTitle>
         </div>
-        
-        {/* Step progress indicators */}
+
         {step < 4 && (
-          <div className="flex justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b sticky top-0 z-10">
-            {[1, 2, 3].map((stepNumber) => (
-              <div key={stepNumber} className="flex-1 flex flex-col items-center p-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 transition-colors
-                  ${stepNumber < step ? 'bg-green-600 text-white shadow-md' : 
-                    stepNumber === step ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-500'}
-                `}>
-                  {stepNumber < step ? (
-                    <Check className="h-5 w-5" />
-                  ) : (
-                    stepNumber
-                  )}
-                </div>
-                <span className={`text-xs font-medium ${stepNumber === step ? 'text-blue-700' : 'text-gray-600'}`}>
-                  {stepNumber === 1 ? "League Setup" : 
-                   stepNumber === 2 ? "Select Team" : "Review"}
-                </span>
+          <div className="flex justify-center gap-4 py-3 bg-gray-50 border-b">
+            {["Setup", "Team", "Review"].map((label, index) => (
+              <div
+                key={index}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+                  step > index + 1
+                    ? "bg-green-500 text-white"
+                    : step === index + 1
+                    ? "bg-purple-500 text-white"
+                    : "bg-gray-200 text-gray-600"
+                }`}
+              >
+                <span className="font-semibold">{label}</span>
+                {step > index + 1 && <Check className="h-4 w-4" />}
               </div>
             ))}
           </div>
         )}
-        
-        <div className="p-6 bg-gradient-to-br from-white to-gray-50" ref={contentRef}>
+
+        <div className="p-6 bg-gradient-to-b from-white to-gray-50" ref={contentRef}>
           {renderStep()}
         </div>
-        
-        {/* Navigation buttons - Fixed at bottom to always stay visible */}
+
         {step < 4 && (
-          <div className="flex justify-between p-4 border-t bg-gray-50 sticky bottom-0">
+          <div className="flex justify-between p-4 bg-gray-50 border-t">
             <Button
               variant="outline"
               onClick={step > 1 ? handlePrevStep : () => onOpenChange(false)}
-              className="w-28 border-gray-300 bg-white hover:bg-gray-100 transition-colors"
+              className="bg-white border-purple-300 hover:bg-purple-50"
             >
               {step > 1 ? (
                 <>
-                  <ChevronsLeft className="h-4 w-4 mr-1.5" />
+                  <ChevronsLeft className="h-4 w-4 mr-2" />
                   Back
                 </>
               ) : (
                 <>
-                  <X className="h-4 w-4 mr-1.5" />
+                  <X className="h-4 w-4 mr-2" />
                   Cancel
                 </>
               )}
             </Button>
-            
-            {step === 2 && !isSelectionComplete ? (
-              <div className="text-sm text-gray-500 font-medium">
-                Select 11 players, 1 Captain & 1 Vice-Captain
-              </div>
-            ) : (
-              <Button
-                onClick={step === 3 ? handleSubmit : handleNextStep}
-                className={`min-w-28 shadow-sm transition-all ${step === 3 ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                disabled={isSubmitting || (step === 2 && !isSelectionComplete)}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    {step === 3 ? "Create" : "Continue"} 
-                    {step < 3 && <ChevronRight className="h-4 w-4 ml-1.5" />}
-                  </>
-                )}
-              </Button>
-            )}
+            <Button
+              onClick={handleNextStep}
+              disabled={isSubmitting || (step === 2 && !isSelectionValid())}
+              className={`pulse-glow ${
+                step === 3 ? "bg-green-500 hover:bg-green-600" : "bg-purple-500 hover:bg-purple-600"
+              }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  {step === 3 ? "Create League" : step === 2 ? "Review Team" : "Next"}
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
           </div>
         )}
       </DialogContent>
