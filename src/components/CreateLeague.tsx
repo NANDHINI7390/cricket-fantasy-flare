@@ -8,6 +8,7 @@ const CreateLeague = () => {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
 
+  // Sample match data
   const matches = [
     { id: 1, teamA: "India", teamB: "Australia" },
     { id: 2, teamA: "England", teamB: "Pakistan" },
@@ -15,7 +16,7 @@ const CreateLeague = () => {
   ];
 
   const handleCreateLeague = () => {
-    alert(`League created for ${selectedTeam} in match ${selectedMatch.teamA} vs ${selectedMatch.teamB}!`);
+    alert(`League created for ${selectedTeam}!`);
     setIsModalOpen(false);
     setSelectedMatch(null);
     setSelectedTeam(null);
@@ -80,22 +81,24 @@ const CreateLeague = () => {
           </motion.div>
         </div>
 
-        {/* Modal */}
+        {/* Modal for creating league */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
               {/* Step 1: Select Match */}
-              <h2 className="text-xl font-semibold mb-4 text-center">Select a Match</h2>
+              <h2 className="text-xl font-semibold mb-4">Select a Match:</h2>
               <div className="space-y-2">
                 {matches.map((match) => (
                   <div
                     key={match.id}
                     onClick={() => {
                       setSelectedMatch(match);
-                      setSelectedTeam(null);
+                      setSelectedTeam(null); // Reset selected team when match changes
                     }}
-                    className={`cursor-pointer p-2 border rounded text-center ${
-                      selectedMatch?.id === match.id ? "bg-blue-600 text-white" : "bg-gray-100"
+                    className={`cursor-pointer p-2 border rounded ${
+                      selectedMatch?.id === match.id
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100"
                     }`}
                   >
                     {match.teamA} vs {match.teamB}
@@ -105,49 +108,54 @@ const CreateLeague = () => {
 
               {/* Step 2: Select Team */}
               {selectedMatch && (
-                <div className="mt-4">
-                  <h3 className="text-lg font-medium mb-2 text-center">Choose Your Team</h3>
-                  <div className="flex justify-center gap-4">
-                    {[selectedMatch.teamA, selectedMatch.teamB].map((team) => (
-                      <button
-                        key={team}
-                        className={`px-4 py-2 rounded border ${
-                          selectedTeam === team ? "bg-green-500 text-white" : "bg-gray-200"
-                        }`}
-                        onClick={() => setSelectedTeam(team)}
-                      >
-                        {team}
-                      </button>
-                    ))}
+                <>
+                  <h3 className="mt-4 text-lg font-medium">Choose Your Team:</h3>
+                  <div className="flex gap-4 mt-2">
+                    <button
+                      className={`p-2 border rounded ${
+                        selectedTeam === selectedMatch.teamA
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-200"
+                      }`}
+                      onClick={() => setSelectedTeam(selectedMatch.teamA)}
+                    >
+                      {selectedMatch.teamA}
+                    </button>
+                    <button
+                      className={`p-2 border rounded ${
+                        selectedTeam === selectedMatch.teamB
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-200"
+                      }`}
+                      onClick={() => setSelectedTeam(selectedMatch.teamB)}
+                    >
+                      {selectedMatch.teamB}
+                    </button>
                   </div>
-                </div>
+                </>
               )}
 
-              {/* Step 3: Create Button */}
+              {/* Step 3: Create League Button */}
               {selectedTeam && (
-                <div className="text-center mt-6">
-                  <button
-                    onClick={handleCreateLeague}
-                    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-all"
-                  >
-                    Create League
-                  </button>
-                </div>
+                <button
+                  onClick={handleCreateLeague}
+                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  Create League
+                </button>
               )}
 
-              {/* Close */}
-              <div className="text-center mt-6">
-                <button
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setSelectedMatch(null);
-                    setSelectedTeam(null);
-                  }}
-                  className="text-red-600 hover:underline"
-                >
-                  Cancel
-                </button>
-              </div>
+              {/* Close Modal */}
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setSelectedMatch(null);
+                  setSelectedTeam(null);
+                }}
+                className="mt-4 text-red-500"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
