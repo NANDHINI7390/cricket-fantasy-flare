@@ -189,13 +189,25 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       existingLeagues.push(leagueData);
       localStorage.setItem("fantasy_leagues", JSON.stringify(existingLeagues));
 
-      setStep(4); // Move to success step
+      onOpenChange(false)
       toast.success("League created successfully!");
     } catch (error: any) {
       toast.error("Failed to create league");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const validateForm = (): FormErrors => {
+    const errors: FormErrors = {};
+    if (!formData.leagueName.trim()) errors.leagueName = "League name is required";
+    else if (formData.leagueName.length > 50) errors.leagueName = "Max 50 characters";
+    if (formData.entryFee < 0) errors.entryFee = "Entry fee cannot be negative";
+    if (formData.totalSpots < 2) errors.totalSpots = "Minimum 2 spots";
+    else if (formData.totalSpots > 1000) errors.totalSpots = "Maximum 1000 spots";
+    if (!formData.matchId) errors.matchId = "Select a match";
+    if (!formData.teamId) errors.teamId = "Select a team";
+    return errors;
   };
 
   const renderStep = () => {
@@ -416,14 +428,14 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       )}
 
       {step < stepTitles.length ? (
-        <Button onClick={handleNext} disabled={isSubmitting}>
+        <Button onClick={handleNext} disabled={isSubmitting || Object.keys(validateStep(step)).length > 0}>
           Next
           <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
       ) : (
         <Button
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || Object.keys(validateForm()).length > 0}
           className="bg-green-500 hover:bg-green-600 text-white"
         >
           {isSubmitting ? (
@@ -472,115 +484,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 </div>
               )}
 
-              {step !== 4 ? renderNavigationButtons() : (
-                <div className="flex justify-end mt-6">
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="bg-green-500 hover:bg-green-600 text-white"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      "Create League"
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              {step === 4 && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="mt-6 text-center"
-                />
-              )}
-            </motion.div>
-          </DialogContent>
-        )}
-      </AnimatePresence>
-    </Dialog>
-  );
-};
-
-export default CreateLeagueModal;
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="text-center space-y-6"
-          >
-            <div className="bg-gradient-to-r from-green-400 to-emerald-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
-              <Check className="h-8 w-8 text-white" />
-            </div>
-            <h3 className="text-xl font-bold">League Created!</h3>
-            <p className="text-gray-600">Your league is ready. Invite friends to join!</p>
-            <Button
-              onClick={() => onOpenChange(false)}
-              className="w-full py-6 bg-indigo-600 hover:bg-indigo-700"
-            >
-              Done
-            </Button>
-          </motion.div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <AnimatePresence>
-        {open && (
-          <DialogContent className="sm:max-w-[500px] p-0 bg-white rounded-xl">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="bg-indigo-600 text-white p-4">
-                <h2 className="text-lg font-bold text-center">
-                  {step === 1 ? "Create League" : "Success"}
-                </h2>
-              </div>
-              <ScrollArea className="max-h-[70vh] p-6" ref={contentRef}>
-                {renderStep()}
-              </ScrollArea>
-              {step === 1 && (
-                <div className="flex justify-between p-4 border-t bg-gray-50">
-                  <Button
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                    className="w-28"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="w-28 bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        Create
-                        <ChevronRight className="h-4 w-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
+              {renderNavigationButtons()}
             </motion.div>
           </DialogContent>
         )}
