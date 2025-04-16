@@ -291,7 +291,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                     </SelectItem>
                   ) : matches ? (
                     matches.map((match: Match) => (
-                      <SelectItem key={match.match_id} value={match.match_id}>
+                      <SelectItem className="bg-white hover:bg-gray-100" key={match.match_id} value={match.match_id}>
                         {match.team1_name} vs {match.team2_name} ({match.time})
                       </SelectItem>
                     ))
@@ -331,7 +331,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                     </SelectItem>
                   ) : teams ? (
                     teams.map((team: Team) => (
-                      <SelectItem key={team.team_id} value={team.team_id}>
+                      <SelectItem className="bg-white hover:bg-gray-100" key={team.team_id} value={team.team_id}>
                         {team.name}
                       </SelectItem>
                     ))
@@ -452,8 +452,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 <DialogTitle className="text-xl font-bold text-center">
                   {stepTitles[step - 1]}
                 </DialogTitle>
-                <Button variant={"outline"} className="absolute right-0 top-0" onClick={() => onOpenChange(false)}>
-                  <X className="w-4 h-4" />
+                <Button variant={"outline"} className="absolute right-0 top-0 p-1" onClick={() => onOpenChange(false)}>
+                  <X  />
                 </Button>
               </DialogHeader>
 
