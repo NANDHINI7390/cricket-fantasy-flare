@@ -95,8 +95,21 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         isPublic: false,
       });
       setFormErrors({});
+      // Scroll to top when modal opens
+      setTimeout(() => {
+        if (contentRef.current) {
+          contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }, 100);
     }
   }, [open]);
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [step]);
 
   const handleInputChange = (field: keyof FormData, value: string | number | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -142,6 +155,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast.error("Please fix the errors in the form");
+      // Scroll to the first error
+      const firstErrorField = Object.keys(errors)[0];
+      const errorElement = document.getElementById(`${firstErrorField}`);
+      if (errorElement && contentRef.current) {
+        errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     } else {
       setStep(step + 1);
       setFormErrors({});
@@ -155,6 +174,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast.error("Please fix the errors in the form");
+      // Scroll to the first error
+      const firstErrorField = Object.keys(errors)[0];
+      const errorElement = document.getElementById(`${firstErrorField}`);
+      if (errorElement && contentRef.current) {
+        errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
@@ -219,6 +244,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 }
                 className={formErrors.leagueName ? "border-red-500" : ""}
               />
+              {formErrors.leagueName && <p className="text-red-500 text-sm mt-1">{formErrors.leagueName}</p>}
             </div>
 
             <div className="space-y-2">
@@ -236,6 +262,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 }
                 className={formErrors.entryFee ? "border-red-500" : ""}
               />
+              {formErrors.entryFee && <p className="text-red-500 text-sm mt-1">{formErrors.entryFee}</p>}
             </div>
 
             <div className="space-y-2">
@@ -253,6 +280,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 }
                 className={formErrors.totalSpots ? "border-red-500" : ""}
               />
+              {formErrors.totalSpots && <p className="text-red-500 text-sm mt-1">{formErrors.totalSpots}</p>}
             </div>
 
             <div className="flex items-center justify-between">
@@ -285,7 +313,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   {matchesLoading ? (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="" disabled className="bg-white hover:bg-gray-100">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Loading matches...
                     </SelectItem>
@@ -296,7 +324,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="" disabled className="bg-white hover:bg-gray-100">
                       Failed to load matches
                     </SelectItem>
                   )}
@@ -325,7 +353,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   {teamsLoading ? (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="" disabled className="bg-white hover:bg-gray-100">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Loading teams...
                     </SelectItem>
@@ -336,7 +364,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="" disabled className="bg-white hover:bg-gray-100">
                       Failed to load teams
                     </SelectItem>
                   )}
@@ -459,7 +487,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
               {renderProgressBar()}
 
-              <ScrollArea className="max-h-[400px] py-2">
+              <ScrollArea className="max-h-[400px] py-2" ref={contentRef}>
                 {renderStep()}
               </ScrollArea>
 
