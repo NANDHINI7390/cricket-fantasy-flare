@@ -86,7 +86,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     },
   });
 
-  // Reset form and scroll to top when modal opens
+  // Reset form when modal opens
   useEffect(() => {
     if (open) {
       setStep(1);
@@ -99,21 +99,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         isPublic: false,
       });
       setFormErrors({});
-      // Scroll to top when modal opens
-      setTimeout(() => {
-        if (contentRef.current) {
-          contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
-        }
-      }, 100);
     }
   }, [open]);
-
-  // Scroll to top when step changes
-  useEffect(() => {
-    if (contentRef.current) {
-      contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }, [step]);
 
   // Validate form inputs
   const validateForm = (): FormErrors => {
@@ -140,12 +127,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast.error("Please fix the errors in the form");
-      // Scroll to the first error
-      const firstErrorField = Object.keys(errors)[0];
-      const errorElement = document.getElementById(`${firstErrorField}-input`);
-      if (errorElement && contentRef.current) {
-        errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
       return;
     }
 
@@ -183,63 +164,62 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   };
 
   const renderStep = () => {
-   
     switch (step) {
       case 1:
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* League Name */}
-            <div className="space-y-1">
-              <Label htmlFor="league-name-input" className="flex items-center gap-2 text-base font-semibold">
+            <div className="space-y-2">
+              <Label htmlFor="league-name" className="flex items-center gap-2 text-base font-semibold">
                 <Trophy className="h-5 w-5 text-indigo-600" />
                 League Name
               </Label>
               <Input
-                id="league-name-input"
+                id="league-name"
                 placeholder="Enter league name"
                 value={formData.leagueName}
                 onChange={(e) => handleInputChange("leagueName", e.target.value)}
-                className={`h-10 ${formErrors.leagueName ? "border-red-500" : ""}`}
+                className={`h-12 ${formErrors.leagueName ? "border-red-500" : ""}`}
               />
               {formErrors.leagueName && <p className="text-sm text-red-500">{formErrors.leagueName}</p>}
             </div>
 
             {/* Entry Fee */}
-            <div className="space-y-1">
-              <Label htmlFor="entry-fee-input" className="flex items-center gap-2 text-base font-semibold">
+            <div className="space-y-2">
+              <Label htmlFor="entry-fee" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 Entry Fee
               </Label>
               <Input
-                id="entry-fee-input"
+                id="entry-fee"
                 type="number"
                 placeholder="Enter fee (0 for free)"
                 value={formData.entryFee}
                 onChange={(e) => handleInputChange("entryFee", Number(e.target.value))}
-                className={`h-10 ${formErrors.entryFee ? "border-red-500" : ""}`}
+                className={`h-12 ${formErrors.entryFee ? "border-red-500" : ""}`}
               />
               {formErrors.entryFee && <p className="text-sm text-red-500">{formErrors.entryFee}</p>}
             </div>
 
             {/* Total Spots */}
-            <div className="space-y-1">
-              <Label htmlFor="total-spots-input" className="flex items-center gap-2 text-base font-semibold">
+            <div className="space-y-2">
+              <Label htmlFor="total-spots" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 Total Spots
               </Label>
               <Input
-                id="total-spots-input"
+                id="total-spots"
                 type="number"
                 placeholder="Enter spots (min 2)"
                 value={formData.totalSpots}
                 onChange={(e) => handleInputChange("totalSpots", Number(e.target.value))}
-                className={`h-10 ${formErrors.totalSpots ? "border-red-500" : ""}`}
+                className={`h-12 ${formErrors.totalSpots ? "border-red-500" : ""}`}
               />
               {formErrors.totalSpots && <p className="text-sm text-red-500">{formErrors.totalSpots}</p>}
             </div>
 
             {/* League Visibility */}
-            <div className="space-y-1 bg-gray-50 p-3 rounded-lg">
+            <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
               <Label htmlFor="public-league" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 League Visibility
@@ -260,13 +240,13 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             </div>
 
             {/* Match Selection */}
-            <div className="space-y-1">
-              <Label htmlFor="match-select-input" className="flex items-center gap-2 text-base font-semibold">
+            <div className="space-y-2">
+              <Label htmlFor="match-select" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 Select Match
               </Label>
               <Select onValueChange={(value) => handleInputChange("matchId", value)} value={formData.matchId}>
-                <SelectTrigger className={`h-10 ${formErrors.matchId ? "border-red-500" : ""}`}>
+                <SelectTrigger className={`h-12 ${formErrors.matchId ? "border-red-500" : ""}`}>
                   <SelectValue placeholder="Choose a match" />
                 </SelectTrigger>
                 <SelectContent>
@@ -288,13 +268,13 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             </div>
 
             {/* Team Selection */}
-            <div className="space-y-1">
-              <Label htmlFor="team-select-input" className="flex items-center gap-2 text-base font-semibold">
+            <div className="space-y-2">
+              <Label htmlFor="team-select" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 Select Team
               </Label>
               <Select onValueChange={(value) => handleInputChange("teamId", value)} value={formData.teamId}>
-                <SelectTrigger className={`h-10 ${formErrors.teamId ? "border-red-500" : ""}`}>
+                <SelectTrigger className={`h-12 ${formErrors.teamId ? "border-red-500" : ""}`}>
                   <SelectValue placeholder="Choose a team" />
                 </SelectTrigger>
                 <SelectContent>
@@ -323,7 +303,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="text-center space-y-4"
+            className="text-center space-y-6"
           >
             <div className="bg-gradient-to-r from-green-400 to-emerald-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
               <Check className="h-8 w-8 text-white" />
@@ -332,7 +312,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             <p className="text-gray-600">Your league is ready. Invite friends to join!</p>
             <Button
               onClick={() => onOpenChange(false)}
-              className="w-full py-5 bg-indigo-600 hover:bg-indigo-700"
+              className="w-full py-6 bg-indigo-600 hover:bg-indigo-700"
             >
               Done
             </Button>
@@ -348,56 +328,48 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <AnimatePresence>
         {open && (
-          <DialogContent className="sm:max-w-[500px] p-0 bg-white rounded-xl max-h-[85vh] flex flex-col">
+          <DialogContent className="sm:max-w-[500px] p-0 bg-white rounded-xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
-              className="flex flex-col h-full"
             >
-              {/* Header */}
-              <div className="bg-indigo-600 text-white p-3">
+              <div className="bg-indigo-600 text-white p-4">
                 <h2 className="text-lg font-bold text-center">
                   {step === 1 ? "Create League" : "Success"}
                 </h2>
               </div>
-
-              {/* Scrollable Content */}
-              <ScrollArea className="flex-1 p-4 sm:p-6" ref={contentRef}>
+              <ScrollArea className="max-h-[70vh] p-6" ref={contentRef}>
                 {renderStep()}
               </ScrollArea>
-
-              {/* Footer */}
               {step === 1 && (
-                <div className="p-3 border-t bg-gray-50">
-                  <div className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      onClick={() => onOpenChange(false)}
-                      className="w-24 sm:w-28"
-                    >
-                      <X className="h-4 w-4 mr-1 sm:mr-2" />
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
-                      className="w-24 sm:w-28 bg-indigo-600 hover:bg-indigo-700"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-1 sm:mr-2 animate-spin" />
-                          Creating
-                        </>
-                      ) : (
-                        <>
-                          Create
-                          <ChevronRight className="h-4 w-4 ml-1 sm:ml-2" />
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                <div className="flex justify-between p-4 border-t bg-gray-50">
+                  <Button
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    className="w-28"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="w-28 bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        Create
+                        <ChevronRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
                 </div>
               )}
             </motion.div>
