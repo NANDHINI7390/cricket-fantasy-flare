@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
-import LeagueFeatureCards from "@/components/league/LeagueFeatureCards";
 import { CricketBat, Trophy, Calendar, CheckCircle, X, Users } from "lucide-react";
 
 const CreateLeague = () => {
