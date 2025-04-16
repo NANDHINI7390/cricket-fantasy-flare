@@ -448,11 +448,11 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2 }}
             >
-              <DialogHeader className="flex justify-between items-center">
+              <DialogHeader className="relative items-center">
                 <DialogTitle className="text-xl font-bold text-center">
                   {stepTitles[step - 1]}
                 </DialogTitle>
-                <Button variant={"outline"} onClick={() => onOpenChange(false)}>
+                <Button variant={"outline"} className="absolute right-0 top-0" onClick={() => onOpenChange(false)}>
                   <X className="w-4 h-4" />
                 </Button>
               </DialogHeader>
