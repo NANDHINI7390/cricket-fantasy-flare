@@ -453,7 +453,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                   {stepTitles[step - 1]}
                 </DialogTitle>
                 <Button variant={"outline"} className="absolute right-0 top-0 p-1" onClick={() => onOpenChange(false)}>
-                  <X  />
+                  <X />
                 </Button>
               </DialogHeader>
 
