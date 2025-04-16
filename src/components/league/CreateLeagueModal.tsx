@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useQuery } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
 
 type CreateLeagueModalProps = {
@@ -46,11 +45,8 @@ type FormErrors = {
   teamId?: string;
 };
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Mock user ID (since we can't use Supabase auth)
+const MOCK_USER_ID = "user-123";
 
 const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [step, setStep] = useState(1);
@@ -66,7 +62,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Fetch matches (mock data; replace with API)
+  // Fetch matches (mock data; no API needed)
   const { data: matches, isLoading: matchesLoading } = useQuery({
     queryKey: ["cricket-matches"],
     queryFn: async () => {
@@ -79,7 +75,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     },
   });
 
-  // Fetch teams (mock data; replace with Supabase query)
+  // Fetch teams (mock data; no API needed)
   const { data: teams, isLoading: teamsLoading } = useQuery({
     queryKey: ["fantasy-teams"],
     queryFn: async () => {
@@ -125,7 +121,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     setFormErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  // Handle form submission
+  // Handle form submission using localStorage
   const handleSubmit = async () => {
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
@@ -136,28 +132,32 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
     setIsSubmitting(true);
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user) throw new Error("User not authenticated");
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
+      // Prepare league data
       const leagueData = {
+        id: Math.random().toString(36).substring(2, 9),
         name: formData.leagueName,
         entry_fee: formData.entryFee,
         total_spots: formData.totalSpots,
         match_id: formData.matchId,
         team_id: formData.teamId,
         is_public: formData.isPublic,
-        creator_id: userData.user.id,
+        creator_id: MOCK_USER_ID,
         invite_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
         created_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("leagues").insert([leagueData]);
-      if (error) throw new Error(error.message);
+      // Save to localStorage
+      const existingLeagues = JSON.parse(localStorage.getItem("fantasy_leagues") || "[]");
+      existingLeagues.push(leagueData);
+      localStorage.setItem("fantasy_leagues", JSON.stringify(existingLeagues));
 
       toast.success("League created successfully!");
       setStep(2); // Move to success step
     } catch (error: any) {
-      toast.error(error.message || "Failed to create league");
+      toast.error("Failed to create league");
     } finally {
       setIsSubmitting(false);
     }
