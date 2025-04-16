@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Check, ChevronRight, Loader2, Trophy, Users, X, ArrowLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch"; // Assuming you have a Switch component
+import { Switch } from "@/components/ui/switch";
 import { useQuery } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,7 +45,6 @@ type FormErrors = {
   teamId?: string;
 };
 
-// Mock user ID (since we can't use Supabase auth)
 const MOCK_USER_ID = "user-123";
 
 const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
@@ -54,7 +53,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     leagueName: "",
     entryFee: 0,
     totalSpots: 2,
-    matchId: "m1", // Setting default values to avoid errors, will be fixed later
+    matchId: "m1",
     teamId: "",
     isPublic: false,
   });
@@ -62,7 +61,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Fetch matches (mock data; no API needed)
   const { data: matches, isLoading: matchesLoading } = useQuery({
     queryKey: ["cricket-matches"],
     queryFn: async () => {
@@ -75,7 +73,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     },
   });
 
-  // Fetch teams (mock data; no API needed)
   const { data: teams, isLoading: teamsLoading } = useQuery({
     queryKey: ["fantasy-teams"],
     queryFn: async () => {
@@ -86,7 +83,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     },
   });
 
-  // Reset form when modal opens
   useEffect(() => {
     if (open) {
       setStep(1);
@@ -102,7 +98,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     }
   }, [open]);
 
-  // Handle input changes
   const handleInputChange = (field: keyof FormData, value: string | number | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -149,13 +144,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       toast.error("Please fix the errors in the form");
     } else {
       setStep(step + 1);
-      setFormErrors({}); // Clear errors when moving to the next step
+      setFormErrors({});
     }
   };
 
   const handlePrevious = () => setStep(step - 1);
 
-  // Handle form submission using localStorage
   const handleSubmit = async () => {
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
@@ -166,10 +160,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
     setIsSubmitting(true);
     try {
-      // Simulate API delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Prepare league data
       const leagueData = {
         id: Math.random().toString(36).substring(2, 9),
         name: formData.leagueName,
@@ -183,12 +175,11 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         created_at: new Date().toISOString(),
       };
 
-      // Save to localStorage
       const existingLeagues = JSON.parse(localStorage.getItem("fantasy_leagues") || "[]");
       existingLeagues.push(leagueData);
       localStorage.setItem("fantasy_leagues", JSON.stringify(existingLeagues));
 
-      onOpenChange(false)
+      onOpenChange(false);
       toast.success("League created successfully!");
     } catch (error: any) {
       toast.error("Failed to create league");
@@ -211,10 +202,9 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   const renderStep = () => {
     switch (step) {
-      case 1: // League Details
+      case 1:
         return (
           <div className="space-y-4">
-            {/* League Name */}
             <div className="space-y-2">
               <Label htmlFor="league-name" className="flex items-center gap-2 text-base font-semibold">
                 <Trophy className="h-5 w-5 text-indigo-600" />
@@ -231,7 +221,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               />
             </div>
 
-            {/* Entry Fee */}
             <div className="space-y-2">
               <Label htmlFor="entry-fee" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
@@ -249,7 +238,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               />
             </div>
 
-            {/* Total Spots */}
             <div className="space-y-2">
               <Label htmlFor="total-spots" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
@@ -267,7 +255,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               />
             </div>
 
-            {/* Public/Private League */}
             <div className="flex items-center justify-between">
               <Label htmlFor="isPublic" className="text-base font-semibold">
                 League Type
@@ -282,7 +269,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
           </div>
         );
 
-      case 2: // Match Selection
+      case 2:
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -322,7 +309,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
           </div>
         );
 
-      case 3: // Team Selection
+      case 3:
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -362,7 +349,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
           </div>
         );
 
-      case 4: // Confirmation
+      case 4:
         const selectedMatch = matches?.find((match) => match.match_id === formData.matchId);
         const selectedTeam = teams?.find((team) => team.team_id === formData.teamId);
 
@@ -461,10 +448,13 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2 }}
             >
-              <DialogHeader>
+              <DialogHeader className="flex justify-between items-center">
                 <DialogTitle className="text-xl font-bold text-center">
                   {stepTitles[step - 1]}
                 </DialogTitle>
+                <Button variant={"outline"} onClick={() => onOpenChange(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
               </DialogHeader>
 
               {renderProgressBar()}
