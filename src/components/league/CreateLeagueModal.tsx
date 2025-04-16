@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Check, ChevronRight, Loader2, Trophy, Users, X } from "lucide-react";
+import { Check, ChevronRight, Loader2, Trophy, Users, X, ArrowLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/switch"; // Assuming you have a Switch component
 import { useQuery } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,7 +54,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     leagueName: "",
     entryFee: 0,
     totalSpots: 2,
-    matchId: "",
+    matchId: "m1", // Setting default values to avoid errors, will be fixed later
     teamId: "",
     isPublic: false,
   });
@@ -102,24 +102,58 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     }
   }, [open]);
 
-  // Validate form inputs
-  const validateForm = (): FormErrors => {
-    const errors: FormErrors = {};
-    if (!formData.leagueName.trim()) errors.leagueName = "League name is required";
-    else if (formData.leagueName.length > 50) errors.leagueName = "Max 50 characters";
-    if (formData.entryFee < 0) errors.entryFee = "Entry fee cannot be negative";
-    if (formData.totalSpots < 2) errors.totalSpots = "Minimum 2 spots";
-    else if (formData.totalSpots > 1000) errors.totalSpots = "Maximum 1000 spots";
-    if (!formData.matchId) errors.matchId = "Select a match";
-    if (!formData.teamId) errors.teamId = "Select a team";
-    return errors;
-  };
-
   // Handle input changes
   const handleInputChange = (field: keyof FormData, value: string | number | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev) => ({ ...prev, [field]: undefined }));
   };
+
+  const validateStep = (step: number): FormErrors => {
+    let errors: FormErrors = {};
+
+    switch (step) {
+      case 1:
+        if (!formData.leagueName.trim()) {
+          errors.leagueName = "League name is required";
+        } else if (formData.leagueName.length > 50) {
+          errors.leagueName = "Max 50 characters";
+        }
+        if (formData.entryFee < 0) {
+          errors.entryFee = "Entry fee cannot be negative";
+        }
+        if (formData.totalSpots < 2) {
+          errors.totalSpots = "Minimum 2 spots";
+        } else if (formData.totalSpots > 1000) {
+          errors.totalSpots = "Maximum 1000 spots";
+        }
+        break;
+      case 2:
+        if (!formData.matchId) {
+          errors.matchId = "Select a match";
+        }
+        break;
+      case 3:
+        if (!formData.teamId) {
+          errors.teamId = "Select a team";
+        }
+        break;
+    }
+
+    return errors;
+  };
+
+  const handleNext = () => {
+    const errors = validateStep(step);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error("Please fix the errors in the form");
+    } else {
+      setStep(step + 1);
+      setFormErrors({}); // Clear errors when moving to the next step
+    }
+  };
+
+  const handlePrevious = () => setStep(step - 1);
 
   // Handle form submission using localStorage
   const handleSubmit = async () => {
@@ -154,8 +188,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       existingLeagues.push(leagueData);
       localStorage.setItem("fantasy_leagues", JSON.stringify(existingLeagues));
 
+      setStep(4); // Move to success step
       toast.success("League created successfully!");
-      setStep(2); // Move to success step
     } catch (error: any) {
       toast.error("Failed to create league");
     } finally {
@@ -165,9 +199,9 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   const renderStep = () => {
     switch (step) {
-      case 1:
+      case 1: // League Details
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* League Name */}
             <div className="space-y-2">
               <Label htmlFor="league-name" className="flex items-center gap-2 text-base font-semibold">
@@ -178,10 +212,11 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 id="league-name"
                 placeholder="Enter league name"
                 value={formData.leagueName}
-                onChange={(e) => handleInputChange("leagueName", e.target.value)}
-                className={`h-12 ${formErrors.leagueName ? "border-red-500" : ""}`}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleInputChange("leagueName", e.target.value)
+                }
+                className={formErrors.leagueName ? "border-red-500" : ""}
               />
-              {formErrors.leagueName && <p className="text-sm text-red-500">{formErrors.leagueName}</p>}
             </div>
 
             {/* Entry Fee */}
@@ -195,10 +230,11 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 type="number"
                 placeholder="Enter fee (0 for free)"
                 value={formData.entryFee}
-                onChange={(e) => handleInputChange("entryFee", Number(e.target.value))}
-                className={`h-12 ${formErrors.entryFee ? "border-red-500" : ""}`}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleInputChange("entryFee", Number(e.target.value))
+                }
+                className={formErrors.entryFee ? "border-red-500" : ""}
               />
-              {formErrors.entryFee && <p className="text-sm text-red-500">{formErrors.entryFee}</p>}
             </div>
 
             {/* Total Spots */}
@@ -212,93 +248,265 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 type="number"
                 placeholder="Enter spots (min 2)"
                 value={formData.totalSpots}
-                onChange={(e) => handleInputChange("totalSpots", Number(e.target.value))}
-                className={`h-12 ${formErrors.totalSpots ? "border-red-500" : ""}`}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleInputChange("totalSpots", Number(e.target.value))
+                }
+                className={formErrors.totalSpots ? "border-red-500" : ""}
               />
-              {formErrors.totalSpots && <p className="text-sm text-red-500">{formErrors.totalSpots}</p>}
             </div>
 
-            {/* League Visibility */}
-            <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
-              <Label htmlFor="public-league" className="flex items-center gap-2 text-base font-semibold">
-                <Users className="h-5 w-5 text-indigo-600" />
-                League Visibility
+            {/* Public/Private League */}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="isPublic" className="text-base font-semibold">
+                League Type
               </Label>
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="public-league"
-                  checked={formData.isPublic}
-                  onCheckedChange={(checked) => handleInputChange("isPublic", checked)}
-                />
-                <div>
-                  <Label htmlFor="public-league">{formData.isPublic ? "Public" : "Private"}</Label>
-                  <p className="text-sm text-gray-500">
-                    {formData.isPublic ? "Open to all" : "Invite-only"}
-                  </p>
-                </div>
+                <Switch id="isPublic" checked={formData.isPublic} onCheckedChange={(checked) => handleInputChange("isPublic", checked)} />
+                <Label htmlFor="isPublic" className="text-sm text-gray-500">
+                  {formData.isPublic ? "Public" : "Private"}
+                </Label>
               </div>
-            </div>
-
-            {/* Match Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="match-select" className="flex items-center gap-2 text-base font-semibold">
-                <Users className="h-5 w-5 text-indigo-600" />
-                Select Match
-              </Label>
-              <Select onValueChange={(value) => handleInputChange("matchId", value)} value={formData.matchId}>
-                <SelectTrigger className={`h-12 ${formErrors.matchId ? "border-red-500" : ""}`}>
-                  <SelectValue placeholder="Choose a match" />
-                </SelectTrigger>
-                <SelectContent>
-                  {matchesLoading ? (
-                    <div className="p-4 flex items-center">
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                      Loading...
-                    </div>
-                  ) : (
-                    matches?.map((match) => (
-                      <SelectItem key={match.match_id} value={match.match_id}>
-                        {match.team1_name} vs {match.team2_name} - {match.time}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              {formErrors.matchId && <p className="text-sm text-red-500">{formErrors.matchId}</p>}
-            </div>
-
-            {/* Team Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="team-select" className="flex items-center gap-2 text-base font-semibold">
-                <Users className="h-5 w-5 text-indigo-600" />
-                Select Team
-              </Label>
-              <Select onValueChange={(value) => handleInputChange("teamId", value)} value={formData.teamId}>
-                <SelectTrigger className={`h-12 ${formErrors.teamId ? "border-red-500" : ""}`}>
-                  <SelectValue placeholder="Choose a team" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teamsLoading ? (
-                    <div className="p-4 flex items-center">
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                      Loading...
-                    </div>
-                  ) : (
-                    teams?.map((team) => (
-                      <SelectItem key={team.team_id} value={team.team_id}>
-                        {team.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              {formErrors.teamId && <p className="text-sm text-red-500">{formErrors.teamId}</p>}
             </div>
           </div>
         );
 
-      case 2:
+      case 2: // Match Selection
         return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="matchId" className="text-base font-semibold">
+                Select Match
+              </Label>
+              <Select
+                onValueChange={(value: string) => handleInputChange("matchId", value)}
+                defaultValue={formData.matchId}
+              >
+                <SelectTrigger className={formErrors.matchId ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select a match" />
+                </SelectTrigger>
+                <SelectContent>
+                  {matchesLoading ? (
+                    <SelectItem value="" disabled>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading matches...
+                    </SelectItem>
+                  ) : matches ? (
+                    matches.map((match: Match) => (
+                      <SelectItem key={match.match_id} value={match.match_id}>
+                        {match.team1_name} vs {match.team2_name} ({match.time})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      Failed to load matches
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {formErrors.matchId && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.matchId}</p>
+              )}
+            </div>
+          </div>
+        );
+
+      case 3: // Team Selection
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="teamId" className="text-base font-semibold">
+                Select Team
+              </Label>
+              <Select
+                onValueChange={(value: string) => handleInputChange("teamId", value)}
+                defaultValue={formData.teamId}
+              >
+                <SelectTrigger className={formErrors.teamId ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select a team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamsLoading ? (
+                    <SelectItem value="" disabled>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading teams...
+                    </SelectItem>
+                  ) : teams ? (
+                    teams.map((team: Team) => (
+                      <SelectItem key={team.team_id} value={team.team_id}>
+                        {team.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      Failed to load teams
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {formErrors.teamId && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.teamId}</p>
+              )}
+            </div>
+          </div>
+        );
+
+      case 4: // Confirmation
+        const selectedMatch = matches?.find((match) => match.match_id === formData.matchId);
+        const selectedTeam = teams?.find((team) => team.team_id === formData.teamId);
+
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Confirm League Details</h3>
+            <div className="rounded-md bg-gray-50 p-4">
+              <p>
+                <strong>League Name:</strong> {formData.leagueName}
+              </p>
+              <p>
+                <strong>Entry Fee:</strong> {formData.entryFee}
+              </p>
+              <p>
+                <strong>Total Spots:</strong> {formData.totalSpots}
+              </p>
+              <p>
+                <strong>Visibility:</strong> {formData.isPublic ? "Public" : "Private"}
+              </p>
+              {selectedMatch && (
+                <p>
+                  <strong>Match:</strong> {selectedMatch.team1_name} vs {selectedMatch.team2_name}
+                </p>
+              )}
+              {selectedTeam && (
+                <p>
+                  <strong>Team:</strong> {selectedTeam.name}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="text-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+            <p className="mt-4">Loading...</p>
+          </div>
+        );
+    }
+  };
+
+  const stepTitles = ["League Details", "Select Match", "Select Team", "Confirm"];
+
+  const renderProgressBar = () => (
+    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+      <div
+        className="bg-indigo-600 h-2.5 rounded-full"
+        style={{ width: `${((step - 1) / (stepTitles.length - 1)) * 100}%` }}
+      ></div>
+    </div>
+  );
+
+  const renderNavigationButtons = () => (
+    <div className="flex justify-between mt-6">
+      {step > 1 && (
+        <Button variant="outline" onClick={handlePrevious}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Previous
+        </Button>
+      )}
+
+      {step < stepTitles.length ? (
+        <Button onClick={handleNext} disabled={isSubmitting}>
+          Next
+          <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
+      ) : (
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="bg-green-500 hover:bg-green-600 text-white"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            "Create League"
+          )}
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <AnimatePresence>
+        {open && (
+          <DialogContent className="sm:max-w-[500px] p-6 bg-white rounded-lg shadow-lg">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-center">
+                  {stepTitles[step - 1]}
+                </DialogTitle>
+              </DialogHeader>
+
+              {renderProgressBar()}
+
+              <ScrollArea className="max-h-[400px] py-2">
+                {renderStep()}
+              </ScrollArea>
+
+              {Object.keys(formErrors).length > 0 && (
+                <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+                  <ul>
+                    {Object.values(formErrors).map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {step !== 4 ? renderNavigationButtons() : (
+                <div className="flex justify-end mt-6">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="bg-green-500 hover:bg-green-600 text-white"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create League"
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {step === 4 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-6 text-center"
+                />
+              )}
+            </motion.div>
+          </DialogContent>
+        )}
+      </AnimatePresence>
+    </Dialog>
+  );
+};
+
+export default CreateLeagueModal;
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
