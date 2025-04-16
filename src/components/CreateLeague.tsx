@@ -1,9 +1,78 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import LeagueFeatureCards from "./league/LeagueFeatureCards";
 import CreateLeagueModal from "./league/CreateLeagueModal";
 import { Button } from "./ui/button";
-import { Users, Sparkles, Trophy, Calendar, Shield } from "lucide-react";
+import { Users, Sparkles, Trophy, Calendar, Shield, Star } from "lucide-react";
+
+// Sample LeagueFeatureCards Component
+const LeagueFeatureCards = () => {
+  const leagueTypes = [
+    {
+      title: "Public Leagues",
+      description: "Join massive contests with players worldwide and compete for huge prizes!",
+      icon: <Trophy className="h-8 w-8 text-yellow-400" />,
+      gradient: "from-yellow-500 to-orange-500",
+      action: "Join Now",
+    },
+    {
+      title: "Private Leagues",
+      description: "Create exclusive leagues and challenge your friends to friendly battles.",
+      icon: <Users className="h-8 w-8 text-blue-400" />,
+      gradient: "from-blue-500 to-indigo-500",
+      action: "Create Now",
+    },
+    {
+      title: "Mega Contests",
+      description: "Enter high-stakes leagues for a chance to win life-changing rewards!",
+      icon: <Star className="h-8 w-8 text-pink-400" />,
+      gradient: "from-pink-500 to-purple-500",
+      action: "Explore Contests",
+    },
+  ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.2 } },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  };
+
+  return (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+    >
+      {leagueTypes.map((league, index) => (
+        <motion.div
+          key={index}
+          variants={itemVariants}
+          className="bg-indigo-900/30 backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-indigo-300/20 hover:bg-indigo-900/40 hover:shadow-lg transition-all duration-300"
+          whileHover={{ scale: 1.02 }}
+        >
+          <div
+            className={`bg-gradient-to-br ${league.gradient} w-14 h-14 rounded-lg flex items-center justify-center mb-4 shadow-md`}
+          >
+            {league.icon}
+          </div>
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{league.title}</h3>
+          <p className="text-indigo-200 text-sm sm:text-base mb-4">{league.description}</p>
+          <Button
+            variant="outline"
+            className="w-full border-indigo-300/50 bg-indigo-900/20 text-indigo-100 hover:bg-indigo-900/30 hover:text-white"
+          >
+            {league.action}
+          </Button>
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+};
 
 const CreateLeague = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,7 +110,10 @@ const CreateLeague = () => {
           viewport={{ once: true }}
           className="text-center mb-10 sm:mb-12 lg:mb-16"
         >
-          <motion.div variants={itemVariants} className="inline-block py-2 px-4 rounded-full bg-indigo-800/40 text-indigo-200 text-sm font-semibold mb-4 backdrop-blur-sm">
+          <motion.div
+            variants={itemVariants}
+            className="inline-block py-2 px-4 rounded-full bg-indigo-800/40 text-indigo-200 text-sm font-semibold mb-4 backdrop-blur-sm"
+          >
             CREATE & COMPETE
           </motion.div>
 
@@ -67,6 +139,7 @@ const CreateLeague = () => {
               onClick={() => setIsModalOpen(true)}
               size="lg"
               className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto"
+              aria-label="Create a new league"
             >
               <Sparkles className="mr-2 h-5 w-5" /> Create League Now
             </Button>
@@ -75,6 +148,7 @@ const CreateLeague = () => {
               variant="outline"
               size="lg"
               className="border-2 border-indigo-300/50 bg-indigo-900/20 backdrop-blur-sm text-indigo-100 hover:bg-indigo-900/30 hover:text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-xl transition-all duration-300 w-full sm:w-auto"
+              aria-label="View upcoming contests"
             >
               <Calendar className="mr-2 h-5 w-5" /> Upcoming Contests
             </Button>
@@ -132,10 +206,7 @@ const CreateLeague = () => {
         {/* Modal for League Creation */}
         <AnimatePresence>
           {isModalOpen && (
-            <CreateLeagueModal
-              open={isModalOpen}
-              onOpenChange={setIsModalOpen}
-            />
+            <CreateLeagueModal open={isModalOpen} onOpenChange={setIsModalOpen} />
           )}
         </AnimatePresence>
       </div>
