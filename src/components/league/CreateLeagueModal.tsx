@@ -86,7 +86,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     },
   });
 
-  // Reset form when modal opens
+  // Reset form and scroll to top when modal opens
   useEffect(() => {
     if (open) {
       setStep(1);
@@ -99,8 +99,21 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         isPublic: false,
       });
       setFormErrors({});
+      // Scroll to top when modal opens
+      setTimeout(() => {
+        if (contentRef.current) {
+          contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }, 100);
     }
   }, [open]);
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [step]);
 
   // Validate form inputs
   const validateForm = (): FormErrors => {
@@ -127,6 +140,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast.error("Please fix the errors in the form");
+      // Scroll to the first error
+      const firstErrorField = Object.keys(errors)[0];
+      const errorElement = document.getElementById(`${firstErrorField}-input`);
+      if (errorElement && contentRef.current) {
+        errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
@@ -170,12 +189,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
           <div className="space-y-6">
             {/* League Name */}
             <div className="space-y-2">
-              <Label htmlFor="league-name" className="flex items-center gap-2 text-base font-semibold">
+              <Label htmlFor="league-name-input" className="flex items-center gap-2 text-base font-semibold">
                 <Trophy className="h-5 w-5 text-indigo-600" />
                 League Name
               </Label>
               <Input
-                id="league-name"
+                id="league-name-input"
                 placeholder="Enter league name"
                 value={formData.leagueName}
                 onChange={(e) => handleInputChange("leagueName", e.target.value)}
@@ -186,12 +205,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
             {/* Entry Fee */}
             <div className="space-y-2">
-              <Label htmlFor="entry-fee" className="flex items-center gap-2 text-base font-semibold">
+              <Label htmlFor="entry-fee-input" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 Entry Fee
               </Label>
               <Input
-                id="entry-fee"
+                id="entry-fee-input"
                 type="number"
                 placeholder="Enter fee (0 for free)"
                 value={formData.entryFee}
@@ -203,12 +222,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
             {/* Total Spots */}
             <div className="space-y-2">
-              <Label htmlFor="total-spots" className="flex items-center gap-2 text-base font-semibold">
+              <Label htmlFor="total-spots-input" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 Total Spots
               </Label>
               <Input
-                id="total-spots"
+                id="total-spots-input"
                 type="number"
                 placeholder="Enter spots (min 2)"
                 value={formData.totalSpots}
@@ -241,7 +260,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
             {/* Match Selection */}
             <div className="space-y-2">
-              <Label htmlFor="match-select" className="flex items-center gap-2 text-base font-semibold">
+              <Label htmlFor="match-select-input" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 Select Match
               </Label>
@@ -269,7 +288,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
             {/* Team Selection */}
             <div className="space-y-2">
-              <Label htmlFor="team-select" className="flex items-center gap-2 text-base font-semibold">
+              <Label htmlFor="team-select-input" className="flex items-center gap-2 text-base font-semibold">
                 <Users className="h-5 w-5 text-indigo-600" />
                 Select Team
               </Label>
@@ -328,48 +347,56 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <AnimatePresence>
         {open && (
-          <DialogContent className="sm:max-w-[500px] p-0 bg-white rounded-xl">
+          <DialogContent className="sm:max-w-[500px] p-0 bg-white rounded-xl max-h-[90vh] flex flex-col">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
+              className="flex flex-col h-full"
             >
+              {/* Header */}
               <div className="bg-indigo-600 text-white p-4">
                 <h2 className="text-lg font-bold text-center">
                   {step === 1 ? "Create League" : "Success"}
                 </h2>
               </div>
-              <ScrollArea className="max-h-[70vh] p-6" ref={contentRef}>
-                {renderStep()}
+
+              {/* Scrollable Content */}
+              <ScrollArea className="flex-1 p-6" ref={contentRef}>
+                <div className="min-h-[50vh]">{renderStep()}</div>
               </ScrollArea>
+
+              {/* Footer */}
               {step === 1 && (
-                <div className="flex justify-between p-4 border-t bg-gray-50">
-                  <Button
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                    className="w-28"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="w-28 bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        Create
-                        <ChevronRight className="h-4 w-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
+                <div className="p-4 border-t bg-gray-50">
+                  <div className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                      className="w-28"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="w-28 bg-indigo-600 hover:bg-indigo-700"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          Create
+                          <ChevronRight className="h-4 w-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
             </motion.div>
