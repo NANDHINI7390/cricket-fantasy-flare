@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Check, ChevronRight, Loader2, Trophy, Users, X, ArrowLeft, Calendar, Shield } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useQuery } from "@tanstack/react-query";
@@ -95,7 +95,11 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         isPublic: false,
       });
       setFormErrors({});
-      setTimeout(() => {
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
         if (contentRef.current) {
           contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -214,8 +218,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
-            className="space-y-5 bg-white p-5 rounded-xl shadow-md border border-gray-100"
-          >
+            className="space-y-5 bg-white p-5 rounded-xl shadow-md border border-gray-100">
+
             <div className="space-y-2">
               <Label htmlFor="league-name" className="flex items-center gap-2 text-base font-semibold text-gray-800">
                 <Trophy className="h-5 w-5 text-teal-500" />
@@ -226,10 +230,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 placeholder="e.g. Ultimate Cricket Showdown"
                 value={formData.leagueName}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleInputChange("leagueName", e.target.value)
-                }
-                className={`h-11 border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 rounded-lg transition-all ${
-                  formErrors.leagueName ? "border-red-500" : ""
+                  handleInputChange("leagueName", e.target.value)}
+                className={`h-11 border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 rounded-lg transition-all ${formErrors.leagueName ? "border-red-500" : ""
                 }`}
               />
               {formErrors.leagueName && <p className="text-red-500 text-sm mt-1">{formErrors.leagueName}</p>}
@@ -246,10 +248,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 placeholder="Enter fee (0 for free)"
                 value={formData.entryFee}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleInputChange("entryFee", Number(e.target.value))
-                }
-                className={`h-11 border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 rounded-lg transition-all ${
-                  formErrors.entryFee ? "border-red-500" : ""
+                  handleInputChange("entryFee", Number(e.target.value))}
+                className={`h-11 border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 rounded-lg transition-all ${formErrors.entryFee ? "border-red-500" : ""
                 }`}
               />
               {formErrors.entryFee && <p className="text-red-500 text-sm mt-1">{formErrors.entryFee}</p>}
@@ -266,10 +266,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 placeholder="Enter spots (min 2)"
                 value={formData.totalSpots}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleInputChange("totalSpots", Number(e.target.value))
-                }
-                className={`h-11 border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 rounded-lg transition-all ${
-                  formErrors.totalSpots ? "border-red-500" : ""
+                  handleInputChange("totalSpots", Number(e.target.value))}
+                className={`h-11 border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 rounded-lg transition-all ${formErrors.totalSpots ? "border-red-500" : ""
                 }`}
               />
               {formErrors.totalSpots && <p className="text-red-500 text-sm mt-1">{formErrors.totalSpots}</p>}
@@ -285,7 +283,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                   id="isPublic"
                   checked={formData.isPublic}
                   onCheckedChange={(checked) => handleInputChange("isPublic", checked)}
-                  className="data-[state=checked]:bg-teal-500"
+                  className="data-[state=checked]:bg-teal-500" 
                 />
                 <Label htmlFor="isPublic" className="text-sm text-gray-600">
                   {formData.isPublic ? "Public" : "Private"}
@@ -301,21 +299,18 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
-            className="space-y-5 bg-white p-5 rounded-xl shadow-md border border-gray-100"
-          >
+            className="space-y-5 bg-white p-5 rounded-xl shadow-md border border-gray-100">
             <div className="space-y-2">
               <Label htmlFor="matchId" className="flex items-center gap-2 text-base font-semibold text-gray-800">
                 <Calendar className="h-5 w-5 text-teal-500" />
                 Select Match
               </Label>
-              <Select
-                onValueChange={(value: string) => handleInputChange("matchId", value)}
-                defaultValue={formData.matchId}
-              >
+              <Select onValueChange={(value: string) => handleInputChange("matchId", value)} defaultValue={formData.matchId}>
                 <SelectTrigger
                   className={`h-11 border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 rounded-lg transition-all ${
-                    formErrors.matchId ? "border-red-500" : ""
-                  }`}
+                    formErrors.matchId ? "border-red-500" : "" 
+                  }`
+                  }
                 >
                   <SelectValue placeholder="Select a match" />
                 </SelectTrigger>
@@ -325,12 +320,11 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
                       Loading matches...
                     </SelectItem>
-                  ) : matches ? (
-                    matches.map((match: Match) => (
+                  ) : matches ? ( matches.map((match: Match) => (
                       <SelectItem
                         className="bg-white hover:bg-gray-100 px-4 py-2 transition-colors"
                         key={match.match_id}
-                        value={match.match_id}
+                        value={match.match_id} 
                       >
                         {match.team1_name} vs {match.team2_name} ({match.time})
                       </SelectItem>
@@ -353,21 +347,18 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
-            className="space-y-5 bg-white p-5 rounded-xl shadow-md border border-gray-100"
-          >
+            className="space-y-5 bg-white p-5 rounded-xl shadow-md border border-gray-100">
             <div className="space-y-2">
               <Label htmlFor="teamId" className="flex items-center gap-2 text-base font-semibold text-gray-800">
                 <Users className="h-5 w-5 text-teal-500" />
                 Select Team
               </Label>
-              <Select
-                onValueChange={(value: string) => handleInputChange("teamId", value)}
-                defaultValue={formData.teamId}
-              >
+              <Select onValueChange={(value: string) => handleInputChange("teamId", value)} defaultValue={formData.teamId}>
                 <SelectTrigger
                   className={`h-11 border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 rounded-lg transition-all ${
-                    formErrors.teamId ? "border-red-500" : ""
-                  }`}
+                    formErrors.teamId ? "border-red-500" : "" 
+                  }`
+                  }
                 >
                   <SelectValue placeholder="Select a team" />
                 </SelectTrigger>
@@ -377,7 +368,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
                       Loading teams...
                     </SelectItem>
-                  ) : teams ? (
+                  ) : teams ? ( 
                     teams.map((team: Team) => (
                       <SelectItem
                         className="bg-white hover:bg-gray-100 px-4 py-2 transition-colors"
@@ -409,33 +400,33 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
             className="space-y-5 bg-white p-5 rounded-xl shadow-md border border-gray-100"
-          >
+          > 
             <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <Check className="h-5 w-5 text-teal-500" />
               Confirm League Details
             </h3>
             <div className="bg-gradient-to-r from-teal-50 to-blue-50 p-5 rounded-lg shadow-inner">
               <div className="space-y-3 text-gray-700">
-                <p className="flex items-center gap-2">
+                <p className="flex items-center gap-2"> 
                   <Trophy className="h-4 w-4 text-teal-500" />
                   <strong>League Name:</strong> {formData.leagueName}
                 </p>
-                <p className="flex items-center gap-2">
+                <p className="flex items-center gap-2"> 
                   <Users className="h-4 w-4 text-teal-500" />
                   <strong>Entry Fee:</strong> ₹{formData.entryFee}
                 </p>
-                <p className="flex items-center gap-2">
+                <p className="flex items-center gap-2"> 
                   <Users className="h-4 w-4 text-teal-500" />
                   <strong>Total Spots:</strong> {formData.totalSpots}
                 </p>
-                <p className="flex items-center gap-2">
+                <p className="flex items-center gap-2"> 
                   <Shield className="h-4 w-4 text-teal-500" />
                   <strong>Visibility:</strong> {formData.isPublic ? "Public" : "Private"}
                 </p>
                 {selectedMatch && (
-                  <p className="flex items-center gap-2">
+                  <p className="flex items-center gap-2"> 
                     <Calendar className="h-4 w-4 text-teal-500" />
-                    <strong>Match:</strong> {selectedMatch.team1_name} vs {selectedMatch.team2_name}
+                    <strong>Match:</strong> {selectedMatch.team1_name} vs {selectedMatch.team2_name} 
                   </p>
                 )}
                 {selectedTeam && (
@@ -461,26 +452,27 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   const stepTitles = ["League Details", "Select Match", "Select Team", "Confirm"];
 
-  const renderProgressBar = () => (
-    <div className="relative w-full h-2 bg-gray-200 rounded-full mb-6 overflow-hidden">
-      <motion.div
-        className="absolute h-full bg-gradient-to-r from-teal-500 to-blue-500 rounded-full"
-        initial={{ width: "0%" }}
-        animate={{ width: `${((step - 1) / (stepTitles.length - 1)) * 100}%` }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
-      />
-      <div className="absolute inset-0 flex justify-between items-center">
-        {stepTitles.map((_, index) => (
-          <div
-            key={index}
-            className={`w-5 h-5 rounded-full border-2 ${
-              index + 1 <= step ? "bg-teal-500 border-teal-500" : "bg-white border-gray-300"
-            } ${index === 0 ? "ml-1" : index === stepTitles.length - 1 ? "mr-1" : ""}`}
-          />
-        ))}
-      </div>
+ const renderProgressBar = () => (
+  <div className="relative w-full h-2 bg-gray-200 rounded-full mb-6 overflow-hidden">
+    <motion.div
+      className="absolute h-full bg-gradient-to-r from-teal-500 to-blue-500 rounded-full"
+      initial={{ width: "0%" }}
+      animate={{ width: `${((step - 1) / (stepTitles.length - 1)) * 100}%` }}
+      transition={{ duration: 0.5, ease: "easeInOut" }}
+    />
+    <div className="absolute inset-0 flex justify-between items-center">
+      {stepTitles.map((_, index) => (
+        <div
+          key={index}
+          className={`w-5 h-5 rounded-full border-2 ${
+            index + 1 <= step ? "bg-teal-500 border-teal-500" : "bg-white border-gray-300" 
+          } ${index === 0 ? "ml-1" : index === stepTitles.length - 1 ? "mr-1" : ""}`
+          }
+        />
+      ))}
     </div>
-  );
+  </div>
+);
 
   const renderNavigationButtons = () => (
     <div className="flex justify-between mt-6 gap-3">
@@ -488,7 +480,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         <Button
           variant="outline"
           onClick={handlePrevious}
-          className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+          className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-gray-100 rounded-lg transition-all" 
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Previous
@@ -497,7 +489,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       {step < stepTitles.length ? (
         <Button
           onClick={handleNext}
-          disabled={isSubmitting || Object.keys(validateStep(step)).length > 0}
+          disabled={isSubmitting || Object.keys(validateStep(step)).length > 0} 
           className="flex-1 h-11 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white rounded-lg shadow-md transition-all"
         >
           Next
@@ -507,7 +499,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting || Object.keys(validateForm()).length > 0}
-          className="flex-1 h-11 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg shadow-md transition-all"
+          className="flex-1 h-11 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg shadow-md transition-all" 
         >
           {isSubmitting ? (
             <>
@@ -522,18 +514,18 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     </div>
   );
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <AnimatePresence>
-        {open && (
-          <DialogContent className="sm:max-w-[550px] p-0 bg-transparent rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col h-full bg-white rounded-2xl"
-            >
+ return (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <AnimatePresence>
+      {open && (
+        <DialogContent className="sm:max-w-[550px] p-0 bg-transparent rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col h-full bg-white rounded-2xl"
+          >
               {/* Gradient Header */}
               <DialogHeader className="relative bg-gradient-to-r from-teal-500 to-blue-500 p-4 rounded-t-2xl">
                 <DialogTitle className="text-xl font-bold text-white text-center">
@@ -548,21 +540,21 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 </Button>
               </DialogHeader>
 
-              {/* Progress Bar */}
-              <div className="px-6 pt-4">{renderProgressBar()}</div>
+            {/* Progress Bar */}
+            <div className="px-6 pt-4">{renderProgressBar()}</div>
 
-              {/* Scrollable Content */}
-              <ScrollArea className="flex-1 px-6 pb-4" ref={contentRef}>
-                {renderStep()}
-              </ScrollArea>
+            {/* Scrollable Content */}
+            <ScrollArea className="flex-1 px-6 pb-4" ref={contentRef}>
+              {renderStep()}
+            </ScrollArea>
 
-              {/* Error Messages */}
-              {Object.keys(formErrors).length > 0 && (
-                <div className="px-6 pb-4">
-                  <div className="p-3 bg-red-50 text-red-700 rounded-lg shadow-sm">
-                    <ul className="list-disc list-inside">
-                      {Object.values(formErrors).map((error, index) => (
-                        <li key={index} className="text-sm">{error}</li>
+            {/* Error Messages */}
+            {Object.keys(formErrors).length > 0 && (
+              <div className="px-6 pb-4">
+                <div className="p-3 bg-red-50 text-red-700 rounded-lg shadow-sm">
+                  <ul className="list-disc list-inside">
+                    {Object.values(formErrors).map((error, index) => (
+                      <li key={index} className="text-sm">{error}</li>
                       ))}
                     </ul>
                   </div>
@@ -570,15 +562,13 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               )}
 
               {/* Fixed Footer */}
-              <div className="p-4 bg-gray-50 rounded-b-2xl border-t border-gray-200">
-                {renderNavigationButtons()}
-              </div>
-            </motion.div>
-          </DialogContent>
-        )}
-      </AnimatePresence>
-    </Dialog>
-  );
+            <div className="p-4 bg-gray-50 rounded-b-2xl border-t border-gray-200">{renderNavigationButtons()}</div>
+          </motion.div>
+        </DialogContent>
+      )}
+    </AnimatePresence>
+  </Dialog>
+);
 };
 
 export default CreateLeagueModal;
