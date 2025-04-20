@@ -136,6 +136,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   const handleNext = () => {
     const errors = validateStep(step);
+    console.log("Step:", step, "Validation errors:", errors);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast.error("Please fix the errors in the form");
@@ -154,6 +155,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
   const handleSubmit = async () => {
     const errors = validateForm();
+    console.log("Submit validation errors:", errors);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast.error("Please fix the errors in the form");
@@ -482,45 +484,48 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     </div>
   );
 
-  const renderNavigationButtons = () => (
-    <div className="flex justify-between mt-6 gap-3">
-      {step > 1 && (
-        <Button
-          variant="outline"
-          onClick={handlePrevious}
-          className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Previous
-        </Button>
-      )}
-      {step < stepTitles.length ? (
-        <Button
-          onClick={handleNext}
-          disabled={isSubmitting || Object.keys(validateStep(step)).length > 0}
-          className="flex-1 h-11 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white rounded-lg shadow-md transition-all"
-        >
-          Next
-          <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
-      ) : (
-        <Button
-          onClick={handleSubmit}
-          disabled={isSubmitting || Object.keys(validateForm()).length > 0}
-          className="flex-1 h-11 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg shadow-md transition-all"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating...
-            </>
-          ) : (
-            "Create League"
-          )}
-        </Button>
-      )}
-    </div>
-  );
+  const renderNavigationButtons = () => {
+    console.log("Rendering navigation buttons for step:", step);
+    return (
+      <div className="flex justify-between mt-6 gap-3">
+        {step > 1 && (
+          <Button
+            variant="outline"
+            onClick={handlePrevious}
+            className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Previous
+          </Button>
+        )}
+        {step < stepTitles.length ? (
+          <Button
+            onClick={handleNext}
+            disabled={isSubmitting || Object.keys(validateStep(step)).length > 0}
+            className="flex-1 h-11 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white rounded-lg shadow-md transition-all disabled:opacity-75 disabled:cursor-not-allowed"
+          >
+            Next
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || Object.keys(validateForm()).length > 0}
+            className="flex-1 h-11 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg shadow-md transition-all disabled:opacity-75 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create League"
+            )}
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -534,7 +539,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               transition={{ duration: 0.3 }}
               className="flex flex-col h-full bg-white rounded-2xl"
             >
-              {/* Gradient Header */}
               <DialogHeader className="relative bg-gradient-to-r from-teal-500 to-blue-500 p-4 rounded-t-2xl">
                 <DialogTitle className="text-xl font-bold text-white text-center">
                   {stepTitles[step - 1]}
@@ -548,15 +552,12 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 </Button>
               </DialogHeader>
 
-              {/* Progress Bar */}
               <div className="px-6 pt-4">{renderProgressBar()}</div>
 
-              {/* Scrollable Content */}
               <ScrollArea className="flex-1 px-6 pb-4" ref={contentRef}>
                 {renderStep()}
               </ScrollArea>
 
-              {/* Error Messages */}
               {Object.keys(formErrors).length > 0 && (
                 <div className="px-6 pb-4">
                   <div className="p-3 bg-red-50 text-red-700 rounded-lg shadow-sm">
@@ -569,8 +570,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                 </div>
               )}
 
-              {/* Fixed Footer */}
-              <div className="p-4 bg-gray-50 rounded-b-2xl border-t border-gray-200">
+              <div className="p-4 bg-gray-50 rounded-b-2xl border-t border-gray-200 sticky bottom-0 z-10">
                 {renderNavigationButtons()}
               </div>
             </motion.div>
