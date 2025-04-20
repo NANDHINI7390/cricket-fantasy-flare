@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Trophy, UserCircle, Users, LogIn, ChevronDown, Home, LogOut, CircleUser, Wallet } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"; 
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -56,6 +56,7 @@ const Navbar = () => {
     { label: "Contests", path: "/contests", icon: <Trophy className="h-4 w-4 mr-2" /> },
     { label: "Leaderboard", path: "/leaderboard", icon: <Users className="h-4 w-4 mr-2" /> },
     { label: "My Teams", path: "/my-teams", icon: <UserCircle className="h-4 w-4 mr-2" /> },
+    { label: "Leagues", path: "/leagues", icon: <Trophy className="h-4 w-4 mr-2" /> },
   ];
 
   const handleLogout = async () => {
