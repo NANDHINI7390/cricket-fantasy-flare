@@ -50,7 +50,7 @@ const Navbar = () => {
     };
   }, []);
 
-  // Menu items
+  // Main Menu items
   const menuItems = [
     { label: "Home", path: "/", icon: <Home className="h-4 w-4 mr-2" /> },
     { label: "Contests", path: "/contests", icon: <Trophy className="h-4 w-4 mr-2" /> },
