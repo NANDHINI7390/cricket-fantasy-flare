@@ -217,7 +217,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     switch (step) {
       case 1:
         return (
-          <div className="space-y-4 p-4">
+          <div className="space-y-3 p-3">
             <div>
               <Label htmlFor="league-name" className="text-base font-medium text-gray-700">
                 League Name
@@ -296,7 +296,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
       case 2:
         return (
-          <div className="space-y-4 p-4">
+          <div className="space-y-3 p-3">
             <div>
               <Label htmlFor="matchId" className="text-base font-medium text-gray-700">
                 Select Match
@@ -339,7 +339,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
       case 3:
         return (
-          <div className="space-y-4 p-4">
+          <div className="space-y-3 p-3">
             <div>
               <Label htmlFor="teamId" className="text-base font-medium text-gray-700">
                 Select Team
@@ -385,7 +385,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         const selectedTeam = teams?.find((team) => team.team_id === formData.teamId);
 
         return (
-          <div className="space-y-4 p-4">
+          <div className="space-y-3 p-3">
             <h3 className="text-base font-medium text-gray-700">Review Details</h3>
             <div className="space-y-2 text-sm text-gray-600">
               <p>
@@ -453,7 +453,9 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
           <Button
             onClick={handleNext}
             disabled={isSubmitting || Object.keys(validateStep(step)).length > 0}
-            className="w-1/2 h-10 bg-teal-500 text-white hover:bg-teal-600 rounded-md disabled:bg-gray-200 disabled:text-gray-500"
+            className={`h-10 bg-teal-500 text-white hover:bg-teal-600 rounded-md disabled:bg-gray-200 disabled:text-gray-500 ${
+              step === 1 ? "w-full" : "w-1/2"
+            }`}
           >
             Next
           </Button>
@@ -496,7 +498,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       </style>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="dialog-content p-0 bg-white rounded-lg max-h-[90vh] flex flex-col">
-          <DialogHeader className="p-4 border-b border-gray-200">
+          <DialogHeader className="p-3 border-b border-gray-200">
             <DialogTitle className="text-base font-semibold text-gray-800 text-center">
               {stepTitles[step - 1]}
             </DialogTitle>
@@ -509,13 +511,13 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             </Button>
           </DialogHeader>
 
-          <div className="px-4 py-2">{renderProgressBar()}</div>
+          <div className="px-3 py-2">{renderProgressBar()}</div>
 
-          <ScrollArea className="flex-1 p-4" ref={contentRef}>
+          <ScrollArea className="flex-1 p-3" ref={contentRef}>
             {renderStep()}
           </ScrollArea>
 
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-3 border-t border-gray-200">
             {renderNavigationButtons()}
           </div>
         </DialogContent>
