@@ -8,6 +8,7 @@ import { useState, useEffect, useContext } from "react";
 import { AuthContext } from "@/contexts/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
 import CreateLeagueModal from "@/components/league/CreateLeagueModal";
+import { MessageSquare, Sparkles, Trophy, Users, Calendar, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
