@@ -1,8 +1,17 @@
-// src/components/league/LeaguePage.tsx
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trophy, Users, Calendar, Shield } from "lucide-react";
+import { Loader2, Trophy, Users, Calendar, Shield, PlusCircle } from "lucide-react";
+
+
 
 // Type definition for the League data
 type League = {
@@ -22,6 +31,7 @@ const LeaguePage = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchLeagues = async () => {
@@ -64,10 +74,24 @@ const LeaguePage = () => {
     );
   }
 
-  return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">My Leagues</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  if (leagues.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)] py-12 px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <PlusCircle className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">No leagues created yet</h2>
+          <p className="mt-1 text-gray-600">Get started by creating your first league.</p>
+          <Button
+            onClick={() => navigate("/")}
+            className="mt-4 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded"
+          >
+            Create League
+          </Button>
+        </div>
+      </div>
+    );
+  } else {
+    return (
         {leagues.length === 0 ? (
           <p className="text-center col-span-full text-gray-600">No leagues created yet.</p>
         ) : (
@@ -108,8 +132,8 @@ const LeaguePage = () => {
           ))
         )}
       </div>
-    </div>
-  );
-};
+    );
+  }
+}
 
 export default LeaguePage;
