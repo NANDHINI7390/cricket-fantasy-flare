@@ -92,48 +92,48 @@ const LeaguePage = () => {
     );
   } else {
     return (
-        {leagues.length === 0 ? (
-          <p className="text-center col-span-full text-gray-600">No leagues created yet.</p>
-        ) : (
-          leagues.map((league) => (
-            <Card key={league.id} className="hover:shadow-lg transition-shadow duration-300 ease-in-out">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-teal-500" />
-                  {league.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <CardDescription className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-teal-500" />
-                  Entry Fee: ₹{league.entry_fee}
-                </CardDescription>
-                <CardDescription className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-teal-500" />
-                  Total Spots: {league.total_spots}
-                </CardDescription>
-                 <CardDescription className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-teal-500" />
-                  Created At: {new Date(league.created_at).toLocaleDateString()}
-                </CardDescription>
-                 <CardDescription className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-teal-500" />
-                  Visibility: {league.is_public ? "Public" : "Private"}
-                </CardDescription>
-                <CardDescription className="flex items-center gap-2">
-                 <Shield className="h-4 w-4 text-teal-500" />
-                  Invite Code: {league.invite_code}
-                </CardDescription>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline">View Details</Button>
-              </CardFooter>
-            </Card>
-          ))
-        )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {leagues.map((league) => (
+          <Card
+            key={league.id}
+            className="hover:shadow-lg transition-shadow duration-300 ease-in-out"
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-teal-500" />
+                {league.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <CardDescription className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-teal-500" />
+                Entry Fee: ₹{league.entry_fee}
+              </CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-teal-500" />
+                Total Spots: {league.total_spots}
+              </CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-teal-500" />
+                Created At: {new Date(league.created_at).toLocaleDateString()}
+              </CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-teal-500" />
+                Visibility: {league.is_public ? "Public" : "Private"}
+              </CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-teal-500" />
+                Invite Code: {league.invite_code}
+              </CardDescription>
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline">View Details</Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
     );
   }
-}
+};
 
 export default LeaguePage;
