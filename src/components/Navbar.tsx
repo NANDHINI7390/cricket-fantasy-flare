@@ -83,7 +83,7 @@ const Navbar = () => {
   return (
     <nav className="bg-gradient-to-r from-purple-700 to-indigo-800 text-white shadow-md">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 ">
           {/* Logo and brand */}
           <Link to="/" className="flex items-center space-x-2 text-xl font-bold">
             <span className="text-white">Cricket</span>
@@ -95,11 +95,11 @@ const Navbar = () => {
             {mainMenuItems.map((item) => (
               <Link
                 key={item.path}
-                to={item.path}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive(item.path)
                     ? "bg-white/10 text-white"
                     : "text-gray-200 hover:text-white hover:bg-white/10"
+                  } `}
                 }`}
               >
                 {item.label}
@@ -116,7 +116,7 @@ const Navbar = () => {
                       : "text-gray-200 hover:text-white hover:bg-white/10"
                   }`}
                 >
-                  <Wallet className="h-4 w-4 mr-2" />
+                  {item.icon}
                   Wallet
                 </Link>
 
@@ -156,7 +156,7 @@ const Navbar = () => {
           {/* Mobile menu button */}
           <div className="md:hidden">
             <button className="text-white hover:text-gray-200 p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMenuOpen ? <X className="h-6 w-6"/> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
@@ -164,7 +164,7 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-gradient-to-r from-purple-800 to-indigo-900 shadow-lg">
+        <div className="md:hidden bg-gradient-to-r from-purple-700 to-indigo-800 shadow-lg">
           <div className="px-2 pt-2 pb-3 space-y-1">
             {mainMenuItems.map((item) => (
               <Link
@@ -172,7 +172,7 @@ const Navbar = () => {
                 to={item.path}
                 className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
                   isActive(item.path)
-                    ? "bg-white/10 text-white"
+                    ? "bg-white/20 text-white"
                     : "text-gray-300 hover:text-white hover:bg-white/10"
                 }`}
                 onClick={() => setIsMenuOpen(false)}
@@ -183,19 +183,21 @@ const Navbar = () => {
             ))}
 
             {user && (
-              <Link
-                to="/wallet"
-                className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive("/wallet")
-                    ? "bg-white/10 text-white"
-                    : "text-gray-300 hover:text-white hover:bg-white/10"
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Wallet className="h-4 w-4 mr-2" />
-                Wallet
-              </Link>
-            )}
+                <Link
+                  to="/wallet"
+                  className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                    isActive("/wallet")
+                      ? "bg-white/10 text-white"
+                      : "text-gray-300 hover:text-white hover:bg-white/10"
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  Wallet
+                </Link>
+              )}
+
+           
 
             {user ? (
               <>
