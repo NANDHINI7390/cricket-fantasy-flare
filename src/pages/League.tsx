@@ -76,7 +76,7 @@ const LeaguePage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-teal-500" />
-                  {league.name}
+                  {league.name || "Unnamed League"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -84,22 +84,22 @@ const LeaguePage = () => {
                   <Users className="h-4 w-4 text-teal-500" />
                   Entry Fee: ₹{league.entry_fee}
                 </CardDescription>
-                <CardDescription className="flex items-center gap-2">
+                {league.total_spots && (<CardDescription className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-teal-500" />
                   Total Spots: {league.total_spots}
-                </CardDescription>
-                 <CardDescription className="flex items-center gap-2">
+                </CardDescription>)}
+                 {league.created_at && (<CardDescription className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-teal-500" />
                   Created At: {new Date(league.created_at).toLocaleDateString()}
-                </CardDescription>
-                 <CardDescription className="flex items-center gap-2">
+                </CardDescription>)}
+                 {league.is_public !== undefined && (<CardDescription className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-teal-500" />
                   Visibility: {league.is_public ? "Public" : "Private"}
-                </CardDescription>
-                <CardDescription className="flex items-center gap-2">
+                </CardDescription>)}
+                {league.invite_code && (<CardDescription className="flex items-center gap-2">
                  <Shield className="h-4 w-4 text-teal-500" />
                   Invite Code: {league.invite_code}
-                </CardDescription>
+                </CardDescription>)}
               </CardContent>
               <CardFooter>
                 <Button variant="outline">View Details</Button>
