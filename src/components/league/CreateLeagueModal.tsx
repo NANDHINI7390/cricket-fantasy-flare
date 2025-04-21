@@ -190,7 +190,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       const existingLeagues = JSON.parse(localStorage.getItem("fantasy_leagues") || "[]");
       existingLeagues.push(leagueData);
       localStorage.setItem("fantasy_leagues", JSON.stringify(existingLeagues));
-
+      onOpenChange(false);
       toast.success("League created successfully!", {
         description: `Invite code: ${leagueData.invite_code}`,
       });
