@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import {
   Button,
   buttonVariants,
@@ -31,7 +32,6 @@ type League = {
   invite_code: string;
   created_at: string;
 };
-
 const LeaguePage = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +50,6 @@ const LeaguePage = () => {
         if (storedLeagues) {
           const parsedLeagues = JSON.parse(storedLeagues);
           setLeagues(parsedLeagues);
-        }
       } catch (err: any) {
         console.error("Error fetching leagues:", err);
         setError("Failed to load leagues.");
@@ -61,6 +60,19 @@ const LeaguePage = () => {
 
     fetchLeagues();
   }, []);
+  const handleDeleteLeague = (leagueId: string) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this league?");
+    if (confirmDelete) {
+      const updatedLeagues = leagues.filter((league) => league.id !== leagueId);
+      setLeagues(updatedLeagues);
+      localStorage.setItem("fantasy_leagues", JSON.stringify(updatedLeagues));
+    }
+  };
+
+  const handleCreateLeague = () => {
+    navigate("/");
+  };
+
 
   if (isLoading) {
     return (
@@ -81,27 +93,39 @@ const LeaguePage = () => {
 
   if (leagues.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)] py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 rounded-lg shadow-md">
-        <div className="text-center">
-          <PlusCircle className="mx-auto h-20 w-20 text-teal-500 mb-6" />
-          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-4">
-            No leagues created yet
-          </h2>
-          <p className="mt-1 text-lg text-gray-600 mb-6">
-            Get started by creating your first league and inviting your friends!
-          </p>
-          <Button
-            onClick={() => navigate("/")}
-            className={cn(buttonVariants({ size: "lg" }), "bg-teal-500 hover:bg-teal-600 text-white")}
-          >
-            Create League
-          </Button>
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)] py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 rounded-lg shadow-md">
+          <div className="text-center">
+            <PlusCircle className="mx-auto h-24 w-24 text-teal-500 mb-6" />
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-4">
+              No leagues created yet
+            </h2>
+            <p className="mt-1 text-lg text-gray-600 mb-6">
+              Get started by creating your first league and inviting your friends!
+            </p>
+            <Button
+              onClick={handleCreateLeague}
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "bg-teal-500 hover:bg-teal-600 text-white"
+              )}
+            >
+              Create League
+            </Button>
+          </div>
         </div>
-      </div>
     );
-  } else {
-    return (<div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Your Leagues</h1>
+  }
+  return (
+    <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Your Leagues</h1>
+        <Button
+          onClick={handleCreateLeague}
+          className="bg-teal-500 hover:bg-teal-600 text-white"
+        >
+          Create New League
+        </Button>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {leagues.map((league) => (
           <Card
@@ -111,7 +135,7 @@ const LeaguePage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-6 w-6 text-teal-500" />
-                <span className="text-lg font-semibold">{league.name}</span>
+                <span className="text-lg font-semibold truncate">{league.name}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -139,13 +163,28 @@ const LeaguePage = () => {
                 Invite Code: <span className="font-mono">{league.invite_code}</span>
               </p>
             </CardContent>
-            {/*  You can uncomment this CardFooter if you have a view details page
-              <CardFooter>
-                <Button className="w-full" variant="outline">
-                  View Details
-                </Button>
-              </CardFooter> 
-            */}
+             <CardFooter className="flex justify-end">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">Delete</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete your league.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDeleteLeague(league.id)}>
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardFooter>
+
           </Card>
         ))}
       </div>
