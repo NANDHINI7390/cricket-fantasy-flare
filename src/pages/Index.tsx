@@ -1,13 +1,11 @@
 
 import Hero from "../components/Hero";
 import LiveMatches from "../components/LiveMatches";
+import CreateLeague from "../components/CreateLeague";
 import Footer from "../components/Footer";
 import PageNavigation from "@/components/PageNavigation";
 import { motion } from "framer-motion";
-import { useState, useEffect, useContext } from "react";
-import { AuthContext } from "@/contexts/AuthContext";
-import AuthModal from "@/components/auth/AuthModal";
-import CreateLeagueModal from "@/components/league/CreateLeagueModal";
+import ChatWidget from "@/components/chat/ChatWidget";
 import { useEffect } from "react";
 import { MessageSquare, Sparkles, Trophy, Users, Calendar, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,11 +34,6 @@ const Index = () => {
       document.head.appendChild(newMetaKeywords);
     }
   }, []);
-
-  const { user, logout } = useContext(AuthContext);
-  const [openAuthModal, setOpenAuthModal] = useState(false);
-  const [openCreateLeagueModal, setOpenCreateLeagueModal] = useState(false);
-
 
   return (
     <motion.div
@@ -245,33 +238,7 @@ const Index = () => {
         </div>
       </section>
       
-      <section className="py-12 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8 text-center">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Ready to Create Your League?</h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Start your own fantasy cricket league and compete with friends!
-            </p>
-            {user ? (
-              <>
-                <Button size="lg" className="bg-teal-500 hover:bg-teal-600 text-white rounded-full px-8 py-3" onClick={() => setOpenCreateLeagueModal(true)}>
-                  Create a New League
-                </Button>
-                <Button variant="outline" size="lg" className="ml-4 text-red-500 border-red-500 hover:bg-red-50 rounded-full px-8 py-3" onClick={logout}>
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <Button size="lg" className="bg-teal-500 hover:bg-teal-600 text-white rounded-full px-8 py-3" onClick={() => setOpenAuthModal(true)}>
-                Create a New League
-              </Button>
-            )}
-          </div>
-        </div>
-      </section>
-      <AuthModal open={openAuthModal} onOpenChange={setOpenAuthModal} />
-      <CreateLeagueModal open={openCreateLeagueModal} onOpenChange={setOpenCreateLeagueModal} openLoginModal={openAuthModal} setOpenLoginModal={setOpenAuthModal} />
-      
+      <CreateLeague />
       <Footer />
       <div className="text-center py-4 text-sm text-gray-500 bg-gray-100">
         © {new Date().getFullYear()} Fantasy Cricket Elite. All rights reserved.
