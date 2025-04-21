@@ -43,10 +43,10 @@ const LeaguePage = () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Simulate fetching data from Supabase/database
         await new Promise((resolve) => setTimeout(resolve, 1000));
-
         const storedLeagues = localStorage.getItem("fantasy_leagues");
+
+
         if (storedLeagues) {
           const parsedLeagues = JSON.parse(storedLeagues);
           setLeagues(parsedLeagues);
@@ -60,6 +60,7 @@ const LeaguePage = () => {
 
     fetchLeagues();
   }, []);
+
   const handleDeleteLeague = (leagueId: string) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this league?");
     if (confirmDelete) {
