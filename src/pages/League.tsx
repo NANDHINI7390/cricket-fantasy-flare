@@ -17,8 +17,6 @@ import { Loader2, Trophy, Users, Calendar, Shield, PlusCircle, Coins } from "luc
 import { cn } from "@/lib/utils";
 
 
-
-
 // Type definition for the League data
 type League = {
   id: string;
@@ -43,13 +41,11 @@ const LeaguePage = () => {
       setIsLoading(true);
       setError(null);
       try {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
         const storedLeagues = localStorage.getItem("fantasy_leagues");
-
-
         if (storedLeagues) {
           const parsedLeagues = JSON.parse(storedLeagues);
           setLeagues(parsedLeagues);
+        }
       } catch (err: any) {
         console.error("Error fetching leagues:", err);
         setError("Failed to load leagues.");
@@ -62,7 +58,9 @@ const LeaguePage = () => {
   }, []);
 
   const handleDeleteLeague = (leagueId: string) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this league?");
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this league?"
+    );
     if (confirmDelete) {
       const updatedLeagues = leagues.filter((league) => league.id !== leagueId);
       setLeagues(updatedLeagues);
@@ -73,7 +71,6 @@ const LeaguePage = () => {
   const handleCreateLeague = () => {
     navigate("/");
   };
-
 
   if (isLoading) {
     return (
@@ -94,45 +91,45 @@ const LeaguePage = () => {
 
   if (leagues.length === 0) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)] py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 rounded-lg shadow-md">
-          <div className="text-center">
-            <PlusCircle className="mx-auto h-24 w-24 text-teal-500 mb-6" />
-            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-4">
-              No leagues created yet
-            </h2>
-            <p className="mt-1 text-lg text-gray-600 mb-6">
-              Get started by creating your first league and inviting your friends!
-            </p>
-            <Button
-              onClick={handleCreateLeague}
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "bg-teal-500 hover:bg-teal-600 text-white"
-              )}
-            >
-              Create League
-            </Button>
-          </div>
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)] py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 rounded-lg shadow-md">
+        <div className="text-center">
+          <PlusCircle className="mx-auto h-24 w-24 text-teal-500 mb-6" />
+          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-4">
+            No leagues created yet
+          </h2>
+          <p className="mt-1 text-lg text-gray-600 mb-6">
+            Get started by creating your first league and inviting your friends!
+          </p>
+          <Button
+            onClick={handleCreateLeague}
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "bg-teal-500 hover:bg-teal-600 text-white"
+            )}
+          >
+            Create League
+          </Button>
         </div>
+      </div>
     );
   }
   return (
     <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Your Leagues</h1>
-        <Button
-          onClick={handleCreateLeague}
-          className="bg-teal-500 hover:bg-teal-600 text-white"
+        <Button onClick={handleCreateLeague} className="bg-teal-500 hover:bg-teal-600 text-white">
+          Create New League
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {leagues.map((league) => (
+          <Card key={league.id} className="border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out"
         >
           Create New League
         </Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {leagues.map((league) => (
-          <Card
-            key={league.id}
-            className="hover:shadow-lg transition-shadow duration-300 ease-in-out"
-          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-6 w-6 text-teal-500" />
@@ -164,7 +161,7 @@ const LeaguePage = () => {
                 Invite Code: <span className="font-mono">{league.invite_code}</span>
               </p>
             </CardContent>
-             <CardFooter className="flex justify-end">
+            <CardFooter className="flex justify-end">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive">Delete</Button>
@@ -176,7 +173,9 @@ const LeaguePage = () => {
                       This action cannot be undone. This will permanently delete your league.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter>
+                  <AlertDialogFooter
+                    Delete
+                  </AlertDialogAction>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={() => handleDeleteLeague(league.id)}>
                       Delete
