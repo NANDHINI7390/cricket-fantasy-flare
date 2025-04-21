@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
   X,
@@ -11,7 +11,7 @@ import {
   Home,
   LogOut,
   CircleUser,
-  Wallet,
+  CreditCard,
   ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -93,32 +93,37 @@ const Navbar = () => {
           {/* Desktop navigation */}
           <div className="hidden md:flex items-center space-x-1">
             {mainMenuItems.map((item) => (
-              <Link
+              <NavLink
                 key={item.path}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive(item.path)
-                    ? "bg-white/10 text-white"
-                    : "text-gray-200 hover:text-white hover:bg-white/10"
-                  } `}
-                }`}
-              >
-                {item.label}
-              </Link>
+                to={item.path}
+                className={({ isActive }) =>
+                  `px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center
+                  ${isActive
+                      ? "bg-white/10 text-white"
+                      : "text-gray-200 hover:text-white hover:bg-white/10"
+                    }`
+                }
+              >{item.icon}{item.label}</NavLink>
             ))}
 
             {isLoading ? null : user ? (
               <>
-                <Link
-                  to="/wallet"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${
-                    isActive("/wallet")
-                      ? "bg-white/10 text-white"
-                      : "text-gray-200 hover:text-white hover:bg-white/10"
-                  }`}
+                <NavLink
+                  to={"/wallet"}
+                  className={({ isActive }) =>
+                    `px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center
+                    ${isActive
+                        ? "bg-white/10 text-white"
+                        : "text-gray-200 hover:text-white hover:bg-white/10"
+                      }`
+                  }
                 >
-                  {item.icon}
-                  Wallet
-                </Link>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  <span className="ml-1">
+                    Wallet
+                  </span>
+                </NavLink>
+
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -168,10 +173,11 @@ const Navbar = () => {
           <div className="px-2 pt-2 pb-3 space-y-1">
             {mainMenuItems.map((item) => (
               <Link
-                key={item.path}
                 to={item.path}
-                className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive(item.path)
+                key={item.label}
+                onClick={() => setIsMenuOpen(false)}
+                className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors
+                  ${isActive(item.path)
                     ? "bg-white/20 text-white"
                     : "text-gray-300 hover:text-white hover:bg-white/10"
                 }`}
@@ -188,7 +194,7 @@ const Navbar = () => {
                   className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
                     isActive("/wallet")
                       ? "bg-white/10 text-white"
-                      : "text-gray-300 hover:text-white hover:bg-white/10"
+                      : "text-gray-300  hover:text-white hover:bg-white/10"
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
