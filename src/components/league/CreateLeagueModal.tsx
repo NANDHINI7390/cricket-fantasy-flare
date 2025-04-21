@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useQuery } from "@tanstack/react-query";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 type CreateLeagueModalProps = {
   open: boolean;
@@ -59,6 +59,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const { data: matches, isLoading: matchesLoading } = useQuery({
     queryKey: ["cricket-matches"],
@@ -189,14 +190,14 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       const existingLeagues = JSON.parse(localStorage.getItem("fantasy_leagues") || "[]");
       existingLeagues.push(leagueData);
       localStorage.setItem("fantasy_leagues", JSON.stringify(existingLeagues));
-
       onOpenChange(false);
       toast.success("League created successfully!", {
         description: `Invite code: ${leagueData.invite_code}`,
       });
+      navigate("/leagues");
     } catch (error: any) {
       toast.error("Failed to create league");
-    } finally {
+    } finally{
       setIsSubmitting(false);
     }
   };
@@ -513,10 +514,10 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
           <div className="px-3 py-2">{renderProgressBar()}</div>
 
-          <ScrollArea className="flex-1 p-3" ref={contentRef}>
-            {renderStep()}
-          </ScrollArea>
-
+          <div className="flex-1 p-3 overflow-y-auto" ref={contentRef}>
+           {renderStep()}
+          </div>
+          
           <div className="p-3 border-t border-gray-200">
             {renderNavigationButtons()}
           </div>
