@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,11 +8,12 @@ import { X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useQuery } from "@tanstack/react-query";
+import { AuthContext } from "@/contexts/AuthContext";
+import AuthModal from "@/components/auth/AuthModal";
 
 type CreateLeagueModalProps = {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: boolean) => void
 };
 
 type Match = {
@@ -34,6 +35,8 @@ type FormData = {
   matchId: string;
   teamId: string;
   isPublic: boolean;
+  startDate: string; // Added for start date
+  startTime: string; // Added for start time
 };
 
 type FormErrors = {
@@ -42,9 +45,12 @@ type FormErrors = {
   totalSpots?: string;
   matchId?: string;
   teamId?: string;
+  startDate?: string; // Added for start date validation
+  startTime?: string; // Added for start time validation
+}; type CreateLeagueModalWithAuthProps = CreateLeagueModalProps & {
+  openLoginModal: boolean;
+  setOpenLoginModal: (open: boolean) => void;
 };
-
-const MOCK_USER_ID = "user-123";
 
 const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [step, setStep] = useState(1);
@@ -55,34 +61,61 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     matchId: "",
     teamId: "",
     isPublic: false,
+    startDate: "",
+    startTime: "",
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const { data: matches, isLoading: matchesLoading } = useQuery({
-    queryKey: ["cricket-matches"],
-    queryFn: async () => {
+  // Fetch matches and teams from localStorage on mount
+  useEffect(() => {
+    // Initialize matches if not present in localStorage
+    const storedMatches = localStorage.getItem("fantasy_matches");
+    if (!storedMatches) {
       const currentDate = new Date();
-      return [
+      const mockMatches: Match[] = [
         { match_id: "m1", team1_name: "India", team2_name: "Pakistan", time: "Tomorrow, 2:30 PM" },
         { match_id: "m2", team1_name: "Australia", team2_name: "England", time: `${currentDate.getDate() + 1} Apr, 10:00 AM` },
         { match_id: "m3", team1_name: "South Africa", team2_name: "New Zealand", time: `${currentDate.getDate() + 3} Apr, 3:00 PM` },
-      ] as Match[];
-    },
-  });
+      ];
+      localStorage.setItem("fantasy_matches", JSON.stringify(mockMatches));
+      setMatches(mockMatches);
+    } else {
+      setMatches(JSON.parse(storedMatches));
+    }
 
-  const { data: teams, isLoading: teamsLoading } = useQuery({
-    queryKey: ["fantasy-teams"],
-    queryFn: async () => {
-      return [
+    // Initialize teams if not present in localStorage
+    const storedTeams = localStorage.getItem("fantasy_teams");
+    if (!storedTeams) {
+      const mockTeams: Team[] = [
         { team_id: "t1", name: "Dream Team 1" },
         { team_id: "t2", name: "Champions XI" },
-      ] as Team[];
-    },
-  });
+      ];
+      localStorage.setItem("fantasy_teams", JSON.stringify(mockTeams));
+      setTeams(mockTeams);
+    } else {
+      setTeams(JSON.parse(storedTeams));
+    }
+  }, []);
 
+  const { user } = useContext(AuthContext);
+
+  if (!user) {
+    useEffect(() => {
+      toast.error("You must be signed in to create a league");
+      onOpenChange(false);
+      setOpenLoginModal(true);
+    }, [onOpenChange, setOpenLoginModal]);
+    return null;
+  }
+
+  const { openLoginModal, setOpenLoginModal }: CreateLeagueModalWithAuthProps = props;
+
+  // Reset form when modal opens
   useEffect(() => {
     if (open) {
       setStep(1);
@@ -93,6 +126,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         matchId: "",
         teamId: "",
         isPublic: false,
+        startDate: "",
+        startTime: "",
       });
       setFormErrors({});
       setTimeout(() => {
@@ -123,6 +158,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         if (formData.entryFee < 0) errors.entryFee = "Entry fee cannot be negative";
         if (formData.totalSpots < 2) errors.totalSpots = "Minimum 2 spots";
         else if (formData.totalSpots > 1000) errors.totalSpots = "Maximum 1000 spots";
+        if (!formData.startDate) errors.startDate = "Start date is required";
+        if (!formData.startTime) errors.startTime = "Start time is required";
         break;
       case 2:
         if (!formData.matchId) errors.matchId = "Select a match";
@@ -173,18 +210,21 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
 
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Combine start date and time into ISO format
+      const startAt = new Date(`${formData.startDate}T${formData.startTime}`).toISOString();
+
       const leagueData = {
-        id: Math.random().toString(36).substring(2, 9),
+        id: `league_${Date.now()}`,
         name: formData.leagueName,
         entry_fee: formData.entryFee,
         total_spots: formData.totalSpots,
         match_id: formData.matchId,
         team_id: formData.teamId,
         is_public: formData.isPublic,
-        creator_id: MOCK_USER_ID,
+        creator_id: user?.id ?? "user-123",
         invite_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
         created_at: new Date().toISOString(),
+        start_at: startAt, // Added start_at field
       };
 
       const existingLeagues = JSON.parse(localStorage.getItem("fantasy_leagues") || "[]");
@@ -194,10 +234,11 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       toast.success("League created successfully!", {
         description: `Invite code: ${leagueData.invite_code}`,
       });
+      onOpenChange(false); // Close the modal
       navigate("/leagues");
     } catch (error: any) {
       toast.error("Failed to create league");
-    } finally{
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -211,6 +252,8 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
     else if (formData.totalSpots > 1000) errors.totalSpots = "Maximum 1000 spots";
     if (!formData.matchId) errors.matchId = "Select a match";
     if (!formData.teamId) errors.teamId = "Select a team";
+    if (!formData.startDate) errors.startDate = "Start date is required";
+    if (!formData.startTime) errors.startTime = "Start time is required";
     return errors;
   };
 
@@ -281,6 +324,47 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               )}
             </div>
 
+            <div>
+              <Label htmlFor="start-date" className="text-base font-medium text-gray-700">
+                Start Date
+              </Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={formData.startDate}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleInputChange("startDate", e.target.value)
+                }
+                className={`mt-1 h-10 border-gray-300 focus:border-teal-500 rounded-md ${
+                  formErrors.startDate ? "border-red-500" : ""
+                }`}
+                min={new Date().toISOString().split("T")[0]} // Prevent past dates
+              />
+              {formErrors.startDate && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.startDate}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="start-time" className="text-base font-medium text-gray-700">
+                Start Time
+              </Label>
+              <Input
+                id="start-time"
+                type="time"
+                value={formData.startTime}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleInputChange("startTime", e.target.value)
+                }
+                className={`mt-1 h-10 border-gray-300 focus:border-teal-500 rounded-md ${
+                  formErrors.startTime ? "border-red-500" : ""
+                }`}
+              />
+              {formErrors.startTime && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.startTime}</p>
+              )}
+            </div>
+
             <div className="flex items-center justify-between">
               <Label htmlFor="isPublic" className="text-base font-medium text-gray-700">
                 Public League
@@ -314,20 +398,16 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                   <SelectValue placeholder="Select a match" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-200 rounded-md">
-                  {matchesLoading ? (
+                  {matches.length === 0 ? (
                     <SelectItem value="" disabled>
-                      Loading matches...
+                      No matches available
                     </SelectItem>
-                  ) : matches ? (
+                  ) : (
                     matches.map((match: Match) => (
                       <SelectItem key={match.match_id} value={match.match_id}>
                         {match.team1_name} vs {match.team2_name} ({match.time})
                       </SelectItem>
                     ))
-                  ) : (
-                    <SelectItem value="" disabled>
-                      Failed to load matches
-                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -357,20 +437,16 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
                   <SelectValue placeholder="Select a team" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-200 rounded-md">
-                  {teamsLoading ? (
+                  {teams.length === 0 ? (
                     <SelectItem value="" disabled>
-                      Loading teams...
+                      No teams available
                     </SelectItem>
-                  ) : teams ? (
+                  ) : (
                     teams.map((team: Team) => (
                       <SelectItem key={team.team_id} value={team.team_id}>
                         {team.name}
                       </SelectItem>
                     ))
-                  ) : (
-                    <SelectItem value="" disabled>
-                      Failed to load teams
-                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -397,6 +473,9 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
               </p>
               <p>
                 <strong>Total Spots:</strong> {formData.totalSpots}
+              </p>
+              <p>
+                <strong>Start:</strong> {formData.startDate} at {formData.startTime}
               </p>
               <p>
                 <strong>Visibility:</strong> {formData.isPublic ? "Public" : "Private"}
@@ -496,7 +575,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             }
           }
         `}
-      </style>
+      </style>      
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="dialog-content p-0 bg-white rounded-lg max-h-[90vh] flex flex-col">
           <DialogHeader className="p-3 border-b border-gray-200">
@@ -515,9 +594,9 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
           <div className="px-3 py-2">{renderProgressBar()}</div>
 
           <div className="flex-1 p-3 overflow-y-auto" ref={contentRef}>
-           {renderStep()}
+            {renderStep()}
           </div>
-          
+
           <div className="p-3 border-t border-gray-200">
             {renderNavigationButtons()}
           </div>

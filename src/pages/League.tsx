@@ -20,7 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, PlusCircle, Trophy, Users, Calendar, Shield, Coins } from "lucide-react";
+import { Loader2, PlusCircle, Trophy, Users, Calendar, Shield, Coins, Share2 } from "lucide-react";
 
 // Type definition for the League data
 type League = {
@@ -34,6 +34,7 @@ type League = {
   creator_id: string;
   invite_code: string;
   created_at: string;
+  start_at: string; // Added to store the start date and time
 };
 
 const LeaguePage = () => {
@@ -53,7 +54,7 @@ const LeaguePage = () => {
           const parsedLeagues = JSON.parse(storedLeagues);
           setLeagues(parsedLeagues);
         } else {
-          setLeagues([]); // Handle case where no leagues exist
+          setLeagues([]);
         }
       } catch (err: any) {
         console.error("Error fetching leagues:", err);
@@ -71,6 +72,16 @@ const LeaguePage = () => {
     const updatedLeagues = leagues.filter((league) => league.id !== leagueId);
     setLeagues(updatedLeagues);
     localStorage.setItem("fantasy_leagues", JSON.stringify(updatedLeagues));
+    // Also remove participants for this league
+    localStorage.removeItem(`participants_${leagueId}`);
+  };
+
+  // Handle sharing via WhatsApp
+  const handleShareLeague = (league: League) => {
+    const joinUrl = `${window.location.origin}/join-league/${league.invite_code}`;
+    const message = `Join my fantasy cricket league "${league.name}"! Use this invite code: ${league.invite_code}. Click here to join: ${joinUrl}`;
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   // Navigate to home page to create a new league
@@ -163,22 +174,33 @@ const LeaguePage = () => {
               <div className="flex items-center justify-between text-sm text-gray-600">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4 text-teal-500" />
-                  Created: {new Date(league.created_at).toLocaleDateString()}
+                  Starts: {new Date(league.start_at).toLocaleString()}
                 </span>
                 <span className="flex items-center gap-1">
                   <Shield className="h-4 w-4 text-teal-500" />
                   {league.is_public ? "Public" : "Private"}
                 </span>
               </div>
-              <div className="text-sm text-gray-600">
-                Invite Code: <span className="font-mono">{league.invite_code}</span>
+              <div className="flex items-center justify-between text-sm text-gray-600">
+                <span>
+                  Invite Code: <span className="font-mono">{league.invite_code}</span>
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-teal-500 text-teal-500 hover:bg-teal-50"
+                  onClick={() => handleShareLeague(league)}
+                >
+                  <Share2 className="h-4 w-4 mr-1" />
+                  Share
+                </Button>
               </div>
             </CardContent>
             <CardFooter className="p-4 pt-0 flex justify-between">
               <Button
                 variant="outline"
                 className="border-teal-500 text-teal-500 hover:bg-teal-50"
-                onClick={() => console.log(`View details for league ${league.id}`)} // Placeholder for navigation
+                onClick={() => console.log(`View details for league ${league.id}`)}
               >
                 View Details
               </Button>
