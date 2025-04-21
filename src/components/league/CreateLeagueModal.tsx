@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useContext } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,12 +8,10 @@ import { X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { AuthContext } from "@/contexts/AuthContext";
-import AuthModal from "@/components/auth/AuthModal";
 
 type CreateLeagueModalProps = {
   open: boolean;
-  onOpenChange: (open: boolean) => void
+  onOpenChange: (open: boolean) => void;
 };
 
 type Match = {
@@ -47,10 +45,9 @@ type FormErrors = {
   teamId?: string;
   startDate?: string; // Added for start date validation
   startTime?: string; // Added for start time validation
-}; type CreateLeagueModalWithAuthProps = CreateLeagueModalProps & {
-  openLoginModal: boolean;
-  setOpenLoginModal: (open: boolean) => void;
 };
+
+const MOCK_USER_ID = "user-123";
 
 const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
   const [step, setStep] = useState(1);
@@ -101,19 +98,6 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
       setTeams(JSON.parse(storedTeams));
     }
   }, []);
-
-  const { user } = useContext(AuthContext);
-
-  if (!user) {
-    useEffect(() => {
-      toast.error("You must be signed in to create a league");
-      onOpenChange(false);
-      setOpenLoginModal(true);
-    }, [onOpenChange, setOpenLoginModal]);
-    return null;
-  }
-
-  const { openLoginModal, setOpenLoginModal }: CreateLeagueModalWithAuthProps = props;
 
   // Reset form when modal opens
   useEffect(() => {
@@ -221,7 +205,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
         match_id: formData.matchId,
         team_id: formData.teamId,
         is_public: formData.isPublic,
-        creator_id: user?.id ?? "user-123",
+        creator_id: MOCK_USER_ID,
         invite_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
         created_at: new Date().toISOString(),
         start_at: startAt, // Added start_at field
@@ -575,7 +559,7 @@ const CreateLeagueModal = ({ open, onOpenChange }: CreateLeagueModalProps) => {
             }
           }
         `}
-      </style>      
+      </style>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="dialog-content p-0 bg-white rounded-lg max-h-[90vh] flex flex-col">
           <DialogHeader className="p-3 border-b border-gray-200">
