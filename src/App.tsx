@@ -17,6 +17,8 @@ import MyTeams from "./pages/MyTeams";
 import Profile from "./pages/Profile";
 import Wallet from "./pages/Wallet";
 import JoinLeague from "./pages/JoinLeague";
+import Analytics from "./pages/Analytics";
+import AIOptimizer from "./pages/AIOptimizer";
 
 import { useEffect } from "react";
 import { initSentry } from "./integrations/sentry/config";
@@ -73,6 +75,8 @@ const App = () => {
                     <Route path="/wallet" element={<Wallet />} />
                     <Route path="/join-league/:code" element={<JoinLeague />} />
                     <Route path="/leagues" element={<LeaguePage />} />
+                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/ai-optimizer" element={<AIOptimizer />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>
