@@ -11,6 +11,23 @@ interface ApiResponse {
   data: any[];
 }
 
+interface PlayerInfo {
+  id: string;
+  name: string;
+  dateOfBirth?: string;
+  role?: string;
+  battingStyle?: string;
+  bowlingStyle?: string;
+  // Add other player details as needed
+}
+
+interface Scorecard {
+  match_id: string;
+  // Add other scorecard details as needed
+  scorecard: any[]; // This will contain detailed innings data with player IDs and stats
+}
+
+
 interface MatchInfo {
   id: string;
   name: string;
@@ -27,7 +44,6 @@ interface MatchInfo {
     inning: string;
   }[];
   players?: any[];
-  tossWinner?: string;
   tossChoice?: string;
 }
 
@@ -122,13 +138,14 @@ serve(async (req: Request) => {
 });
 
 // Fetch cricket matches data from CricAPI
-async function fetchCricketData(): Promise<MatchInfo[]> {
+async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: Scorecard[], players: PlayerInfo[] }> {
   try {
     // Fetch current matches
     const currentMatchesResponse = await fetch(
       `https://api.cricapi.com/v1/currentMatches?apikey=${CRICAPI_KEY}&offset=0`
     );
     const currentMatches: ApiResponse = await currentMatchesResponse.json();
+ console.log("currentMatches", currentMatches);
     
     if (currentMatches.status !== "success" || !currentMatches.data) {
       console.error("Error fetching current matches:", currentMatches);
@@ -214,7 +231,74 @@ async function fetchCricketData(): Promise<MatchInfo[]> {
       };
     });
     
-    return allMatches;
+    // Filter live and upcoming matches for fetching scorecards
+    const liveMatches = allMatches.filter(m => m.category === "Live");
+    const upcomingMatches = allMatches
+ .filter(m => m.category === "Upcoming")
+ .sort((a, b) => new Date(a.dateTimeGMT || 0).getTime() - new Date(b.dateTimeGMT || 0).getTime()) // Sort by date
+ .slice(0, 3); // Get the next 3 upcoming matches
+
+    const matchesToFetchScorecards = [...liveMatches, ...upcomingMatches];
+    const scorecards: Scorecard[] = [];
+    const playerIds = new Set<string>();
+
+    // Fetch scorecards and collect player IDs
+    for (const match of matchesToFetchScorecards) {
+      try {
+        const scorecardResponse = await fetch(
+ `https://api.cricapi.com/v1/match_scorecard?apikey=${CRICAPI_KEY}&id=${match.id}`
+        );
+        const scorecardData: ApiResponse = await scorecardResponse.json();
+ console.log(`scorecardData for match ${match.id}`, scorecardData);
+
+        if (scorecardData.status === "success" && scorecardData.data && scorecardData.data.length > 0) {
+          const scorecard = scorecardData.data[0]; // Assuming the data array has one item for the scorecard
+          scorecards.push(scorecard);
+
+          // Extract player IDs from the scorecard
+          if (scorecard.scorecard) {
+            scorecard.scorecard.forEach((inning: any) => {
+              if (inning.batting) {
+                inning.batting.forEach((batsman: any) => {
+ if (batsman.player_id) playerIds.add(batsman.player_id);
+                });
+              }
+              if (inning.bowling) {
+                inning.bowling.forEach((bowler: any) => {
+ if (bowler.player_id) playerIds.add(bowler.player_id);
+                });
+              }
+            });
+          }
+        } else {
+          console.warn(`Could not fetch scorecard for match ID ${match.id}`);
+        }
+      } catch (error) {
+        console.error(`Error fetching scorecard for match ID ${match.id}:`, error);
+      }
+    }
+
+    const players: PlayerInfo[] = [];
+    // Fetch player information for collected player IDs
+    for (const playerId of playerIds) {
+      try {
+        const playerInfoResponse = await fetch(
+ `https://api.cricapi.com/v1/players_info?apikey=${CRICAPI_KEY}&id=${playerId}`
+        );
+        const playerInfoData: ApiResponse = await playerInfoResponse.json();
+ console.log(`playerInfoData for player ${playerId}`, playerInfoData);
+
+        if (playerInfoData.status === "success" && playerInfoData.data && playerInfoData.data.length > 0) {
+          players.push(playerInfoData.data[0]); // Assuming the data array has one item for the player
+        } else {
+          console.warn(`Could not fetch player info for player ID ${playerId}`);
+        }
+      } catch (error) {
+        console.error(`Error fetching player info for player ID ${playerId}:`, error);
+      }
+    }
+
+    return { matches: allMatches, scorecards, players };
   } catch (error) {
     console.error("Error fetching cricket data:", error);
     return [];
@@ -272,8 +356,25 @@ function generateBasicResponse(query: string, cricketData: MatchInfo[]): string 
 
 // Generate AI-powered response using OpenAI
 async function generateAIResponse(query: string, cricketData: MatchInfo[]): Promise<{ message: string; playerStats?: any[] }> {
-  if (!OPENAI_API_KEY) {
+  /* Test comment */
     throw new Error("OpenAI API key not configured");
+  }
+  
+  // Create a basic representation of the cricket data for the prompt
+  let cricketDataContext = "Available Cricket Data:\n\n";
+  if (cricketData.matches && cricketData.matches.length > 0) {
+    cricketDataContext += "Matches:\n";
+    cricketData.matches.forEach(match => {
+      cricketDataContext += `- ${match.name} (Status: ${match.status})\n`;
+    });
+    if (cricketData.players && cricketData.players.length > 0) {
+      cricketDataContext += "\nPlayers:\n";
+      cricketData.players.forEach(player => {
+        cricketDataContext += `- ${player.name} (Role: ${player.role || 'N/A'})\n`;
+      });
+    }
+  } else {
+    cricketDataContext += "No current cricket match or player data available.\n";
   }
   
   // Prepare cricket data context for the AI
@@ -320,33 +421,40 @@ async function generateAIResponse(query: string, cricketData: MatchInfo[]): Prom
   // Craft the system prompt for OpenAI
   const systemPrompt = `
 You are a smart Cricket Fantasy Chatbot assistant. You provide expert advice on cricket fantasy teams and players based on real-time match data.
+When making player recommendations, format your response like this:
+**Captain Pick:** <player name> - <relevant stats and reasoning>
+**Vice-Captain Pick:** <player name> - <relevant stats and reasoning>
+**Other Key Players:**
+- <player name> (<player role>): <relevant stats and reasoning>
+- <player name> (<player role>): <relevant stats and reasoning>
 
-When responding to users, follow these guidelines:
-1. Always analyze the real-time cricket data provided to make informed recommendations
-2. When recommending captain or player picks, explain why they're good choices based on current form and match conditions
-3. Format your responses in a clear, easy-to-read way
-4. Be conversational and engaging
-5. If match data is available, always include match information in your response
-6. For captain recommendations, include their stats and why they're a good pick
+Examples:
 
+User: "Suggest a good team for the match between India and Australia."
+AI:
+**Captain Pick:** Virat Kohli - Scored 85 in the last match, strong against Australia's bowling attack.
+**Vice-Captain Pick:** Mitchell Starc - Took 3 wickets in the last match, excellent with the new ball.
+**Other Key Players:**
+- Rohit Sharma (Batsman): Consistent performer at this venue.
+- Jasprit Bumrah (Bowler): Known for his death bowling expertise.
+- Steve Smith (Batsman): anchors the innings and plays spin well.
 Current cricket data:
 ${matchContext}
 
 When making player recommendations, format your response like this:
-**Match:** <match name> **Score:** <current score> **Captain Pick:** <player name> – <stats> **Top Bowling Pick:** <player name> – <stats>
+**Captain Pick:** <player name> - <relevant stats and reasoning>
+**Vice-Captain Pick:** <player name> - <relevant stats and reasoning>
+**Other Key Players:**
+  const userPrompt = `${cricketDataContext}
 
-If a user asks about scores or match information, provide the most recent data available.
-If a user asks for player recommendations, suggest players who are likely to perform well based on the current match situation.
-`;
-
-  // Prepare the user's query with context
-  const userPrompt = `User question: ${query}
+User question: ${query}
 
 Based on the cricket data provided, give the best possible answer. Include specific player recommendations if the query is about team selection or captains.`;
 
   try {
     // Call OpenAI API
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
+
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -373,19 +481,27 @@ Based on the cricket data provided, give the best possible answer. Include speci
     const aiResponse = data.choices[0].message.content;
     
     // Extract player stats if the response includes recommendations
-    let playerStats = undefined;
-    
-    if (aiResponse.includes("Captain Pick") || aiResponse.includes("captain pick")) {
-      // Simple extraction of player recommendations
-      // In a real implementation, this would be more sophisticated
-      playerStats = [
-        { name: "Unknown Player", role: "batsman" }
-      ];
-      
-      // Extract captain name if available
-      const captainMatch = aiResponse.match(/\*\*Captain Pick:\*\*\s*([^–\*]+)/i);
-      if (captainMatch && captainMatch[1]) {
-        playerStats[0].name = captainMatch[1].trim();
+    let playerStats: any[] = [];
+
+    // Regex to find player names and their details based on the expected format
+    const playerRegex = /- (.+) \((.+)\): (.+)/g;
+    let match;
+
+    // Extract Captain and Vice-Captain
+    const captainMatch = aiResponse.match(/\*\*Captain Pick:\*\*\s*(.+)/i);
+    if (captainMatch && captainMatch[1]) {
+      playerStats.push({ name: captainMatch[1].trim(), role: 'Captain', details: captainMatch[1].trim() });
+    }
+
+    const viceCaptainMatch = aiResponse.match(/\*\*Vice-Captain Pick:\*\*\s*(.+)/i);
+    if (viceCaptainMatch && viceCaptainMatch[1]) {
+      playerStats.push({ name: viceCaptainMatch[1].trim(), role: 'Vice-Captain', details: viceCaptainMatch[1].trim() });
+    }
+
+    // Extract other key players
+    while ((match = playerRegex.exec(aiResponse)) !== null) {
+      if (match[1] && match[2] && match[3]) {
+        playerStats.push({ name: match[1].trim(), role: match[2].trim(), details: match[3].trim() });
       }
     }
     
