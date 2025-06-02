@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as Sentry from '@sentry/react';
 import { Transaction, TransactionStatus, TransactionType, PaymentMethod, PaymentDetails } from "@/types/transaction";
@@ -74,19 +73,12 @@ export const getWalletTransactions = async (): Promise<Transaction[]> => {
         txStatus = 'completed';
       }
       
-      // Validate payment method - handle case where property might not exist
-      let paymentMethod = tx.payment_method || tx.paymentMethod;
-      if (paymentMethod && !['upi', 'card', 'netbanking', 'wallet', 'other'].includes(paymentMethod)) {
-        console.warn(`Unknown payment method: ${paymentMethod}, defaulting to 'other'`);
-        paymentMethod = 'other';
-      }
-      
       // Return a properly typed Transaction object
+      // Note: payment_method is not stored in the database schema, so we omit it
       return {
         ...tx,
         type: txType as TransactionType,
-        status: txStatus as TransactionStatus,
-        payment_method: paymentMethod as PaymentMethod | undefined
+        status: txStatus as TransactionStatus
       };
     });
   } catch (error) {
