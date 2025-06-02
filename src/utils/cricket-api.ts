@@ -667,5 +667,5 @@ export const categorizeMatches = (matches: CricketMatch[]): CricketMatch[] => {
         return null;
       }
     })
-    .filter(Boolean) as CricketMatch[];
+    .filter((match): match is CricketMatch => match !== null);
 };
