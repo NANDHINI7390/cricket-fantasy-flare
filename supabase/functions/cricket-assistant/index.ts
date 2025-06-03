@@ -4,6 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 interface RequestData {
   query: string;
+  matchData?: any[];
+  requestType?: string;
 }
 
 interface ApiResponse {
@@ -18,15 +20,12 @@ interface PlayerInfo {
   role?: string;
   battingStyle?: string;
   bowlingStyle?: string;
-  // Add other player details as needed
 }
 
 interface Scorecard {
   match_id: string;
-  // Add other scorecard details as needed
-  scorecard: any[]; // This will contain detailed innings data with player IDs and stats
+  scorecard: any[];
 }
-
 
 interface MatchInfo {
   id: string;
@@ -68,6 +67,8 @@ serve(async (req: Request) => {
     // Parse request body
     const requestData: RequestData = await req.json();
     const userQuery = requestData.query || '';
+    const providedMatchData = requestData.matchData || [];
+    const requestType = requestData.requestType || 'general';
     
     if (!userQuery) {
       return new Response(
@@ -82,14 +83,22 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Processing query: ${userQuery}`);
+    console.log(`Processing ${requestType} query: ${userQuery}`);
     
     // Create Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // Fetch cricket data
-    const cricketData = await fetchCricketData();
-    console.log(`Fetched ${cricketData.length} matches`);
+    // Fetch fresh cricket data if not provided or if we need more comprehensive data
+    let cricketData;
+    if (providedMatchData.length > 0 && requestType === 'fantasy_analysis') {
+      // Use provided match data for fantasy analysis
+      cricketData = { matches: providedMatchData, scorecards: [], players: [] };
+    } else {
+      // Fetch fresh data
+      cricketData = await fetchCricketData();
+    }
+    
+    console.log(`Working with ${cricketData.matches?.length || 0} matches`);
     
     let message;
     let playerStats;
@@ -98,25 +107,26 @@ serve(async (req: Request) => {
     if (OPENAI_API_KEY) {
       try {
         // Generate AI response
-        const aiResponse = await generateAIResponse(userQuery, cricketData);
+        const aiResponse = await generateAIResponse(userQuery, cricketData, requestType);
         message = aiResponse.message;
         playerStats = aiResponse.playerStats;
       } catch (e) {
         console.error("Error generating AI response:", e);
         // Fallback to basic response if AI fails
-        message = generateBasicResponse(userQuery, cricketData);
+        message = generateBasicResponse(userQuery, cricketData.matches || []);
       }
     } else {
       // If no OpenAI API key, use basic response
-      message = generateBasicResponse(userQuery, cricketData);
+      message = generateBasicResponse(userQuery, cricketData.matches || []);
     }
     
     return new Response(
       JSON.stringify({
         message,
-        cricketData,
+        cricketData: cricketData.matches || [],
         playerStats,
-        hasData: cricketData.length > 0
+        hasData: (cricketData.matches?.length || 0) > 0,
+        requestType
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -145,11 +155,11 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
       `https://api.cricapi.com/v1/currentMatches?apikey=${CRICAPI_KEY}&offset=0`
     );
     const currentMatches: ApiResponse = await currentMatchesResponse.json();
- console.log("currentMatches", currentMatches);
+    console.log("currentMatches", currentMatches);
     
     if (currentMatches.status !== "success" || !currentMatches.data) {
       console.error("Error fetching current matches:", currentMatches);
-      return [];
+      return { matches: [], scorecards: [], players: [] };
     }
     
     // Fetch live scores
@@ -165,7 +175,6 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
     allMatches = allMatches.map(match => {
       if (match.dateTimeGMT) {
         const matchDate = new Date(match.dateTimeGMT);
-        // Format date for IST display
         const istFormatter = new Intl.DateTimeFormat('en-IN', {
           timeZone: 'Asia/Kolkata',
           year: 'numeric',
@@ -190,18 +199,13 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
     allMatches = allMatches.map(match => {
       let category = "Upcoming";
       
-      // If match date is specified, determine if it's in the past or future
       if (match.dateTimeGMT) {
         const matchTime = new Date(match.dateTimeGMT);
         const timeDiff = matchTime.getTime() - now.getTime();
         
-        // Match is in the future
         if (timeDiff > 0) {
           category = "Upcoming";
-        } 
-        // Match should have started
-        else {
-          // Check status text to determine if it's live or completed
+        } else {
           const statusLower = (match.status || "").toLowerCase();
           
           if (statusLower.includes("live") || 
@@ -214,11 +218,9 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
                   match.matchEnded === true) {
             category = "Completed";
           }
-          // If started in the last 12 hours but no explicit status
           else if (timeDiff > -12 * 60 * 60 * 1000) {
             category = "Live";
           }
-          // If started more than 12 hours ago but no explicit status
           else {
             category = "Completed";
           }
@@ -234,9 +236,9 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
     // Filter live and upcoming matches for fetching scorecards
     const liveMatches = allMatches.filter(m => m.category === "Live");
     const upcomingMatches = allMatches
- .filter(m => m.category === "Upcoming")
- .sort((a, b) => new Date(a.dateTimeGMT || 0).getTime() - new Date(b.dateTimeGMT || 0).getTime()) // Sort by date
- .slice(0, 3); // Get the next 3 upcoming matches
+      .filter(m => m.category === "Upcoming")
+      .sort((a, b) => new Date(a.dateTimeGMT || 0).getTime() - new Date(b.dateTimeGMT || 0).getTime())
+      .slice(0, 3);
 
     const matchesToFetchScorecards = [...liveMatches, ...upcomingMatches];
     const scorecards: Scorecard[] = [];
@@ -246,26 +248,25 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
     for (const match of matchesToFetchScorecards) {
       try {
         const scorecardResponse = await fetch(
- `https://api.cricapi.com/v1/match_scorecard?apikey=${CRICAPI_KEY}&id=${match.id}`
+          `https://api.cricapi.com/v1/match_scorecard?apikey=${CRICAPI_KEY}&id=${match.id}`
         );
         const scorecardData: ApiResponse = await scorecardResponse.json();
- console.log(`scorecardData for match ${match.id}`, scorecardData);
+        console.log(`scorecardData for match ${match.id}`, scorecardData);
 
         if (scorecardData.status === "success" && scorecardData.data && scorecardData.data.length > 0) {
-          const scorecard = scorecardData.data[0]; // Assuming the data array has one item for the scorecard
+          const scorecard = scorecardData.data[0];
           scorecards.push(scorecard);
 
-          // Extract player IDs from the scorecard
           if (scorecard.scorecard) {
             scorecard.scorecard.forEach((inning: any) => {
               if (inning.batting) {
                 inning.batting.forEach((batsman: any) => {
- if (batsman.player_id) playerIds.add(batsman.player_id);
+                  if (batsman.player_id) playerIds.add(batsman.player_id);
                 });
               }
               if (inning.bowling) {
                 inning.bowling.forEach((bowler: any) => {
- if (bowler.player_id) playerIds.add(bowler.player_id);
+                  if (bowler.player_id) playerIds.add(bowler.player_id);
                 });
               }
             });
@@ -279,17 +280,18 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
     }
 
     const players: PlayerInfo[] = [];
-    // Fetch player information for collected player IDs
-    for (const playerId of playerIds) {
+    // Fetch player information for collected player IDs (limit to avoid timeout)
+    const playerIdArray = Array.from(playerIds).slice(0, 20);
+    for (const playerId of playerIdArray) {
       try {
         const playerInfoResponse = await fetch(
- `https://api.cricapi.com/v1/players_info?apikey=${CRICAPI_KEY}&id=${playerId}`
+          `https://api.cricapi.com/v1/players_info?apikey=${CRICAPI_KEY}&id=${playerId}`
         );
         const playerInfoData: ApiResponse = await playerInfoResponse.json();
- console.log(`playerInfoData for player ${playerId}`, playerInfoData);
+        console.log(`playerInfoData for player ${playerId}`, playerInfoData);
 
         if (playerInfoData.status === "success" && playerInfoData.data && playerInfoData.data.length > 0) {
-          players.push(playerInfoData.data[0]); // Assuming the data array has one item for the player
+          players.push(playerInfoData.data[0]);
         } else {
           console.warn(`Could not fetch player info for player ID ${playerId}`);
         }
@@ -301,7 +303,7 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
     return { matches: allMatches, scorecards, players };
   } catch (error) {
     console.error("Error fetching cricket data:", error);
-    return [];
+    return { matches: [], scorecards: [], players: [] };
   }
 }
 
@@ -309,23 +311,43 @@ async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: S
 function generateBasicResponse(query: string, cricketData: MatchInfo[]): string {
   const queryLower = query.toLowerCase();
   
+  // Fantasy team suggestions
+  if (queryLower.includes("suggest") || queryLower.includes("fantasy") || 
+      queryLower.includes("team") || queryLower.includes("pick")) {
+    
+    if (cricketData.length === 0) {
+      return "No current match data available for fantasy suggestions. Please check back later when matches are live.";
+    }
+    
+    const liveMatch = cricketData.find(m => m.status?.toLowerCase().includes('live')) || cricketData[0];
+    const teams = liveMatch.teams || [];
+    
+    let response = `🏏 Fantasy Team Suggestions for ${liveMatch.name}:\n\n`;
+    
+    if (teams.length >= 2) {
+      response += `👑 Captain: Pick a reliable top-order batsman from ${teams[0]} or ${teams[1]}\n`;
+      response += `⭐ Vice-Captain: Consider an all-rounder or wicket-keeper\n`;
+      response += `🎯 Key Players: Focus on in-form players from both teams\n`;
+      response += `📊 Strategy: Balance your team with 6-7 batsmen, 3-4 bowlers, and 1 wicket-keeper`;
+    }
+    
+    return response;
+  }
+  
   // Match-related queries
-  if (queryLower.includes("score") || 
-      queryLower.includes("match") || 
-      queryLower.includes("result") ||
-      queryLower.includes("live")) {
+  if (queryLower.includes("score") || queryLower.includes("match") || 
+      queryLower.includes("result") || queryLower.includes("live")) {
     
     if (cricketData.length === 0) {
       return "I don't have any current match data available. Please check back later.";
     }
     
-    // Find relevant matches
-    const liveMatches = cricketData.filter(m => m.category === "Live");
+    const liveMatches = cricketData.filter(m => m.status?.toLowerCase().includes('live'));
     const upcomingMatches = cricketData.filter(m => m.category === "Upcoming");
     
     if (liveMatches.length > 0) {
       const match = liveMatches[0];
-      let response = `${match.name} is currently live. `;
+      let response = `📺 ${match.name} is currently live. `;
       
       if (match.score && match.score.length > 0) {
         match.score.forEach(s => {
@@ -336,171 +358,124 @@ function generateBasicResponse(query: string, cricketData: MatchInfo[]): string 
       return response;
     } else if (upcomingMatches.length > 0) {
       const match = upcomingMatches[0];
-      return `${match.name} is scheduled to start at ${match.localDateTime || match.dateTimeGMT}.`;
+      return `⏰ ${match.name} is scheduled to start at ${match.localDateTime || match.dateTimeGMT}.`;
     } else {
-      return "I have information about some completed matches. You can check the Matches tab for details.";
+      return "I have information about some completed matches. Check the Matches tab for details.";
     }
   }
   
   // Player-related queries
-  if (queryLower.includes("player") || 
-      queryLower.includes("captain") || 
-      queryLower.includes("pick")) {
+  if (queryLower.includes("player") || queryLower.includes("captain") || 
+      queryLower.includes("who should")) {
     
-    return "Based on recent performances, I recommend choosing a player who's in good form. For specific player suggestions, check out the top performers in recent matches.";
+    return "For the best player recommendations, I need live match data. Try asking about specific ongoing matches or refresh the data to get current player insights.";
   }
   
   // Default response
-  return "I can help you with cricket match scores, player suggestions, and fantasy tips. Try asking about current matches or captain recommendations.";
+  return "I can help you with cricket match scores, fantasy team suggestions, and player recommendations. Try asking about current matches or fantasy team picks for today's games.";
 }
 
 // Generate AI-powered response using OpenAI
-async function generateAIResponse(query: string, cricketData: MatchInfo[]): Promise<{ message: string; playerStats?: any[] }> {
-  /* Test comment */
+async function generateAIResponse(query: string, cricketData: any, requestType: string): Promise<{ message: string; playerStats?: any[] }> {
   if (!OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
   }
 
-  // Process cricketData to create a structured summary of player statistics
-  let playerStatsSummary = "";
-  if (cricketData && cricketData.length > 0) {
-    playerStatsSummary += "Player Statistics from available matches:\n\n";
-
-    cricketData.forEach(match => {
-      playerStatsSummary += `Match: ${match.name} (Status: ${match.status})\n`;
-
-      if (match.players && match.players.length > 0) {
-        playerStatsSummary += "Players in this match:\n";
-        match.players.forEach(player => {
-          playerStatsSummary += `- Name: ${player.name}, Role: ${player.role || 'N/A'}`;
-
-          // Add relevant stats from scorecard if available
-          const scorecard = cricketData.scorecards.find(s => s.match_id === match.id);
-          if (scorecard && scorecard.scorecard) {
-            scorecard.scorecard.forEach((inning: any) => {
-              // Find batting stats for this player
-              const battingStats = inning.batting?.find((b: any) => b.player_id === player.id);
-              if (battingStats) {
-                playerStatsSummary += `, Batting: Runs - ${battingStats.r || 0}, Balls - ${battingStats.b || 0}, 4s - ${battingStats._4s || 0}, 6s - ${battingStats._6s || 0}`;
-              }
-
-              // Find bowling stats for this player
-              const bowlingStats = inning.bowling?.find((b: any) => b.player_id === player.id);
-              if (bowlingStats) {
-                playerStatsSummary += `, Bowling: Overs - ${bowlingStats.o || 0}, Wickets - ${bowlingStats.w || 0}, Runs Given - ${bowlingStats.r || 0}`;
-              }
-            });
-          }
-          playerStatsSummary += "\n";
-        });
-      } else {
-        playerStatsSummary += "No detailed player list available for this match.\n";
-      }
-      playerStatsSummary += "\n"; // Add a blank line between matches
-    });
-  } else {
-    playerStatsSummary = "No current cricket match or player data available.\n";
-  }
-
-  // Create a basic representation of the cricket data for the prompt
+  // Create comprehensive context for AI
   let matchContext = "";
-
-  if (cricketData.matches && cricketData.matches.length > 0) {
-    matchContext += "Matches:\n";
-    cricketData.matches.forEach(match => {
-      matchContext += `- ${match.name} (Status: ${match.status}, Type: ${match.matchType || 'N/A'}, Venue: ${match.venue || 'N/A'})\n`;
-      if (match.localDateTime) {
-        matchContext += `  Start Time (IST): ${match.localDateTime}\n`;
-      }
-    });
-  }
-
-  if (cricketData.matches && cricketData.matches.length > 0) {
-    cricketDataContext += "Matches:\n";
-    cricketData.matches.forEach(match => {
-      cricketDataContext += `- ${match.name} (Status: ${match.status})\n`;
-    });
-    if (cricketData.players && cricketData.players.length > 0) {
-      cricketDataContext += "\nPlayers:\n";
-      cricketData.players.forEach(player => {
-        cricketDataContext += `- ${player.name} (Role: ${player.role || 'N/A'})\n`;
-      });
-    }
-  } else {
-    cricketDataContext += "No current cricket match or player data available.\n";
-  }
-  }
+  let playerContext = "";
   
-  // Craft the system prompt for OpenAI
-  // Refine the system prompt to instruct the AI to use the provided player statistics from the API response.
-  // Emphasize mentioning specific player names, their roles, and relevant stats (like runs, wickets, recent form) to justify suggestions.
-  // Guide the AI to suggest potential captains and vice-captains based on top performers in the data.
-  const systemPrompt = `
-You are a smart Cricket Fantasy Chatbot assistant, similar to a Dream11 assistant. Your primary role is to provide expert advice on cricket fantasy teams and players.
-You have access to real-time match data including scores, player information, and potentially recent performance statistics from the CricAPI.
-When a user asks for team or player suggestions, **you must strongly prioritize using the provided player statistics and match information to inform your recommendations.**
-Be specific and mention player names, their roles (Batsman, Bowler, All-rounder, Wicket-keeper), and **cite relevant statistics or recent form (runs, wickets, strike rate, economy rate, etc.)** from the provided data to justify your suggestions.
+  if (cricketData.matches && cricketData.matches.length > 0) {
+    matchContext += "Current Cricket Matches:\n";
+    cricketData.matches.slice(0, 5).forEach((match: any) => {
+      matchContext += `- ${match.name}\n`;
+      matchContext += `  Status: ${match.status}\n`;
+      matchContext += `  Teams: ${match.teams?.join(' vs ') || 'Teams TBD'}\n`;
+      if (match.score && match.score.length > 0) {
+        matchContext += `  Live Score: `;
+        match.score.forEach((s: any) => {
+          matchContext += `${s.inning}: ${s.r}/${s.w} (${s.o} overs) `;
+        });
+        matchContext += `\n`;
+      }
+      if (match.venue) matchContext += `  Venue: ${match.venue}\n`;
+      matchContext += `\n`;
+    });
+  }
 
-If the data is available, suggest potential **Captain** and **Vice-Captain** picks based on the top-performing players in the provided context (especially in live matches or recent completed matches).
+  if (cricketData.players && cricketData.players.length > 0) {
+    playerContext += "Player Information:\n";
+    cricketData.players.slice(0, 10).forEach((player: any) => {
+      playerContext += `- ${player.name}: ${player.role || 'Role unknown'}\n`;
+      if (player.battingStyle) playerContext += `  Batting: ${player.battingStyle}\n`;
+      if (player.bowlingStyle) playerContext += `  Bowling: ${player.bowlingStyle}\n`;
+    });
+  }
 
-Format your player recommendations clearly. If providing multiple suggestions, use a list.
+  // Create specialized prompts based on request type
+  let systemPrompt = "";
+  let userPrompt = "";
 
-If a user asks about a specific match, focus your suggestions on players from that match using the provided data.
+  if (requestType === 'fantasy_analysis') {
+    systemPrompt = `You are an expert Fantasy Cricket Assistant with deep knowledge of player analysis and team strategy. Your role is to provide data-driven fantasy cricket recommendations.
 
-Examples:
+IMPORTANT GUIDELINES:
+- Always provide specific player names when making recommendations
+- Justify picks with recent form, match conditions, or historical performance
+- Structure responses with clear Captain, Vice-Captain, and key player suggestions
+- Consider team balance (batsmen, bowlers, all-rounders, wicket-keepers)
+- Factor in recent performances, pitch conditions, and head-to-head records
+- Be confident in your recommendations but explain the reasoning
 
-// Example demonstrating how to incorporate data points
-User: "Suggest a good team for the match between India and Australia."
-AI:
-Okay, based on the available data, here are some suggestions for the India vs Australia match:
+Format your fantasy recommendations like this:
+**Captain Pick:** [Player Name] - [Specific reason with stats/form]
+**Vice-Captain Pick:** [Player Name] - [Specific reason with stats/form]
+**Key Players:**
+- [Player Name] ([Role]): [Reason for selection]
+- [Player Name] ([Role]): [Reason for selection]
 
-**Captain Pick:** Virat Kohli - From the scorecard data, he scored 85 runs off 72 balls in the last completed match. He's in good form and often performs well against Australia.
+Use the provided live match data and player information to make informed suggestions.`;
 
-**Vice-Captain Pick:** Mitchell Starc - According to the scorecard, he took 3 wickets for 45 runs in 8 overs in the last match. His ability to take wickets makes him a strong contender.
+    userPrompt = `Based on the current cricket match data below, provide fantasy team recommendations for this user query: "${query}"
 
-**Other Key Players:**
-- Rohit Sharma (Batsman): Consistent performer at this venue.
-- Jasprit Bumrah (Bowler): Known for his death bowling expertise.
-- Steve Smith (Batsman): anchors the innings and plays spin well.
-
-User: "Who are the top performers in the current live match?"
-AI:
-In the live match between [Team A] and [Team B]:
-// Based on the scorecard data provided:
-- [Player Name 1] ([Role]): Scored [Runs] runs off [Balls] balls.
-- [Player Name 2] ([Role]): Took [Wickets] wickets for [Runs Given] runs in [Overs] overs.
-- [Player Name 3] ([Role]): [Relevant stat and reason]
-
-Current cricket data:
 ${matchContext}
+${playerContext}
 
-When making player recommendations, format your response like this:
-**Captain Pick:** <player name> - <relevant stats and reasoning>
-**Vice-Captain Pick:** <player name> - <relevant stats and reasoning>
-**Other Key Players:**
-  const userPrompt = `${cricketDataContext}
+Please provide specific, actionable fantasy cricket advice with player names and clear reasoning.`;
+  } else {
+    systemPrompt = `You are a knowledgeable Cricket Assistant specializing in match analysis and player insights. Provide helpful, accurate information about cricket matches, scores, and player performances.
+
+Guidelines:
+- Use the provided match and player data to answer questions
+- Be conversational and engaging
+- Provide specific details when available
+- If asked about fantasy cricket, give general strategic advice
+- Focus on current/live matches when relevant`;
+
+    userPrompt = `${matchContext}
+${playerContext}
 
 User question: ${query}
 
-Based on the cricket data provided, give the best possible answer. Include specific player recommendations if the query is about team selection or captains.`;
+Please provide a helpful response based on the cricket data above.`;
+  }
 
   try {
     // Call OpenAI API
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
-
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 800
       })
     });
     
@@ -516,31 +491,56 @@ Based on the cricket data provided, give the best possible answer. Include speci
     // Extract player stats if the response includes recommendations
     let playerStats: any[] = [];
 
-    // Regex to find player names and their details based on the expected format
-    const playerRegex = /- (.+) \((.+)\): (.+)/g;
-    let match;
+    if (requestType === 'fantasy_analysis') {
+      // Extract Captain and Vice-Captain
+      const captainMatch = aiResponse.match(/\*\*Captain Pick:\*\*\s*(.+?)(?:\n|$)/i);
+      if (captainMatch && captainMatch[1]) {
+        const captainText = captainMatch[1].trim();
+        const nameMatch = captainText.match(/^([^-]+)/);
+        if (nameMatch) {
+          playerStats.push({ 
+            name: nameMatch[1].trim(), 
+            role: 'Captain', 
+            details: captainText
+          });
+        }
+      }
 
-    // Extract Captain and Vice-Captain
-    const captainMatch = aiResponse.match(/\*\*Captain Pick:\*\*\s*(.+)/i);
-    if (captainMatch && captainMatch[1]) {
-      playerStats.push({ name: captainMatch[1].trim(), role: 'Captain', details: captainMatch[1].trim() });
-    }
+      const viceCaptainMatch = aiResponse.match(/\*\*Vice-Captain Pick:\*\*\s*(.+?)(?:\n|$)/i);
+      if (viceCaptainMatch && viceCaptainMatch[1]) {
+        const vcText = viceCaptainMatch[1].trim();
+        const nameMatch = vcText.match(/^([^-]+)/);
+        if (nameMatch) {
+          playerStats.push({ 
+            name: nameMatch[1].trim(), 
+            role: 'Vice-Captain', 
+            details: vcText
+          });
+        }
+      }
 
-    const viceCaptainMatch = aiResponse.match(/\*\*Vice-Captain Pick:\*\*\s*(.+)/i);
-    if (viceCaptainMatch && viceCaptainMatch[1]) {
-      playerStats.push({ name: viceCaptainMatch[1].trim(), role: 'Vice-Captain', details: viceCaptainMatch[1].trim() });
-    }
-
-    // Extract other key players
-    while ((match = playerRegex.exec(aiResponse)) !== null) {
-      if (match[1] && match[2] && match[3]) {
-        playerStats.push({ name: match[1].trim(), role: match[2].trim(), details: match[3].trim() });
+      // Extract other key players
+      const keyPlayersSection = aiResponse.match(/\*\*Key Players:\*\*([\s\S]*?)(?:\n\n|$)/i);
+      if (keyPlayersSection) {
+        const playersText = keyPlayersSection[1];
+        const playerLines = playersText.split('\n').filter(line => line.trim().startsWith('-'));
+        
+        playerLines.forEach(line => {
+          const playerMatch = line.match(/- (.+?) \((.+?)\): (.+)/);
+          if (playerMatch) {
+            playerStats.push({
+              name: playerMatch[1].trim(),
+              role: playerMatch[2].trim(),
+              details: playerMatch[3].trim()
+            });
+          }
+        });
       }
     }
     
     return {
       message: aiResponse,
-      playerStats
+      playerStats: playerStats.length > 0 ? playerStats : undefined
     };
   } catch (error) {
     console.error("Error generating AI response:", error);
