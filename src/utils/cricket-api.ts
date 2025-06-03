@@ -42,9 +42,9 @@ export interface CricketMatch {
 }
 
 export interface CategorizedMatches {
-  upcoming: Match[];
-  live: Match[];
-  completed: Match[];
+  upcoming: CricketMatch[];
+  live: CricketMatch[];
+  completed: CricketMatch[];
 }
 
 export interface ScorecardData {
@@ -208,11 +208,21 @@ export const fetchPlayers = async (matchId: string) => {
 };
 
 // Helper functions
-export const getTeamLogoUrl = (team?: string | { name: string; shortname: string; img: string }): string => {
+export const getTeamLogoUrl = (team?: string | { name: string; shortname?: string; img?: string }): string => {
   if (typeof team === 'object' && team?.img) {
     return team.img;
   }
   return '/placeholder.svg';
+};
+
+export const getTeamName = (team?: string | { name: string; shortname?: string; img?: string }): string => {
+  if (typeof team === 'object' && team?.name) {
+    return team.name;
+  }
+  if (typeof team === 'string') {
+    return team;
+  }
+  return 'Unknown Team';
 };
 
 export const formatTossInfo = (match: CricketMatch): string => {
