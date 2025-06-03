@@ -357,11 +357,64 @@ function generateBasicResponse(query: string, cricketData: MatchInfo[]): string 
 // Generate AI-powered response using OpenAI
 async function generateAIResponse(query: string, cricketData: MatchInfo[]): Promise<{ message: string; playerStats?: any[] }> {
   /* Test comment */
+  if (!OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
   }
-  
+
+  // Process cricketData to create a structured summary of player statistics
+  let playerStatsSummary = "";
+  if (cricketData && cricketData.length > 0) {
+    playerStatsSummary += "Player Statistics from available matches:\n\n";
+
+    cricketData.forEach(match => {
+      playerStatsSummary += `Match: ${match.name} (Status: ${match.status})\n`;
+
+      if (match.players && match.players.length > 0) {
+        playerStatsSummary += "Players in this match:\n";
+        match.players.forEach(player => {
+          playerStatsSummary += `- Name: ${player.name}, Role: ${player.role || 'N/A'}`;
+
+          // Add relevant stats from scorecard if available
+          const scorecard = cricketData.scorecards.find(s => s.match_id === match.id);
+          if (scorecard && scorecard.scorecard) {
+            scorecard.scorecard.forEach((inning: any) => {
+              // Find batting stats for this player
+              const battingStats = inning.batting?.find((b: any) => b.player_id === player.id);
+              if (battingStats) {
+                playerStatsSummary += `, Batting: Runs - ${battingStats.r || 0}, Balls - ${battingStats.b || 0}, 4s - ${battingStats._4s || 0}, 6s - ${battingStats._6s || 0}`;
+              }
+
+              // Find bowling stats for this player
+              const bowlingStats = inning.bowling?.find((b: any) => b.player_id === player.id);
+              if (bowlingStats) {
+                playerStatsSummary += `, Bowling: Overs - ${bowlingStats.o || 0}, Wickets - ${bowlingStats.w || 0}, Runs Given - ${bowlingStats.r || 0}`;
+              }
+            });
+          }
+          playerStatsSummary += "\n";
+        });
+      } else {
+        playerStatsSummary += "No detailed player list available for this match.\n";
+      }
+      playerStatsSummary += "\n"; // Add a blank line between matches
+    });
+  } else {
+    playerStatsSummary = "No current cricket match or player data available.\n";
+  }
+
   // Create a basic representation of the cricket data for the prompt
-  let cricketDataContext = "Available Cricket Data:\n\n";
+  let matchContext = "";
+
+  if (cricketData.matches && cricketData.matches.length > 0) {
+    matchContext += "Matches:\n";
+    cricketData.matches.forEach(match => {
+      matchContext += `- ${match.name} (Status: ${match.status}, Type: ${match.matchType || 'N/A'}, Venue: ${match.venue || 'N/A'})\n`;
+      if (match.localDateTime) {
+        matchContext += `  Start Time (IST): ${match.localDateTime}\n`;
+      }
+    });
+  }
+
   if (cricketData.matches && cricketData.matches.length > 0) {
     cricketDataContext += "Matches:\n";
     cricketData.matches.forEach(match => {
@@ -376,46 +429,6 @@ async function generateAIResponse(query: string, cricketData: MatchInfo[]): Prom
   } else {
     cricketDataContext += "No current cricket match or player data available.\n";
   }
-  
-  // Prepare cricket data context for the AI
-  let matchContext = "";
-  
-  if (cricketData.length > 0) {
-    // Get live matches first
-    const liveMatches = cricketData.filter(m => m.category === "Live");
-    
-    if (liveMatches.length > 0) {
-      matchContext += "Currently live matches:\n";
-      
-      liveMatches.forEach(match => {
-        matchContext += `- ${match.name}\n`;
-        
-        // Add score information
-        if (match.score && match.score.length > 0) {
-          match.score.forEach(s => {
-            matchContext += `  ${s.inning}: ${s.r || 0}/${s.w || 0} (${s.o || 0} overs)\n`;
-          });
-        }
-        
-        // Add venue and match type
-        if (match.venue || match.matchType) {
-          matchContext += `  ${match.venue || ""} | ${match.matchType || ""}\n`;
-        }
-      });
-    }
-    
-    // Add upcoming matches
-    const upcomingMatches = cricketData.filter(m => m.category === "Upcoming");
-    
-    if (upcomingMatches.length > 0) {
-      matchContext += "\nUpcoming matches:\n";
-      
-      upcomingMatches.slice(0, 3).forEach(match => {
-        matchContext += `- ${match.name} (${match.localDateTime || match.dateTimeGMT})\n`;
-      });
-    }
-  } else {
-    matchContext = "No current cricket match data available.";
   }
   
   // Craft the system prompt for OpenAI
@@ -425,24 +438,39 @@ async function generateAIResponse(query: string, cricketData: MatchInfo[]): Prom
   const systemPrompt = `
 You are a smart Cricket Fantasy Chatbot assistant, similar to a Dream11 assistant. Your primary role is to provide expert advice on cricket fantasy teams and players.
 You have access to real-time match data including scores, player information, and potentially recent performance statistics from the CricAPI.
-When a user asks for team or player suggestions, **you must use the provided cricket data to inform your recommendations.**
+When a user asks for team or player suggestions, **you must strongly prioritize using the provided player statistics and match information to inform your recommendations.**
 Be specific and mention player names, their roles (Batsman, Bowler, All-rounder, Wicket-keeper), and **cite relevant statistics or recent form (runs, wickets, strike rate, economy rate, etc.)** from the provided data to justify your suggestions.
 
 If the data is available, suggest potential **Captain** and **Vice-Captain** picks based on the top-performing players in the provided context (especially in live matches or recent completed matches).
 
 Format your player recommendations clearly. If providing multiple suggestions, use a list.
 
+If a user asks about a specific match, focus your suggestions on players from that match using the provided data.
+
 Examples:
 
 // Example demonstrating how to incorporate data points
 User: "Suggest a good team for the match between India and Australia."
 AI:
-**Captain Pick:** Virat Kohli - Scored 85 in the last match, strong against Australia's bowling attack.
-**Vice-Captain Pick:** Mitchell Starc - Took 3 wickets in the last match, excellent with the new ball.
+Okay, based on the available data, here are some suggestions for the India vs Australia match:
+
+**Captain Pick:** Virat Kohli - From the scorecard data, he scored 85 runs off 72 balls in the last completed match. He's in good form and often performs well against Australia.
+
+**Vice-Captain Pick:** Mitchell Starc - According to the scorecard, he took 3 wickets for 45 runs in 8 overs in the last match. His ability to take wickets makes him a strong contender.
+
 **Other Key Players:**
 - Rohit Sharma (Batsman): Consistent performer at this venue.
 - Jasprit Bumrah (Bowler): Known for his death bowling expertise.
 - Steve Smith (Batsman): anchors the innings and plays spin well.
+
+User: "Who are the top performers in the current live match?"
+AI:
+In the live match between [Team A] and [Team B]:
+// Based on the scorecard data provided:
+- [Player Name 1] ([Role]): Scored [Runs] runs off [Balls] balls.
+- [Player Name 2] ([Role]): Took [Wickets] wickets for [Runs Given] runs in [Overs] overs.
+- [Player Name 3] ([Role]): [Relevant stat and reason]
+
 Current cricket data:
 ${matchContext}
 
