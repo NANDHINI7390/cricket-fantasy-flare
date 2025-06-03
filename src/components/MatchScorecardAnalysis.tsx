@@ -116,10 +116,8 @@ const MatchScorecardAnalysis: React.FC<MatchScorecardAnalysisProps> = ({ matchId
   }
 
   // Check if the analysis data has proper structure before rendering
-  const hasBatsmenData = analysis.bestBatsmen && analysis.bestBatsmen.length > 0;
-  const hasBowlersData = analysis.bestBowlers && analysis.bestBowlers.length > 0;
-  const hasCaptainData = analysis.bestCaptainPick && analysis.bestCaptainPick.name !== "No data";
-  const hasTeamData = analysis.recommendedTeam && analysis.recommendedTeam.length > 0;
+  const hasBatsmenData = analysis.topBatsmen && analysis.topBatsmen.length > 0;
+  const hasBowlersData = analysis.topBowlers && analysis.topBowlers.length > 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -130,32 +128,14 @@ const MatchScorecardAnalysis: React.FC<MatchScorecardAnalysisProps> = ({ matchId
           <Badge variant="outline" className="mr-2 bg-gray-100">
             {scorecard.matchType?.toUpperCase() || "MATCH"}
           </Badge>
-          <Badge variant={scorecard.status?.toLowerCase().includes("won") ? "success" : "secondary"}>
+          <Badge variant={scorecard.status?.toLowerCase().includes("won") ? "default" : "secondary"}>
             {scorecard.status || "Status not available"}
           </Badge>
         </div>
       </div>
 
-      {hasCaptainData || hasBatsmenData || hasBowlersData ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Best Captain Pick */}
-          {hasCaptainData && (
-            <Card className="p-4 border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50 to-white">
-              <div className="flex items-start">
-                <div className="p-2 bg-purple-100 rounded-full mr-4">
-                  <Trophy className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="text-sm uppercase text-purple-700 font-semibold tracking-wide">Best Captain Pick</h3>
-                  <p className="text-xl font-bold text-gray-800 mt-1">{analysis.bestCaptainPick.name}</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {analysis.bestCaptainPick.role} • Rating: {analysis.bestCaptainPick.rating.toFixed(0)}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          )}
-
+      {hasBatsmenData || hasBowlersData ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Top Batsman */}
           {hasBatsmenData && (
             <Card className="p-4 border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-white">
@@ -165,9 +145,9 @@ const MatchScorecardAnalysis: React.FC<MatchScorecardAnalysisProps> = ({ matchId
                 </div>
                 <div>
                   <h3 className="text-sm uppercase text-blue-700 font-semibold tracking-wide">Top Batsman</h3>
-                  <p className="text-xl font-bold text-gray-800 mt-1">{analysis.bestBatsmen[0].name}</p>
+                  <p className="text-xl font-bold text-gray-800 mt-1">{analysis.topBatsmen[0].name}</p>
                   <p className="text-sm text-gray-600 mt-1">
-                    {analysis.bestBatsmen[0].stats.r} runs ({analysis.bestBatsmen[0].stats.b} balls) • SR: {analysis.bestBatsmen[0].stats.sr}
+                    {analysis.topBatsmen[0].runs} runs ({analysis.topBatsmen[0].balls} balls) • SR: {analysis.topBatsmen[0].strike_rate}
                   </p>
                 </div>
               </div>
@@ -183,9 +163,9 @@ const MatchScorecardAnalysis: React.FC<MatchScorecardAnalysisProps> = ({ matchId
                 </div>
                 <div>
                   <h3 className="text-sm uppercase text-green-700 font-semibold tracking-wide">Top Bowler</h3>
-                  <p className="text-xl font-bold text-gray-800 mt-1">{analysis.bestBowlers[0].name}</p>
+                  <p className="text-xl font-bold text-gray-800 mt-1">{analysis.topBowlers[0].name}</p>
                   <p className="text-sm text-gray-600 mt-1">
-                    {analysis.bestBowlers[0].stats.w}/{analysis.bestBowlers[0].stats.r} ({analysis.bestBowlers[0].stats.o} overs) • Eco: {analysis.bestBowlers[0].stats.eco}
+                    {analysis.topBowlers[0].wickets}/{analysis.topBowlers[0].runs} ({analysis.topBowlers[0].overs} overs) • Eco: {analysis.topBowlers[0].economy}
                   </p>
                 </div>
               </div>
@@ -199,34 +179,6 @@ const MatchScorecardAnalysis: React.FC<MatchScorecardAnalysisProps> = ({ matchId
             Limited player analysis available for this match
           </p>
         </div>
-      )}
-
-      {hasTeamData && (
-        <Card className="mb-8">
-          <div className="bg-gray-50 p-4 border-b flex items-center">
-            <Users className="h-5 w-5 text-blue-600 mr-2" />
-            <h3 className="font-semibold text-gray-800">Recommended Team</h3>
-          </div>
-          <ScrollArea className="h-56 p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {analysis.recommendedTeam.map((player: any, index: number) => (
-                <div key={`${player.name}-${index}`} className="flex items-center space-x-2 p-2 rounded-lg bg-gray-50 border">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white font-bold ${
-                    index === 0 ? "bg-purple-600" : 
-                    index === 1 ? "bg-blue-600" :
-                    player.role === "batsman" ? "bg-blue-400" : "bg-green-400"
-                  }`}>
-                    {index === 0 ? "C" : index === 1 ? "VC" : "#"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{player.name}</p>
-                    <p className="text-xs text-gray-500 capitalize">{player.role} • Rating: {player.rating.toFixed(0)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </Card>
       )}
 
       <Tabs defaultValue="batsmen" value={activeTab} onValueChange={setActiveTab}>
@@ -246,28 +198,26 @@ const MatchScorecardAnalysis: React.FC<MatchScorecardAnalysisProps> = ({ matchId
                   <TableHead className="text-right">4s</TableHead>
                   <TableHead className="text-right">6s</TableHead>
                   <TableHead className="text-right">SR</TableHead>
-                  <TableHead className="text-right">Rating</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {hasBatsmenData ? (
-                  analysis.bestBatsmen.map((batsman: any, index: number) => (
+                  analysis.topBatsmen.map((batsman: BattingStats, index: number) => (
                     <TableRow key={`${batsman.name}-${index}`}>
                       <TableCell className="font-medium">
                         {batsman.name}
-                        {index === 0 && <Badge className="ml-2 bg-purple-100 text-purple-800 hover:bg-purple-200">Captain</Badge>}
+                        {index === 0 && <Badge className="ml-2 bg-purple-100 text-purple-800 hover:bg-purple-200">Top Scorer</Badge>}
                       </TableCell>
-                      <TableCell className="text-right">{batsman.stats.r}</TableCell>
-                      <TableCell className="text-right">{batsman.stats.b}</TableCell>
-                      <TableCell className="text-right">{batsman.stats.fours}</TableCell>
-                      <TableCell className="text-right">{batsman.stats.sixes}</TableCell>
-                      <TableCell className="text-right">{batsman.stats.sr}</TableCell>
-                      <TableCell className="text-right font-semibold">{batsman.rating.toFixed(0)}</TableCell>
+                      <TableCell className="text-right">{batsman.runs}</TableCell>
+                      <TableCell className="text-right">{batsman.balls}</TableCell>
+                      <TableCell className="text-right">{batsman.fours}</TableCell>
+                      <TableCell className="text-right">{batsman.sixes}</TableCell>
+                      <TableCell className="text-right">{batsman.strike_rate}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-4 text-gray-500">
                       No batting data available
                     </TableCell>
                   </TableRow>
@@ -284,36 +234,28 @@ const MatchScorecardAnalysis: React.FC<MatchScorecardAnalysisProps> = ({ matchId
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead className="text-right">Overs</TableHead>
-                  <TableHead className="text-right">Maidens</TableHead>
                   <TableHead className="text-right">Runs</TableHead>
                   <TableHead className="text-right">Wickets</TableHead>
                   <TableHead className="text-right">Economy</TableHead>
-                  <TableHead className="text-right">Rating</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {hasBowlersData ? (
-                  analysis.bestBowlers.map((bowler: any, index: number) => (
+                  analysis.topBowlers.map((bowler: BowlingStats, index: number) => (
                     <TableRow key={`${bowler.name}-${index}`}>
                       <TableCell className="font-medium">
                         {bowler.name}
-                        {index === 0 && 
-                          <Badge className="ml-2 bg-green-100 text-green-800 hover:bg-green-200">
-                            {analysis.bestCaptainPick.name === bowler.name ? "Captain" : "Top Bowler"}
-                          </Badge>
-                        }
+                        {index === 0 && <Badge className="ml-2 bg-green-100 text-green-800 hover:bg-green-200">Top Bowler</Badge>}
                       </TableCell>
-                      <TableCell className="text-right">{bowler.stats.o}</TableCell>
-                      <TableCell className="text-right">{bowler.stats.m}</TableCell>
-                      <TableCell className="text-right">{bowler.stats.r}</TableCell>
-                      <TableCell className="text-right">{bowler.stats.w}</TableCell>
-                      <TableCell className="text-right">{bowler.stats.eco}</TableCell>
-                      <TableCell className="text-right font-semibold">{bowler.rating.toFixed(0)}</TableCell>
+                      <TableCell className="text-right">{bowler.overs}</TableCell>
+                      <TableCell className="text-right">{bowler.runs}</TableCell>
+                      <TableCell className="text-right">{bowler.wickets}</TableCell>
+                      <TableCell className="text-right">{bowler.economy}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-4 text-gray-500">
                       No bowling data available
                     </TableCell>
                   </TableRow>

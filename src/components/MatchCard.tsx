@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -215,7 +214,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onViewDetails }) => {
           </div>
         </div>
         
-        {match.tossWinner && (
+        {match.status && (
           <div className="text-xs text-gray-600 mb-2 italic">
             {formatTossInfo(match)}
           </div>

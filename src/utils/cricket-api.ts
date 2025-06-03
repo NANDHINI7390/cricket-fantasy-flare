@@ -49,6 +49,11 @@ export interface CategorizedMatches {
 
 export interface ScorecardData {
   match_id: string;
+  name?: string;
+  venue?: string;
+  date?: string;
+  matchType?: string;
+  status?: string;
   batting: BattingStats[];
   bowling: BowlingStats[];
 }
@@ -139,52 +144,36 @@ const processMatchData = (match: any) => {
     date_start: match.date_start,
     date_end: match.date_end,
     teams: match.teams,
-    score: match.score
+    score: match.score,
+    category: match.category || 'Upcoming'
   };
 };
 
-export const categorizeMatches = (matches: any[]): CategorizedMatches => {
+export const categorizeMatches = (matches: any[]): CricketMatch[] => {
   const now = new Date();
   
-  const upcomingMatches = matches
-    .map(match => {
-      if (!match?.date_start) return null;
-      const matchDate = new Date(match.date_start);
-      if (matchDate > now) {
-        return processMatchData(match);
-      }
-      return null;
-    })
-    .filter((match): match is any => match !== null);
-
-  const liveMatches = matches
-    .map(match => {
-      if (!match?.date_start || !match?.date_end) return null;
+  return matches.map(match => {
+    let category = 'Upcoming';
+    
+    if (match.status === "Live" || 
+        match.status?.toLowerCase().includes('live') || 
+        (match.matchStarted && !match.matchEnded)) {
+      category = 'Live';
+    } else if (match.status?.toLowerCase().includes("won") || 
+               match.matchEnded) {
+      category = 'Completed';
+    } else if (match.date_start) {
       const startDate = new Date(match.date_start);
-      const endDate = new Date(match.date_end);
-      if (startDate <= now && now <= endDate) {
-        return processMatchData(match);
+      if (startDate <= now) {
+        category = 'Live';
       }
-      return null;
-    })
-    .filter((match): match is any => match !== null);
-
-  const completedMatches = matches
-    .map(match => {
-      if (!match?.date_end) return null;
-      const endDate = new Date(match.date_end);
-      if (endDate < now) {
-        return processMatchData(match);
-      }
-      return null;
-    })
-    .filter((match): match is any => match !== null);
-
-  return {
-    upcoming: upcomingMatches,
-    live: liveMatches,
-    completed: completedMatches
-  };
+    }
+    
+    return {
+      ...match,
+      category
+    };
+  });
 };
 
 export const fetchMatchDetails = async (matchId: string) => {
@@ -219,8 +208,11 @@ export const fetchPlayers = async (matchId: string) => {
 };
 
 // Helper functions
-export const getTeamLogoUrl = (teamImg?: string): string => {
-  return teamImg || '/placeholder.svg';
+export const getTeamLogoUrl = (team?: string | { name: string; shortname: string; img: string }): string => {
+  if (typeof team === 'object' && team?.img) {
+    return team.img;
+  }
+  return '/placeholder.svg';
 };
 
 export const formatTossInfo = (match: CricketMatch): string => {
