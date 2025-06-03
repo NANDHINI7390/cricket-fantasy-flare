@@ -1,8 +1,7 @@
-
 import axios from 'axios';
 
 const API_ENDPOINT = 'https://api.cricapi.com/v1';
-const API_KEY = process.env.CRIC_API_KEY || 'a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae';
+const API_KEY = import.meta.env.VITE_CRIC_API_KEY || 'a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae';
 
 export interface Match {
   id: string;
