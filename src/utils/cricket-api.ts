@@ -1,8 +1,7 @@
 import axios from 'axios';
 
 const API_ENDPOINT = 'https://api.cricapi.com/v1';
-// Remove hardcoded API key - will be handled in edge functions
-const API_KEY = import.meta.env.VITE_CRIC_API_KEY || '';
+const API_KEY = import.meta.env.VITE_CRIC_API_KEY || 'a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae';
 
 export interface Match {
   id: string;
@@ -78,14 +77,7 @@ export interface BowlingStats {
   economy: number;
 }
 
-// Note: These functions are deprecated - all API calls should go through edge functions for security
 export const fetchMatches = async (): Promise<Match[]> => {
-  console.warn('Direct API calls from frontend are deprecated. Use edge functions instead.');
-  if (!API_KEY) {
-    console.error('Cricket API key not configured');
-    return [];
-  }
-  
   try {
     const response = await axios.get(`${API_ENDPOINT}/matches`, {
       params: {
@@ -101,12 +93,6 @@ export const fetchMatches = async (): Promise<Match[]> => {
 };
 
 export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
-  console.warn('Direct API calls from frontend are deprecated. Use edge functions instead.');
-  if (!API_KEY) {
-    console.error('Cricket API key not configured');
-    return [];
-  }
-  
   try {
     const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
       params: {
@@ -122,12 +108,6 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
 };
 
 export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
-  console.warn('Direct API calls from frontend are deprecated. Use edge functions instead.');
-  if (!API_KEY) {
-    console.error('Cricket API key not configured');
-    return [];
-  }
-  
   try {
     const response = await axios.get(`${API_ENDPOINT}/cricScore`, {
       params: {
@@ -142,12 +122,6 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
 };
 
 export const fetchMatchScorecard = async (matchId: string): Promise<ScorecardData | null> => {
-  console.warn('Direct API calls from frontend are deprecated. Use edge functions instead.');
-  if (!API_KEY) {
-    console.error('Cricket API key not configured');
-    return null;
-  }
-  
   try {
     const response = await axios.get(`${API_ENDPOINT}/match_scorecard`, {
       params: {
@@ -203,12 +177,6 @@ export const categorizeMatches = (matches: any[]): CricketMatch[] => {
 };
 
 export const fetchMatchDetails = async (matchId: string) => {
-  console.warn('Direct API calls from frontend are deprecated. Use edge functions instead.');
-  if (!API_KEY) {
-    console.error('Cricket API key not configured');
-    return null;
-  }
-  
   try {
     const response = await axios.get(`${API_ENDPOINT}/match_info`, {
       params: {
@@ -224,12 +192,6 @@ export const fetchMatchDetails = async (matchId: string) => {
 };
 
 export const fetchPlayers = async (matchId: string) => {
-  console.warn('Direct API calls from frontend are deprecated. Use edge functions instead.');
-  if (!API_KEY) {
-    console.error('Cricket API key not configured');
-    return null;
-  }
-  
   try {
     const response = await axios.get(`${API_ENDPOINT}/players`, {
       params: {

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -45,8 +46,7 @@ interface MatchInfo {
   tossChoice?: string;
 }
 
-// Secure API keys from environment variables
-const CRICAPI_KEY = Deno.env.get("CRICAPI_KEY");
+const CRICAPI_KEY = Deno.env.get("CRICAPI_KEY") || "a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://yefrdovbporfjdhfojyx.supabase.co";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllZnJkb3ZicG9yZmpkaGZvanl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUyNjU2OTgsImV4cCI6MjA1MDg0MTY5OH0.F08ETpra6hqV7486oYbhUQ68WfluufgkHncJWS89gf4";
@@ -62,20 +62,6 @@ serve(async (req: Request) => {
     // Handle CORS preflight request
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });
-    }
-
-    // Check if required API keys are configured
-    if (!CRICAPI_KEY) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Cricket API key not configured", 
-          message: "Please configure CRICAPI_KEY in Supabase secrets."
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500 
-        }
-      );
     }
 
     // Parse request body
@@ -131,7 +117,6 @@ serve(async (req: Request) => {
       }
     } else {
       // If no OpenAI API key, use basic response
-      console.warn("OpenAI API key not configured, using basic responses");
       message = generateBasicResponse(userQuery, cricketData.matches || []);
     }
     
@@ -162,14 +147,9 @@ serve(async (req: Request) => {
   }
 });
 
-// Fetch cricket matches data from CricAPI using secure environment variables
+// Fetch cricket matches data from CricAPI
 async function fetchCricketData(): Promise<{ matches: MatchInfo[], scorecards: Scorecard[], players: PlayerInfo[] }> {
   try {
-    if (!CRICAPI_KEY) {
-      console.error("CRICAPI_KEY not configured");
-      return { matches: [], scorecards: [], players: [] };
-    }
-
     // Fetch current matches
     const currentMatchesResponse = await fetch(
       `https://api.cricapi.com/v1/currentMatches?apikey=${CRICAPI_KEY}&offset=0`
