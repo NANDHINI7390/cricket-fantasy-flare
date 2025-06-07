@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 
 const API_ENDPOINT = 'https://api.cricapi.com/v1';
@@ -85,6 +86,7 @@ export const fetchMatches = async (): Promise<Match[]> => {
         offset: 0
       }
     });
+    console.log("fetchMatches response:", response.data);
     return response.data.data as Match[];
   } catch (error) {
     console.error("Error fetching matches:", error);
@@ -100,6 +102,7 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
         offset: 0
       }
     });
+    console.log("fetchLiveMatches response:", response.data);
     return response.data.data as CricketMatch[];
   } catch (error) {
     console.error("Error fetching live matches:", error);
@@ -114,6 +117,7 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
         apikey: API_KEY
       }
     });
+    console.log("fetchLiveScores response:", response.data);
     return response.data.data as CricketMatch[];
   } catch (error) {
     console.error("Error fetching live scores:", error);
@@ -150,24 +154,45 @@ const processMatchData = (match: any) => {
 };
 
 export const categorizeMatches = (matches: any[]): CricketMatch[] => {
+  console.log("Categorizing matches:", matches.length);
   const now = new Date();
   
   return matches.map(match => {
     let category = 'Upcoming';
     
-    if (match.status === "Live" || 
-        match.status?.toLowerCase().includes('live') || 
+    console.log(`Processing match: ${match.name}, status: ${match.status}, matchStarted: ${match.matchStarted}, matchEnded: ${match.matchEnded}`);
+    
+    // More flexible status checking
+    const statusLower = (match.status || "").toLowerCase();
+    
+    if (statusLower.includes("live") || 
+        statusLower.includes("innings break") ||
+        statusLower.includes("rain delay") ||
         (match.matchStarted && !match.matchEnded)) {
       category = 'Live';
-    } else if (match.status?.toLowerCase().includes("won") || 
+    } else if (statusLower.includes("won") || 
+               statusLower.includes("draw") ||
+               statusLower.includes("tied") ||
+               statusLower.includes("no result") ||
                match.matchEnded) {
       category = 'Completed';
-    } else if (match.date_start) {
-      const startDate = new Date(match.date_start);
-      if (startDate <= now) {
+    } else if (match.dateTimeGMT) {
+      const startDate = new Date(match.dateTimeGMT);
+      const timeDiff = startDate.getTime() - now.getTime();
+      
+      // If match is supposed to start within next 6 hours but no live status, might be upcoming
+      if (timeDiff > 0) {
+        category = 'Upcoming';
+      } else if (timeDiff > -6 * 60 * 60 * 1000) {
+        // Match started within last 6 hours but no clear status - could be live
         category = 'Live';
+      } else {
+        // Match started more than 6 hours ago - likely completed
+        category = 'Completed';
       }
     }
+    
+    console.log(`Match ${match.name} categorized as: ${category}`);
     
     return {
       ...match,
