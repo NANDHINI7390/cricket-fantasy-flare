@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { fetchLiveMatches, fetchLiveScores, getTeamLogoUrl, formatMatchStatus, categorizeMatches, formatTossInfo, CricketMatch } from "../utils/cricket-api";
 import { Card } from "@/components/ui/card";
@@ -63,8 +64,35 @@ const LiveMatches = () => {
 
       console.log("Combined matches count:", allMatches.length);
 
+      // Enhanced team info extraction for upcoming matches
+      const enhancedMatches = allMatches.map(match => {
+        // If teamInfo is missing but teams array exists, create basic team info
+        if (!match.teamInfo && match.teams && match.teams.length >= 2) {
+          match.teamInfo = match.teams.map(teamName => ({
+            name: teamName,
+            shortname: teamName.substring(0, 3).toUpperCase(),
+            img: `/placeholder.svg` // Default placeholder
+          }));
+        }
+        
+        // Ensure we have team names even if teamInfo is partial
+        if (match.teamInfo && match.teamInfo.length < 2 && match.teams) {
+          match.teams.forEach((teamName, index) => {
+            if (!match.teamInfo![index]) {
+              match.teamInfo!.push({
+                name: teamName,
+                shortname: teamName.substring(0, 3).toUpperCase(),
+                img: `/placeholder.svg`
+              });
+            }
+          });
+        }
+        
+        return match;
+      });
+
       // Apply categorization with better logging
-      const categorizedMatches = categorizeMatches(allMatches);
+      const categorizedMatches = categorizeMatches(enhancedMatches);
       
       console.log("Categorized matches:", {
         total: categorizedMatches.length,
@@ -160,47 +188,135 @@ const LiveMatches = () => {
   };
 
   const renderPagination = () => {
-    return (
-      <div className="flex items-center justify-center gap-2 mt-6">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={goToPreviousPage}
-          disabled={currentPage === 1}
-          className="flex items-center gap-1"
-        >
-          <ChevronLeft size={16} />
-          Prev
-        </Button>
-        
-        <div className="flex items-center gap-1.5">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+    if (totalPages <= 1) return null;
+
+    const renderPageNumbers = () => {
+      const pages = [];
+      const showEllipsis = totalPages > 7;
+      
+      if (!showEllipsis) {
+        // Show all pages if 7 or fewer
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(
             <Button
-              key={page}
-              variant={currentPage === page ? "default" : "outline"}
+              key={i}
+              variant={currentPage === i ? "default" : "outline"}
               size="sm"
-              onClick={() => setCurrentPage(page)}
-              className={`w-8 h-8 p-0 ${
-                currentPage === page 
-                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white' 
-                  : 'text-gray-700'
+              onClick={() => setCurrentPage(i)}
+              className={`min-w-[32px] h-8 p-0 ${
+                currentPage === i 
+                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0' 
+                  : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
-              {page}
+              {i}
             </Button>
-          ))}
+          );
+        }
+      } else {
+        // Smart pagination with ellipsis
+        pages.push(
+          <Button
+            key={1}
+            variant={currentPage === 1 ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCurrentPage(1)}
+            className={`min-w-[32px] h-8 p-0 ${
+              currentPage === 1 
+                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0' 
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            1
+          </Button>
+        );
+
+        if (currentPage > 3) {
+          pages.push(
+            <span key="ellipsis1" className="text-gray-400 px-2">...</span>
+          );
+        }
+
+        const startPage = Math.max(2, currentPage - 1);
+        const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+        for (let i = startPage; i <= endPage; i++) {
+          pages.push(
+            <Button
+              key={i}
+              variant={currentPage === i ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrentPage(i)}
+              className={`min-w-[32px] h-8 p-0 ${
+                currentPage === i 
+                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0' 
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {i}
+            </Button>
+          );
+        }
+
+        if (currentPage < totalPages - 2) {
+          pages.push(
+            <span key="ellipsis2" className="text-gray-400 px-2">...</span>
+          );
+        }
+
+        pages.push(
+          <Button
+            key={totalPages}
+            variant={currentPage === totalPages ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCurrentPage(totalPages)}
+            className={`min-w-[32px] h-8 p-0 ${
+              currentPage === totalPages 
+                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0' 
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {totalPages}
+          </Button>
+        );
+      }
+      
+      return pages;
+    };
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={goToPreviousPage}
+            disabled={currentPage === 1}
+            className="flex items-center gap-1 h-8 px-3"
+          >
+            <ChevronLeft size={14} />
+            <span className="hidden sm:inline">Prev</span>
+          </Button>
+          
+          <div className="flex items-center gap-1">
+            {renderPageNumbers()}
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={goToNextPage}
+            disabled={currentPage === totalPages}
+            className="flex items-center gap-1 h-8 px-3"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight size={14} />
+          </Button>
         </div>
         
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={goToNextPage}
-          disabled={currentPage === totalPages}
-          className="flex items-center gap-1"
-        >
-          Next
-          <ChevronRight size={16} />
-        </Button>
+        <div className="text-xs text-gray-500 text-center sm:text-left">
+          Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches
+        </div>
       </div>
     );
   };
@@ -210,7 +326,7 @@ const LiveMatches = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <div key={n} className="h-64 bg-gray-200 rounded-lg"></div>
             ))}
@@ -222,7 +338,7 @@ const LiveMatches = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
           Live & Upcoming Matches
         </h2>
@@ -237,7 +353,7 @@ const LiveMatches = () => {
             className="flex items-center gap-2"
           >
             <RefreshCw size={16} />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
       </div>
@@ -271,7 +387,7 @@ const LiveMatches = () => {
 
       {filteredMatches.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
             {currentMatches.map((match) => (
               <MatchCard 
                 key={match.id} 
@@ -281,11 +397,7 @@ const LiveMatches = () => {
             ))}
           </div>
           
-          {totalPages > 1 && renderPagination()}
-          
-          <div className="text-center mt-6 text-sm text-gray-500">
-            Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches
-          </div>
+          {renderPagination()}
         </>
       ) : (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
