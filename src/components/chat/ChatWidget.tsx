@@ -33,7 +33,7 @@ const ChatWidget: React.FC = () => {
       {
         id: "welcome",
         type: "bot",
-        content: "🏏 Welcome to Cricket Fantasy AI Assistant! I can help you with:\n\n• Live match scores and analysis\n• Fantasy team suggestions using AI\n• Player performance insights\n• Captain/vice-captain recommendations\n\nTry asking: 'Suggest a fantasy team for today's match' or 'Who are the top performers in the current matches?'",
+        content: "🏏 Welcome to Cricket Fantasy AI Assistant! I can help you with:\n\n• Live match scores and analysis\n• Fantasy team suggestions with AI\n• Player information and statistics\n• Captain/vice-captain recommendations\n\nTry asking: 'Suggest a fantasy team for today's match' or 'Tell me about Rohit Sharma' or 'Show live scores'",
         timestamp: new Date(),
       },
     ]);
@@ -70,19 +70,17 @@ const ChatWidget: React.FC = () => {
       console.log("Fetched matches data:", liveMatches.length);
       console.log("Fetched scores data:", liveScores.length);
       
-      // Combine data from both APIs to get the most complete information
       const combinedMatches = mergeMatchData(liveMatches, liveScores);
       setMatches(combinedMatches);
       setDataLoadingStatus(combinedMatches.length > 0 ? "success" : "empty");
       
-      // Add a match update message if there are matches
       if (combinedMatches.length > 0) {
         setMessages(prev => [
           ...prev,
           {
             id: `match-update-${Date.now()}`,
             type: "bot",
-            content: `📊 I found ${combinedMatches.length} cricket matches with live data. Ask me for fantasy suggestions or player analysis!`,
+            content: `📊 Found ${combinedMatches.length} cricket matches! Ask me about players, fantasy suggestions, or live scores.`,
             timestamp: new Date(),
           }
         ]);
@@ -92,7 +90,7 @@ const ChatWidget: React.FC = () => {
           {
             id: `no-matches-${Date.now()}`,
             type: "bot",
-            content: "⚠️ No live matches found right now. I can still help with general fantasy cricket advice!",
+            content: "⚠️ No live matches found right now. I can still help with player information and general cricket advice!",
             timestamp: new Date(),
           }
         ]);
@@ -105,7 +103,7 @@ const ChatWidget: React.FC = () => {
         {
           id: `error-${Date.now()}`,
           type: "bot",
-          content: "❌ Couldn't fetch live cricket data. I'll work with cached data for fantasy suggestions.",
+          content: "❌ Couldn't fetch live cricket data. I can still answer general cricket questions!",
           timestamp: new Date(),
         }
       ]);
@@ -127,154 +125,10 @@ const ChatWidget: React.FC = () => {
     );
   };
 
-  // Generate AI-powered fantasy suggestions
-  const generateFantasySuggestions = async (userQuery: string, matchData: CricketMatch[]) => {
-    setIsAiThinking(true);
-    
-    try {
-      // Show AI thinking message
-      const thinkingMessageId = `thinking-${Date.now()}`;
-      setMessages(prev => [...prev, {
-        id: thinkingMessageId,
-        type: "bot",
-        content: "🧠 Analyzing live match data with AI...",
-        timestamp: new Date(),
-        isTemporary: true
-      }]);
-
-      // Call the enhanced edge function
-      const response = await fetch(
-        "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-assistant",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ 
-            query: userQuery,
-            matchData: matchData.slice(0, 3), // Send top 3 matches to avoid payload size issues
-            requestType: 'fantasy_analysis'
-          }),
-        }
-      );
-
-      // Remove thinking message
-      setMessages(prev => prev.filter(m => m.id !== thinkingMessageId));
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("AI Fantasy Response:", data);
-
-      if (data.error) {
-        throw new Error(data.message || data.error);
-      }
-
-      // Add AI response with fantasy recommendations
-      setMessages(prev => [...prev, {
-        id: `ai-fantasy-${Date.now()}`,
-        type: "bot",
-        content: data.message || "Here are my AI-powered fantasy recommendations based on current match data.",
-        timestamp: new Date(),
-        isAiGenerated: true
-      }]);
-
-      // If we have structured player recommendations, show them
-      if (data.playerStats && data.playerStats.length > 0) {
-        const recommendations = data.playerStats;
-        const captain = recommendations.find((p: any) => p.role === 'Captain');
-        const viceCaptain = recommendations.find((p: any) => p.role === 'Vice-Captain');
-        const otherPlayers = recommendations.filter((p: any) => 
-          p.role !== 'Captain' && p.role !== 'Vice-Captain'
-        );
-
-        let suggestionText = "🎯 **Fantasy Team Recommendations:**\n\n";
-        
-        if (captain) {
-          suggestionText += `👑 **Captain:** ${captain.name}\n${captain.details}\n\n`;
-        }
-        
-        if (viceCaptain) {
-          suggestionText += `⭐ **Vice-Captain:** ${viceCaptain.name}\n${viceCaptain.details}\n\n`;
-        }
-        
-        if (otherPlayers.length > 0) {
-          suggestionText += "🏏 **Key Players:**\n";
-          otherPlayers.slice(0, 5).forEach((player: any) => {
-            suggestionText += `• ${player.name} (${player.role}): ${player.details}\n`;
-          });
-        }
-
-        setMessages(prev => [...prev, {
-          id: `fantasy-breakdown-${Date.now()}`,
-          type: "bot",
-          content: suggestionText,
-          timestamp: new Date(),
-          isFantasyRecommendation: true
-        }]);
-      }
-
-      // Show relevant match cards if available
-      if (data.cricketData && data.cricketData.length > 0) {
-        data.cricketData.slice(0, 2).forEach((match: CricketMatch) => {
-          setMessages(prev => [...prev, {
-            id: `match-${match.id}-${Date.now()}`,
-            type: "match-update",
-            content: match.name,
-            timestamp: new Date(),
-            matchData: match,
-          }]);
-        });
-      }
-
-    } catch (error) {
-      console.error("Error generating fantasy suggestions:", error);
-      setAiError(error.message);
-      
-      // Remove thinking message if still there
-      setMessages(prev => prev.filter(m => !m.isTemporary));
-      
-      // Fallback to basic suggestions
-      const fallbackSuggestions = generateBasicFantasySuggestions(userQuery, matchData);
-      setMessages(prev => [...prev, {
-        id: `fallback-${Date.now()}`,
-        type: "bot",
-        content: `⚠️ AI analysis temporarily unavailable. Here are basic recommendations:\n\n${fallbackSuggestions}`,
-        timestamp: new Date(),
-      }]);
-    } finally {
-      setIsAiThinking(false);
-    }
-  };
-
-  // Generate basic fantasy suggestions as fallback
-  const generateBasicFantasySuggestions = (query: string, matchData: CricketMatch[]): string => {
-    if (matchData.length === 0) {
-      return "No live matches available for analysis. Try refreshing or check back later.";
-    }
-
-    const liveMatch = matchData.find(m => m.status?.toLowerCase().includes('live')) || matchData[0];
-    const teams = liveMatch.teams || [];
-    
-    let suggestions = `🏏 **Fantasy Tips for ${liveMatch.name}:**\n\n`;
-    
-    if (teams.length >= 2) {
-      suggestions += `👑 **Captain Suggestion:** Pick a top-order batsman from ${teams[0]} or ${teams[1]}\n\n`;
-      suggestions += `⭐ **Vice-Captain:** Consider an all-rounder or in-form bowler\n\n`;
-      suggestions += `🎯 **Strategy:** Focus on players from both teams for balanced scoring\n\n`;
-      suggestions += `📊 **Key Focus:** Look for players with recent good form and favorable match conditions`;
-    }
-    
-    return suggestions;
-  };
-
   // Handle user message submission
   const handleSendMessage = async (inputValue: string) => {
     if (!inputValue.trim()) return;
     
-    // Add user message
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       type: "user",
@@ -285,23 +139,15 @@ const ChatWidget: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     const userQuery = inputValue.toLowerCase();
     
-    // Start loading state
     setIsLoading(true);
     setAiError(null);
     
     try {
       if (userQuery.includes("refresh") || userQuery.includes("update")) {
-        // Refresh data
         await fetchCricketData();
-      } else if (isFantasyQuery(inputValue) && aiPowered) {
-        // Use AI for fantasy suggestions
-        await generateFantasySuggestions(inputValue, matches);
-      } else if (aiPowered) {
-        // Use AI-powered response via edge function
-        await fetchAIResponse(inputValue);
       } else {
-        // Fallback to basic response processing
-        processUserQuery(userQuery, matches, setMessages);
+        // Use the improved edge function for all queries
+        await fetchAIResponse(inputValue);
       }
     } catch (error) {
       console.error("Error processing message:", error);
@@ -317,18 +163,23 @@ const ChatWidget: React.FC = () => {
     }
   };
 
-  // Fetch AI-powered response from edge function (existing functionality)
+  // Fetch AI-powered response from edge function
   const fetchAIResponse = async (query: string) => {
     try {
+      setIsAiThinking(true);
+      
       // Show thinking message
+      const thinkingMessageId = `thinking-${Date.now()}`;
       setMessages(prev => [...prev, {
-        id: `thinking-${Date.now()}`,
+        id: thinkingMessageId,
         type: "bot",
-        content: "🤔 Thinking...",
+        content: "🧠 Analyzing your query...",
         timestamp: new Date(),
         isTemporary: true
       }]);
 
+      const requestType = isFantasyQuery(query) ? 'fantasy_analysis' : 'general';
+      
       const response = await fetch(
         "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-assistant",
         {
@@ -336,12 +187,15 @@ const ChatWidget: React.FC = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ query }),
+          body: JSON.stringify({ 
+            query,
+            requestType
+          }),
         }
       );
 
       // Remove thinking message
-      setMessages(prev => prev.filter(m => !m.isTemporary));
+      setMessages(prev => prev.filter(m => m.id !== thinkingMessageId));
 
       const data = await response.json();
       console.log("AI response:", data);
@@ -355,11 +209,9 @@ const ChatWidget: React.FC = () => {
         setMessages(prev => [...prev, {
           id: `ai-error-${Date.now()}`,
           type: "bot",
-          content: `⚠️ AI analysis had an issue: ${data.message || errorMessage}. Using basic mode.`,
+          content: `⚠️ Service temporarily unavailable: ${data.message || errorMessage}`,
           timestamp: new Date(),
         }]);
-        
-        processUserQuery(query.toLowerCase(), matches, setMessages);
         return;
       }
       
@@ -369,12 +221,28 @@ const ChatWidget: React.FC = () => {
         type: "bot",
         content: data.message || "I'm sorry, I couldn't process that request at the moment.",
         timestamp: new Date(),
+        isAiGenerated: true
       }]);
       
       // Handle additional data from AI response
       if (data.cricketData && data.cricketData.length > 0) {
         console.log("Updating matches with data from AI response");
-        setMatches(data.cricketData);
+        
+        // Show relevant match cards for live matches
+        const liveMatches = data.cricketData.filter((m: any) => 
+          m.status?.toLowerCase().includes('live') || 
+          m.status?.toLowerCase().includes('innings')
+        ).slice(0, 2);
+        
+        liveMatches.forEach((match: CricketMatch) => {
+          setMessages(prev => [...prev, {
+            id: `match-${match.id}-${Date.now()}`,
+            type: "match-update",
+            content: match.name,
+            timestamp: new Date(),
+            matchData: match,
+          }]);
+        });
       }
       
     } catch (error) {
@@ -382,14 +250,15 @@ const ChatWidget: React.FC = () => {
       setAiError(error.message);
       
       setMessages(prev => prev.filter(m => !m.isTemporary));
-      processUserQuery(query.toLowerCase(), matches, setMessages);
       
       setMessages(prev => [...prev, {
         id: `ai-error-${Date.now()}`,
         type: "bot",
-        content: `⚠️ AI service unavailable (${error.message}). Using basic information instead.`,
+        content: `⚠️ I'm having trouble connecting to my cricket database. Please try again in a moment.`,
         timestamp: new Date(),
       }]);
+    } finally {
+      setIsAiThinking(false);
     }
   };
 
@@ -432,8 +301,8 @@ const ChatWidget: React.FC = () => {
         <div className="flex items-start">
           <AlertTriangle className="text-yellow-500 mr-2 mt-0.5 flex-shrink-0" size={16} />
           <div className="text-xs text-yellow-800">
-            <p className="font-medium">AI Service Issue</p>
-            <p>Limited functionality available. Using basic mode.</p>
+            <p className="font-medium">Service Issue</p>
+            <p>Some features may be limited.</p>
           </div>
         </div>
       </div>
@@ -515,13 +384,13 @@ const ChatWidget: React.FC = () => {
                 )}
                 {aiPowered && aiError && (
                   <span className="bg-yellow-500 text-xs px-1.5 py-0.5 rounded-full text-white font-semibold" title={aiError}>
-                    AI Issue
+                    Limited
                   </span>
                 )}
                 {isAiThinking && (
                   <div className="flex items-center gap-1">
                     <div className="animate-spin h-3 w-3 border border-white rounded-full border-t-transparent"></div>
-                    <span className="text-xs">Analyzing...</span>
+                    <span className="text-xs">Thinking...</span>
                   </div>
                 )}
               </div>
@@ -612,29 +481,15 @@ const ChatWidget: React.FC = () => {
                       >
                         <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
                       </button>
-                      <button
-                        onClick={() => {
-                          setAiPowered(!aiPowered);
-                          setAiError(null);
-                          toast.success(aiPowered ? "Switched to basic mode" : "Switched to AI mode");
-                        }}
-                        className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
-                          aiPowered 
-                            ? "bg-green-100 text-green-800 hover:bg-green-200" 
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                        }`}
-                      >
-                        <Brain size={12} />
-                        {aiPowered ? "AI: On" : "AI: Off"}
-                      </button>
+                      <span className="text-xs text-green-600">🟢 API Connected</span>
                     </div>
                     {aiError && (
                       <button 
                         className="text-xs text-orange-500 hover:text-orange-700" 
                         title={aiError}
-                        onClick={() => toast.error(`AI Error: ${aiError}`)}
+                        onClick={() => toast.error(`Service Issue: ${aiError}`)}
                       >
-                        AI issues detected
+                        Service issues
                       </button>
                     )}
                   </div>
