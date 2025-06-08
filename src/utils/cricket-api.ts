@@ -133,34 +133,35 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
     console.log("fetchLiveMatches response:", response.data);
     
     if (response.data && response.data.status === "success" && Array.isArray(response.data.data)) {
-      // Process each match to ensure proper team info structure
+      // Process each match to extract team names from the API structure
       const processedMatches = response.data.data.map((match: any) => {
         console.log("Processing match:", match.name, "Teams:", match.teams, "TeamInfo:", match.teamInfo);
         
-        // Use teamInfo from API if available, otherwise create from teams array
-        let teamInfo = match.teamInfo || [];
+        // Extract team names from teams array or teamInfo
+        let teams = [];
+        let teamInfo = [];
         
-        // If teamInfo is missing or incomplete, create it from teams array
-        if (!teamInfo || teamInfo.length === 0) {
-          if (match.teams && Array.isArray(match.teams)) {
-            teamInfo = match.teams.map((teamName: string) => ({
-              name: teamName,
-              shortname: getTeamShortName(teamName),
-              img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
-            }));
-          }
-        } else {
-          // Ensure each team has proper flag URL
-          teamInfo = teamInfo.map((team: any) => ({
-            ...team,
-            img: team.img || TEAM_FLAGS[team.name as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
+        if (match.teams && Array.isArray(match.teams)) {
+          teams = match.teams;
+        } else if (match.teamInfo && Array.isArray(match.teamInfo)) {
+          teams = match.teamInfo.map((team: any) => team.name);
+        }
+        
+        // Create teamInfo from teams array if not available
+        if (teams.length > 0) {
+          teamInfo = teams.map((teamName: string) => ({
+            name: teamName,
+            shortname: getTeamShortName(teamName),
+            img: match.teamInfo?.find((t: any) => t.name === teamName)?.img || 
+                 TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || 
+                 'https://h.cricapi.com/img/icon512.png'
           }));
         }
         
         return {
           ...match,
-          teamInfo,
-          teams: match.teams || teamInfo.map((t: any) => t.name)
+          teams,
+          teamInfo
         };
       });
       
@@ -370,16 +371,10 @@ export const categorizeMatches = (matches: any[]): CricketMatch[] => {
     if (statusLower.includes("live") || 
         statusLower.includes("innings break") ||
         statusLower.includes("rain delay") ||
-        statusLower.includes("won by") ||
         (match.matchStarted && !match.matchEnded)) {
-      
-      // Check if match actually ended based on status
-      if (statusLower.includes("won by") || statusLower.includes("won by")) {
-        category = 'Completed';
-      } else {
-        category = 'Live';
-      }
-    } else if (statusLower.includes("draw") ||
+      category = 'Live';
+    } else if (statusLower.includes("won by") ||
+               statusLower.includes("draw") ||
                statusLower.includes("tied") ||
                statusLower.includes("no result") ||
                match.matchEnded) {
@@ -399,19 +394,24 @@ export const categorizeMatches = (matches: any[]): CricketMatch[] => {
     
     console.log(`Match ${match.name} categorized as: ${category}`);
     
-    // Enhanced team info with proper flags
+    // Ensure team info is properly set with extracted team names
     const enhancedMatch = {
       ...match,
       category
     };
 
-    // Ensure team info is properly set
-    if (!enhancedMatch.teamInfo && enhancedMatch.teams && enhancedMatch.teams.length >= 2) {
-      enhancedMatch.teamInfo = enhancedMatch.teams.map((teamName: string) => ({
-        name: teamName,
-        shortname: getTeamShortName(teamName),
-        img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
-      }));
+    // Extract teams from the match name if teams array is empty
+    if ((!enhancedMatch.teams || enhancedMatch.teams.length === 0) && enhancedMatch.name) {
+      // Try to extract team names from match name (e.g., "Team A vs Team B, Match")
+      const vsMatch = enhancedMatch.name.match(/^(.+?)\s+vs\s+(.+?),/);
+      if (vsMatch) {
+        enhancedMatch.teams = [vsMatch[1].trim(), vsMatch[2].trim()];
+        enhancedMatch.teamInfo = enhancedMatch.teams.map((teamName: string) => ({
+          name: teamName,
+          shortname: getTeamShortName(teamName),
+          img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
+        }));
+      }
     }
     
     return enhancedMatch;
