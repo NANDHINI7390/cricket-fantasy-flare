@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 const API_ENDPOINT = 'https://api.cricapi.com/v1';
@@ -125,6 +124,23 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
   }
 };
 
+// Enhanced API functions for all endpoints
+export const fetchCurrentMatches = async (): Promise<CricketMatch[]> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
+      params: {
+        apikey: API_KEY,
+        offset: 0
+      }
+    });
+    console.log("fetchCurrentMatches response:", response.data);
+    return response.data.data as CricketMatch[];
+  } catch (error) {
+    console.error("Error fetching current matches:", error);
+    return [];
+  }
+};
+
 export const fetchMatchScorecard = async (matchId: string): Promise<ScorecardData | null> => {
   try {
     const response = await axios.get(`${API_ENDPOINT}/match_scorecard`, {
@@ -133,9 +149,74 @@ export const fetchMatchScorecard = async (matchId: string): Promise<ScorecardDat
         id: matchId
       }
     });
+    console.log("fetchMatchScorecard response:", response.data);
     return response.data.data as ScorecardData;
   } catch (error) {
     console.error("Error fetching match scorecard:", error);
+    return null;
+  }
+};
+
+export const fetchPlayers = async (offset: number = 0): Promise<any[]> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/players`, {
+      params: {
+        apikey: API_KEY,
+        offset
+      }
+    });
+    console.log("fetchPlayers response:", response.data);
+    return response.data.data || [];
+  } catch (error) {
+    console.error("Error fetching players:", error);
+    return [];
+  }
+};
+
+export const fetchMatchSquad = async (matchId: string): Promise<any> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/match_squad`, {
+      params: {
+        apikey: API_KEY,
+        id: matchId
+      }
+    });
+    console.log("fetchMatchSquad response:", response.data);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching match squad:", error);
+    return null;
+  }
+};
+
+export const fetchPlayerInfo = async (playerId: string): Promise<any> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/players_info`, {
+      params: {
+        apikey: API_KEY,
+        id: playerId
+      }
+    });
+    console.log("fetchPlayerInfo response:", response.data);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching player info:", error);
+    return null;
+  }
+};
+
+export const fetchSeriesInfo = async (seriesId: string): Promise<any> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/series_info`, {
+      params: {
+        apikey: API_KEY,
+        id: seriesId
+      }
+    });
+    console.log("fetchSeriesInfo response:", response.data);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching series info:", error);
     return null;
   }
 };
@@ -216,20 +297,70 @@ export const fetchMatchDetails = async (matchId: string) => {
   }
 };
 
-export const fetchPlayers = async (matchId: string) => {
-  try {
-    const response = await axios.get(`${API_ENDPOINT}/players`, {
-      params: {
-        apikey: API_KEY,
-        match_id: matchId,
-        offset: 0
-      }
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error("Error fetching players:", error);
-    return null;
+// Enhanced query processing function
+export const processApiQuery = (query: string): {
+  apiEndpoints: string[];
+  queryType: string;
+  intent: string;
+} => {
+  const queryLower = query.toLowerCase();
+  
+  // Current matches queries
+  if (queryLower.includes('today') || queryLower.includes('now') || 
+      queryLower.includes('live') || queryLower.includes('happening')) {
+    return {
+      apiEndpoints: ['currentMatches'],
+      queryType: 'current_matches',
+      intent: 'Get current/live matches'
+    };
   }
+  
+  // Fantasy team suggestions
+  if (queryLower.includes('suggest') || queryLower.includes('fantasy team') || 
+      queryLower.includes('captain') || queryLower.includes('vice captain')) {
+    return {
+      apiEndpoints: ['currentMatches', 'match_squad', 'match_scorecard'],
+      queryType: 'fantasy_team',
+      intent: 'Suggest fantasy team with captain/vice-captain'
+    };
+  }
+  
+  // Player performance queries
+  if (queryLower.includes('perform') || queryLower.includes('stats') || 
+      queryLower.includes('points') || queryLower.includes('last match')) {
+    return {
+      apiEndpoints: ['match_scorecard', 'players_info'],
+      queryType: 'player_stats',
+      intent: 'Get player performance and stats'
+    };
+  }
+  
+  // Squad queries
+  if (queryLower.includes('squad') || queryLower.includes('team') || 
+      queryLower.includes('players in')) {
+    return {
+      apiEndpoints: ['match_squad', 'players'],
+      queryType: 'squad_info',
+      intent: 'Get squad information'
+    };
+  }
+  
+  // Fantasy scores
+  if (queryLower.includes('fantasy score') || queryLower.includes('points breakdown') || 
+      queryLower.includes('yesterday') || queryLower.includes('last game')) {
+    return {
+      apiEndpoints: ['match_scorecard'],
+      queryType: 'fantasy_scores',
+      intent: 'Get fantasy point breakdowns'
+    };
+  }
+  
+  // Default general query
+  return {
+    apiEndpoints: ['currentMatches'],
+    queryType: 'general',
+    intent: 'General cricket information'
+  };
 };
 
 // Helper functions
