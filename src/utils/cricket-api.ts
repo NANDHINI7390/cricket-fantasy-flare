@@ -77,6 +77,30 @@ export interface BowlingStats {
   economy: number;
 }
 
+// Team flags mapping
+export const TEAM_FLAGS = {
+  "India": "https://flagcdn.com/w320/in.png",
+  "Australia": "https://flagcdn.com/w320/au.png", 
+  "England": "https://flagcdn.com/w320/gb-eng.png",
+  "New Zealand": "https://flagcdn.com/w320/nz.png",
+  "Pakistan": "https://flagcdn.com/w320/pk.png",
+  "South Africa": "https://flagcdn.com/w320/za.png",
+  "Sri Lanka": "https://flagcdn.com/w320/lk.png",
+  "Bangladesh": "https://flagcdn.com/w320/bd.png",
+  "Afghanistan": "https://flagcdn.com/w320/af.png",
+  "West Indies": "https://upload.wikimedia.org/wikipedia/en/thumb/d/d5/Cricket_West_Indies_flag.svg/320px-Cricket_West_Indies_flag.svg.png",
+  "Ireland": "https://flagcdn.com/w320/ie.png",
+  "Netherlands": "https://flagcdn.com/w320/nl.png",
+  "Nepal": "https://flagcdn.com/w320/np.png",
+  "Scotland": "https://flagcdn.com/w320/gb-sct.png",
+  "Namibia": "https://flagcdn.com/w320/na.png",
+  "Oman": "https://flagcdn.com/w320/om.png",
+  "United Arab Emirates": "https://flagcdn.com/w320/ae.png",
+  "UAE": "https://flagcdn.com/w320/ae.png",
+  "USA": "https://flagcdn.com/w320/us.png",
+  "Canada": "https://flagcdn.com/w320/ca.png"
+};
+
 export const fetchMatches = async (): Promise<Match[]> => {
   try {
     const response = await axios.get(`${API_ENDPOINT}/matches`, {
@@ -261,25 +285,62 @@ export const categorizeMatches = (matches: any[]): CricketMatch[] => {
       const startDate = new Date(match.dateTimeGMT);
       const timeDiff = startDate.getTime() - now.getTime();
       
-      // If match is supposed to start within next 6 hours but no live status, might be upcoming
       if (timeDiff > 0) {
         category = 'Upcoming';
       } else if (timeDiff > -6 * 60 * 60 * 1000) {
-        // Match started within last 6 hours but no clear status - could be live
         category = 'Live';
       } else {
-        // Match started more than 6 hours ago - likely completed
         category = 'Completed';
       }
     }
     
     console.log(`Match ${match.name} categorized as: ${category}`);
     
-    return {
+    // Enhanced team info with proper flags
+    const enhancedMatch = {
       ...match,
       category
     };
+
+    // Fix team info with proper flags and names
+    if (enhancedMatch.teams && enhancedMatch.teams.length >= 2) {
+      enhancedMatch.teamInfo = enhancedMatch.teams.map((teamName: string) => ({
+        name: teamName,
+        shortname: getTeamShortName(teamName),
+        img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || '/placeholder.svg'
+      }));
+    }
+    
+    return enhancedMatch;
   });
+};
+
+// Helper function to get team short names
+export const getTeamShortName = (teamName: string): string => {
+  const shortNames: Record<string, string> = {
+    "India": "IND",
+    "Australia": "AUS",
+    "England": "ENG", 
+    "New Zealand": "NZ",
+    "Pakistan": "PAK",
+    "South Africa": "SA",
+    "Sri Lanka": "SL",
+    "Bangladesh": "BAN",
+    "Afghanistan": "AFG",
+    "West Indies": "WI",
+    "Ireland": "IRE",
+    "Netherlands": "NED",
+    "Nepal": "NEP",
+    "Scotland": "SCO",
+    "Namibia": "NAM",
+    "Oman": "OMA",
+    "United Arab Emirates": "UAE",
+    "UAE": "UAE",
+    "USA": "USA",
+    "Canada": "CAN"
+  };
+  
+  return shortNames[teamName] || teamName.substring(0, 3).toUpperCase();
 };
 
 export const fetchMatchDetails = async (matchId: string) => {
@@ -297,13 +358,24 @@ export const fetchMatchDetails = async (matchId: string) => {
   }
 };
 
-// Enhanced query processing function
+// Enhanced query processing function with better squad detection
 export const processApiQuery = (query: string): {
   apiEndpoints: string[];
   queryType: string;
   intent: string;
 } => {
   const queryLower = query.toLowerCase();
+  
+  // Squad/Player in squad queries - this should be prioritized
+  if (queryLower.includes('in the squad') || queryLower.includes('in squad') || 
+      queryLower.includes('rohit') || queryLower.includes('kohli') ||
+      queryLower.includes('is ') && (queryLower.includes('playing') || queryLower.includes('selected'))) {
+    return {
+      apiEndpoints: ['players'],
+      queryType: 'squad_search',
+      intent: 'Search for player in squad'
+    };
+  }
   
   // Current matches queries
   if (queryLower.includes('today') || queryLower.includes('now') || 
@@ -361,6 +433,16 @@ export const processApiQuery = (query: string): {
     queryType: 'general',
     intent: 'General cricket information'
   };
+};
+
+// Enhanced squad search function
+export const searchPlayerInSquad = (playerName: string, squadData: any[]): any[] => {
+  if (!squadData || !Array.isArray(squadData)) return [];
+  
+  const searchTerm = playerName.toLowerCase();
+  return squadData.filter(player => 
+    player.name && player.name.toLowerCase().includes(searchTerm)
+  );
 };
 
 // Helper functions
