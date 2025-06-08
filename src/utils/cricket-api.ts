@@ -77,7 +77,7 @@ export interface BowlingStats {
   economy: number;
 }
 
-// Team flags mapping
+// Enhanced Team flags mapping based on the API response structure
 export const TEAM_FLAGS = {
   "India": "https://flagcdn.com/w320/in.png",
   "Australia": "https://flagcdn.com/w320/au.png", 
@@ -98,7 +98,12 @@ export const TEAM_FLAGS = {
   "United Arab Emirates": "https://flagcdn.com/w320/ae.png",
   "UAE": "https://flagcdn.com/w320/ae.png",
   "USA": "https://flagcdn.com/w320/us.png",
-  "Canada": "https://flagcdn.com/w320/ca.png"
+  "Canada": "https://flagcdn.com/w320/ca.png",
+  // Adding team mappings from API response
+  "Bastar Bisons": "https://h.cricapi.com/img/icon512.png",
+  "Surguja Tigers": "https://h.cricapi.com/img/icon512.png",
+  "Rajnandgaon Panthers": "https://h.cricapi.com/img/icon512.png",
+  "Raigarh Lions": "https://h.cricapi.com/img/icon512.png"
 };
 
 export const fetchMatches = async (): Promise<Match[]> => {
@@ -126,7 +131,44 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
       }
     });
     console.log("fetchLiveMatches response:", response.data);
-    return response.data.data as CricketMatch[];
+    
+    if (response.data && response.data.status === "success" && Array.isArray(response.data.data)) {
+      // Process each match to ensure proper team info structure
+      const processedMatches = response.data.data.map((match: any) => {
+        console.log("Processing match:", match.name, "Teams:", match.teams, "TeamInfo:", match.teamInfo);
+        
+        // Use teamInfo from API if available, otherwise create from teams array
+        let teamInfo = match.teamInfo || [];
+        
+        // If teamInfo is missing or incomplete, create it from teams array
+        if (!teamInfo || teamInfo.length === 0) {
+          if (match.teams && Array.isArray(match.teams)) {
+            teamInfo = match.teams.map((teamName: string) => ({
+              name: teamName,
+              shortname: getTeamShortName(teamName),
+              img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
+            }));
+          }
+        } else {
+          // Ensure each team has proper flag URL
+          teamInfo = teamInfo.map((team: any) => ({
+            ...team,
+            img: team.img || TEAM_FLAGS[team.name as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
+          }));
+        }
+        
+        return {
+          ...match,
+          teamInfo,
+          teams: match.teams || teamInfo.map((t: any) => t.name)
+        };
+      });
+      
+      console.log("Processed matches with team info:", processedMatches.length);
+      return processedMatches;
+    }
+    
+    return [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
@@ -141,7 +183,19 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
       }
     });
     console.log("fetchLiveScores response:", response.data);
-    return response.data.data as CricketMatch[];
+    
+    if (response.data && response.data.status === "success" && Array.isArray(response.data.data)) {
+      return response.data.data.map((match: any) => ({
+        ...match,
+        teamInfo: match.teamInfo || (match.teams ? match.teams.map((teamName: string) => ({
+          name: teamName,
+          shortname: getTeamShortName(teamName),
+          img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
+        })) : [])
+      }));
+    }
+    
+    return [];
   } catch (error) {
     console.error("Error fetching live scores:", error);
     return [];
@@ -157,8 +211,45 @@ export const fetchCurrentMatches = async (): Promise<CricketMatch[]> => {
         offset: 0
       }
     });
-    console.log("fetchCurrentMatches response:", response.data);
-    return response.data.data as CricketMatch[];
+    console.log("fetchCurrentMatches detailed response:", JSON.stringify(response.data, null, 2));
+    
+    if (response.data && response.data.status === "success" && Array.isArray(response.data.data)) {
+      const processedMatches = response.data.data.map((match: any) => {
+        console.log(`Processing match: ${match.name}`);
+        console.log(`Teams array:`, match.teams);
+        console.log(`TeamInfo:`, match.teamInfo);
+        
+        // Ensure teamInfo is properly structured
+        let teamInfo = [];
+        if (match.teamInfo && Array.isArray(match.teamInfo)) {
+          teamInfo = match.teamInfo.map((team: any) => ({
+            name: team.name,
+            shortname: team.shortname || getTeamShortName(team.name),
+            img: team.img || TEAM_FLAGS[team.name as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
+          }));
+        } else if (match.teams && Array.isArray(match.teams)) {
+          teamInfo = match.teams.map((teamName: string) => ({
+            name: teamName,
+            shortname: getTeamShortName(teamName),
+            img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
+          }));
+        }
+        
+        console.log(`Final teamInfo for ${match.name}:`, teamInfo);
+        
+        return {
+          ...match,
+          teamInfo,
+          teams: match.teams || teamInfo.map((t: any) => t.name)
+        };
+      });
+      
+      console.log("Total processed matches:", processedMatches.length);
+      return processedMatches;
+    }
+    
+    console.log("No valid data in API response");
+    return [];
   } catch (error) {
     console.error("Error fetching current matches:", error);
     return [];
@@ -190,7 +281,13 @@ export const fetchPlayers = async (offset: number = 0): Promise<any[]> => {
       }
     });
     console.log("fetchPlayers response:", response.data);
-    return response.data.data || [];
+    
+    if (response.data && response.data.status === "success" && Array.isArray(response.data.data)) {
+      console.log(`Found ${response.data.data.length} players in database`);
+      return response.data.data;
+    }
+    
+    return [];
   } catch (error) {
     console.error("Error fetching players:", error);
     return [];
@@ -267,16 +364,22 @@ export const categorizeMatches = (matches: any[]): CricketMatch[] => {
     
     console.log(`Processing match: ${match.name}, status: ${match.status}, matchStarted: ${match.matchStarted}, matchEnded: ${match.matchEnded}`);
     
-    // More flexible status checking
+    // More flexible status checking based on actual API response
     const statusLower = (match.status || "").toLowerCase();
     
     if (statusLower.includes("live") || 
         statusLower.includes("innings break") ||
         statusLower.includes("rain delay") ||
+        statusLower.includes("won by") ||
         (match.matchStarted && !match.matchEnded)) {
-      category = 'Live';
-    } else if (statusLower.includes("won") || 
-               statusLower.includes("draw") ||
+      
+      // Check if match actually ended based on status
+      if (statusLower.includes("won by") || statusLower.includes("won by")) {
+        category = 'Completed';
+      } else {
+        category = 'Live';
+      }
+    } else if (statusLower.includes("draw") ||
                statusLower.includes("tied") ||
                statusLower.includes("no result") ||
                match.matchEnded) {
@@ -302,12 +405,12 @@ export const categorizeMatches = (matches: any[]): CricketMatch[] => {
       category
     };
 
-    // Fix team info with proper flags and names
-    if (enhancedMatch.teams && enhancedMatch.teams.length >= 2) {
+    // Ensure team info is properly set
+    if (!enhancedMatch.teamInfo && enhancedMatch.teams && enhancedMatch.teams.length >= 2) {
       enhancedMatch.teamInfo = enhancedMatch.teams.map((teamName: string) => ({
         name: teamName,
         shortname: getTeamShortName(teamName),
-        img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || '/placeholder.svg'
+        img: TEAM_FLAGS[teamName as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png'
       }));
     }
     
@@ -337,7 +440,12 @@ export const getTeamShortName = (teamName: string): string => {
     "United Arab Emirates": "UAE",
     "UAE": "UAE",
     "USA": "USA",
-    "Canada": "CAN"
+    "Canada": "CAN",
+    // Adding team mappings from actual API
+    "Bastar Bisons": "BB",
+    "Surguja Tigers": "ST",
+    "Rajnandgaon Panthers": "RP",
+    "Raigarh Lions": "RL"
   };
   
   return shortNames[teamName] || teamName.substring(0, 3).toUpperCase();
@@ -440,9 +548,12 @@ export const searchPlayerInSquad = (playerName: string, squadData: any[]): any[]
   if (!squadData || !Array.isArray(squadData)) return [];
   
   const searchTerm = playerName.toLowerCase();
-  return squadData.filter(player => 
+  const results = squadData.filter(player => 
     player.name && player.name.toLowerCase().includes(searchTerm)
   );
+  
+  console.log(`Searching for "${playerName}" in ${squadData.length} players, found ${results.length} matches`);
+  return results;
 };
 
 // Helper functions
@@ -450,7 +561,10 @@ export const getTeamLogoUrl = (team?: string | { name: string; shortname?: strin
   if (typeof team === 'object' && team?.img) {
     return team.img;
   }
-  return '/placeholder.svg';
+  if (typeof team === 'string') {
+    return TEAM_FLAGS[team as keyof typeof TEAM_FLAGS] || 'https://h.cricapi.com/img/icon512.png';
+  }
+  return 'https://h.cricapi.com/img/icon512.png';
 };
 
 export const getTeamName = (team?: string | { name: string; shortname?: string; img?: string }): string => {
