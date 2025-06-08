@@ -19,7 +19,7 @@ const LiveMatches = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const matchesPerPage = 6; // Show more matches per page
+  const matchesPerPage = 3;
 
   useEffect(() => {
     fetchMatches();
@@ -28,81 +28,53 @@ const LiveMatches = () => {
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      console.log("Starting to fetch cricket data...");
-      
-      const [liveMatches, liveScores] = await Promise.all([
-        fetchLiveMatches(),
-        fetchLiveScores()
-      ]);
+      const liveMatches = await fetchLiveMatches();
+      const liveScores = await fetchLiveScores();
 
-      console.log("Raw API data - Live matches:", liveMatches?.length || 0);
-      console.log("Raw API data - Live scores:", liveScores?.length || 0);
-
-      if (!Array.isArray(liveMatches) && !Array.isArray(liveScores)) {
-        throw new Error("No valid data from cricket APIs");
+      if (!Array.isArray(liveMatches) || !Array.isArray(liveScores)) {
+        throw new Error("Invalid response format from API");
       }
 
-      // Combine data from both APIs, prioritizing live matches
-      const allMatches = [...(liveMatches || [])];
-      
-      // Add additional matches from scores if not already present
-      if (Array.isArray(liveScores)) {
-        liveScores.forEach(scoreMatch => {
-          const existingMatch = allMatches.find(m => m.id === scoreMatch.id);
-          if (!existingMatch) {
-            allMatches.push(scoreMatch);
-          } else {
-            // Merge score data with existing match
-            Object.assign(existingMatch, {
-              score: scoreMatch.score || existingMatch.score,
-              teams: scoreMatch.teams || existingMatch.teams,
-              teamInfo: scoreMatch.teamInfo || existingMatch.teamInfo
-            });
-          }
-        });
-      }
+      console.log("Fetched matches:", liveMatches.length);
+      console.log("Fetched scores:", liveScores.length);
 
-      console.log("Combined matches count:", allMatches.length);
-
-      // Enhanced team info extraction for upcoming matches
-      const enhancedMatches = allMatches.map(match => {
-        // If teamInfo is missing but teams array exists, create basic team info
-        if (!match.teamInfo && match.teams && match.teams.length >= 2) {
-          match.teamInfo = match.teams.map(teamName => ({
-            name: teamName,
-            shortname: teamName.substring(0, 3).toUpperCase(),
-            img: `/placeholder.svg` // Default placeholder
-          }));
-        }
-        
-        // Ensure we have team names even if teamInfo is partial
-        if (match.teamInfo && match.teamInfo.length < 2 && match.teams) {
-          match.teams.forEach((teamName, index) => {
-            if (!match.teamInfo![index]) {
-              match.teamInfo!.push({
-                name: teamName,
-                shortname: teamName.substring(0, 3).toUpperCase(),
-                img: `/placeholder.svg`
-              });
-            }
-          });
-        }
-        
-        return match;
+      // Combine data from both API calls
+      const updatedMatches = liveMatches.map((match) => {
+        const scoreData = liveScores.find((s) => s.id === match.id);
+        return { 
+          ...match, 
+          score: scoreData?.score || match.score || [],
+          teams: match.teams || scoreData?.teams || [],
+          teamInfo: match.teamInfo || scoreData?.teamInfo || [],
+          localDateTime: match.localDateTime || scoreData?.localDateTime
+        };
       });
 
-      // Apply categorization with better logging
-      const categorizedMatches = categorizeMatches(enhancedMatches);
+      // Filter out matches older than a week for completed matches
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       
-      console.log("Categorized matches:", {
-        total: categorizedMatches.length,
-        live: categorizedMatches.filter(m => m.category === 'Live').length,
-        upcoming: categorizedMatches.filter(m => m.category === 'Upcoming').length,
-        completed: categorizedMatches.filter(m => m.category === 'Completed').length
+      const recentMatches = updatedMatches.filter(match => {
+        // Skip filtering for Live and upcoming matches
+        if (match.status === "Live" || !match.matchStarted) {
+          return true;
+        }
+        
+        // For completed matches, check if they ended recently
+        if (match.matchEnded && match.dateTimeGMT) {
+          const matchDate = new Date(match.dateTimeGMT);
+          return matchDate > oneWeekAgo;
+        }
+        
+        return true;
       });
 
-      // Sort matches - Live first, then Upcoming, then Recent Completed
+      // Apply improved categorization
+      const categorizedMatches = categorizeMatches(recentMatches);
+      
+      // Sort matches - first Live, then Upcoming by time, then Recent Completed
       const sortedMatches = categorizedMatches.sort((a, b) => {
+        // Priority order: Live > Upcoming > Completed
         const categoryOrder = { 'Live': 0, 'Upcoming': 1, 'Completed': 2 };
         const categoryDiff = 
           categoryOrder[a.category as keyof typeof categoryOrder] - 
@@ -110,54 +82,61 @@ const LiveMatches = () => {
         
         if (categoryDiff !== 0) return categoryDiff;
         
-        // Within same category, sort by time
-        if (a.dateTimeGMT && b.dateTimeGMT) {
-          const timeA = new Date(a.dateTimeGMT).getTime();
-          const timeB = new Date(b.dateTimeGMT).getTime();
-          
-          if (a.category === 'Upcoming') {
-            return timeA - timeB; // Upcoming: soonest first
-          } else {
-            return timeB - timeA; // Others: most recent first
-          }
+        // For matches with same category:
+        if (a.category === 'Upcoming' && b.category === 'Upcoming') {
+          // Sort upcoming matches by start time (closer first)
+          const timeA = a.dateTimeGMT ? new Date(a.dateTimeGMT).getTime() : 0;
+          const timeB = b.dateTimeGMT ? new Date(b.dateTimeGMT).getTime() : 0;
+          return timeA - timeB;
+        }
+        
+        if (a.category === 'Completed') {
+          // For completed matches, show most recent first
+          const timeA = a.dateTimeGMT ? new Date(a.dateTimeGMT).getTime() : 0;
+          const timeB = b.dateTimeGMT ? new Date(b.dateTimeGMT).getTime() : 0;
+          return timeB - timeA; // Reverse order (newest first)
+        }
+        
+        if (a.category === 'Live' && b.category === 'Live') {
+          // For live matches, prioritize by match type (T20 > ODI > Test)
+          const typeOrder = { 't20': 0, 'odi': 1, 'test': 2, 'other': 3 };
+          const typeA = a.matchType?.toLowerCase() || 'other';
+          const typeB = b.matchType?.toLowerCase() || 'other';
+          return (typeOrder[typeA as keyof typeof typeOrder] || 3) - 
+                 (typeOrder[typeB as keyof typeof typeOrder] || 3);
         }
         
         return 0;
       });
       
-      console.log("Final sorted matches:", sortedMatches.length);
-      
       setMatches(sortedMatches);
       setFilteredMatches(sortedMatches);
       setLastUpdated(new Date().toLocaleTimeString());
-      setCurrentPage(1);
+      setCurrentPage(1); // Reset to first page when new data loads
       
       if (sortedMatches.length === 0) {
-        toast.info("No cricket matches found. The API might be experiencing issues.");
+        toast.info("No matches are currently available. Check back later!");
       } else {
-        toast.success(`Loaded ${sortedMatches.length} cricket matches successfully!`);
+        toast.success(`Found ${sortedMatches.length} cricket matches`);
       }
     } catch (error) {
-      console.error("Comprehensive fetch error:", error);
+      console.error("Fetch Matches Error:", error);
       setMatches([]);
       setFilteredMatches([]);
-      toast.error(`Failed to load cricket data: ${error.message}`);
+      toast.error("Failed to fetch match data. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   const filterMatches = (category: string) => {
-    console.log(`Filtering matches by category: ${category}`);
     setActiveFilter(category);
-    setCurrentPage(1);
-    
-    const filtered = category === "All" 
-      ? matches 
-      : matches.filter((match) => match.category === category);
-    
-    console.log(`Filtered results: ${filtered.length} matches`);
-    setFilteredMatches(filtered);
+    setCurrentPage(1); // Reset to first page when filter changes
+    setFilteredMatches(
+      category === "All" 
+        ? matches 
+        : matches.filter((match) => match.category === category)
+    );
   };
 
   const handleViewDetails = (match: CricketMatch) => {
@@ -188,135 +167,47 @@ const LiveMatches = () => {
   };
 
   const renderPagination = () => {
-    if (totalPages <= 1) return null;
-
-    const renderPageNumbers = () => {
-      const pages = [];
-      const showEllipsis = totalPages > 7;
-      
-      if (!showEllipsis) {
-        // Show all pages if 7 or fewer
-        for (let i = 1; i <= totalPages; i++) {
-          pages.push(
-            <Button
-              key={i}
-              variant={currentPage === i ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCurrentPage(i)}
-              className={`min-w-[32px] h-8 p-0 ${
-                currentPage === i 
-                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0' 
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {i}
-            </Button>
-          );
-        }
-      } else {
-        // Smart pagination with ellipsis
-        pages.push(
-          <Button
-            key={1}
-            variant={currentPage === 1 ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCurrentPage(1)}
-            className={`min-w-[32px] h-8 p-0 ${
-              currentPage === 1 
-                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            1
-          </Button>
-        );
-
-        if (currentPage > 3) {
-          pages.push(
-            <span key="ellipsis1" className="text-gray-400 px-2">...</span>
-          );
-        }
-
-        const startPage = Math.max(2, currentPage - 1);
-        const endPage = Math.min(totalPages - 1, currentPage + 1);
-
-        for (let i = startPage; i <= endPage; i++) {
-          pages.push(
-            <Button
-              key={i}
-              variant={currentPage === i ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCurrentPage(i)}
-              className={`min-w-[32px] h-8 p-0 ${
-                currentPage === i 
-                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0' 
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {i}
-            </Button>
-          );
-        }
-
-        if (currentPage < totalPages - 2) {
-          pages.push(
-            <span key="ellipsis2" className="text-gray-400 px-2">...</span>
-          );
-        }
-
-        pages.push(
-          <Button
-            key={totalPages}
-            variant={currentPage === totalPages ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCurrentPage(totalPages)}
-            className={`min-w-[32px] h-8 p-0 ${
-              currentPage === totalPages 
-                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {totalPages}
-          </Button>
-        );
-      }
-      
-      return pages;
-    };
-
     return (
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={goToPreviousPage}
-            disabled={currentPage === 1}
-            className="flex items-center gap-1 h-8 px-3"
-          >
-            <ChevronLeft size={14} />
-            <span className="hidden sm:inline">Prev</span>
-          </Button>
-          
-          <div className="flex items-center gap-1">
-            {renderPageNumbers()}
-          </div>
-          
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={goToNextPage}
-            disabled={currentPage === totalPages}
-            className="flex items-center gap-1 h-8 px-3"
-          >
-            <span className="hidden sm:inline">Next</span>
-            <ChevronRight size={14} />
-          </Button>
+      <div className="flex items-center justify-center gap-2 mt-6">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={goToPreviousPage}
+          disabled={currentPage === 1}
+          className="flex items-center gap-1"
+        >
+          <ChevronLeft size={16} />
+          Prev
+        </Button>
+        
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrentPage(page)}
+              className={`w-8 h-8 p-0 ${
+                currentPage === page 
+                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white' 
+                  : 'text-gray-700'
+              }`}
+            >
+              {page}
+            </Button>
+          ))}
         </div>
         
-        <div className="text-xs text-gray-500 text-center sm:text-left">
-          Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches
-        </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={goToNextPage}
+          disabled={currentPage === totalPages}
+          className="flex items-center gap-1"
+        >
+          Next
+          <ChevronRight size={16} />
+        </Button>
       </div>
     );
   };
@@ -326,8 +217,8 @@ const LiveMatches = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((n) => (
               <div key={n} className="h-64 bg-gray-200 rounded-lg"></div>
             ))}
           </div>
@@ -338,7 +229,7 @@ const LiveMatches = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
           Live & Upcoming Matches
         </h2>
@@ -353,7 +244,7 @@ const LiveMatches = () => {
             className="flex items-center gap-2"
           >
             <RefreshCw size={16} />
-            <span className="hidden sm:inline">Refresh</span>
+            Refresh
           </Button>
         </div>
       </div>
@@ -387,7 +278,7 @@ const LiveMatches = () => {
 
       {filteredMatches.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentMatches.map((match) => (
               <MatchCard 
                 key={match.id} 
@@ -397,7 +288,11 @@ const LiveMatches = () => {
             ))}
           </div>
           
-          {renderPagination()}
+          {totalPages > 1 && renderPagination()}
+          
+          <div className="text-center mt-6 text-sm text-gray-500">
+            Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches
+          </div>
         </>
       ) : (
         <div className="text-center py-12 bg-gray-50 rounded-lg">

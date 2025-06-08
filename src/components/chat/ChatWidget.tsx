@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, X, ChevronDown, Share2, RefreshCw, AlertTriangle, Brain } from "lucide-react";
@@ -282,28 +283,25 @@ const ChatWidget: React.FC = () => {
     };
     
     setMessages(prev => [...prev, userMessage]);
+    const userQuery = inputValue.toLowerCase();
+    
+    // Start loading state
     setIsLoading(true);
     setAiError(null);
     
     try {
-      // Determine if this is a complex query that needs API chaining
-      const isComplexQuery = inputValue.toLowerCase().includes('suggest') || 
-                            inputValue.toLowerCase().includes('fantasy') ||
-                            inputValue.toLowerCase().includes('captain') ||
-                            inputValue.toLowerCase().includes('perform') ||
-                            inputValue.toLowerCase().includes('stats');
-      
-      if (inputValue.toLowerCase().includes("refresh") || inputValue.toLowerCase().includes("update")) {
+      if (userQuery.includes("refresh") || userQuery.includes("update")) {
+        // Refresh data
         await fetchCricketData();
-      } else if (isComplexQuery && aiPowered) {
-        // Use enhanced AI with API intelligence
-        await generateEnhancedFantasySuggestions(inputValue);
+      } else if (isFantasyQuery(inputValue) && aiPowered) {
+        // Use AI for fantasy suggestions
+        await generateFantasySuggestions(inputValue, matches);
       } else if (aiPowered) {
-        // Use AI-powered response
+        // Use AI-powered response via edge function
         await fetchAIResponse(inputValue);
       } else {
-        // Fallback to basic response
-        processUserQuery(inputValue.toLowerCase(), matches, setMessages);
+        // Fallback to basic response processing
+        processUserQuery(userQuery, matches, setMessages);
       }
     } catch (error) {
       console.error("Error processing message:", error);
@@ -316,112 +314,6 @@ const ChatWidget: React.FC = () => {
     } finally {
       setIsLoading(false);
       setTimeout(scrollToBottom, 100);
-    }
-  };
-
-  // Enhanced fantasy suggestions with API intelligence
-  const generateEnhancedFantasySuggestions = async (userQuery: string) => {
-    setIsAiThinking(true);
-    
-    try {
-      // Show AI thinking message
-      const thinkingMessageId = `thinking-${Date.now()}`;
-      setMessages(prev => [...prev, {
-        id: thinkingMessageId,
-        type: "bot",
-        content: "🧠 Analyzing live cricket data across multiple APIs...",
-        timestamp: new Date(),
-        isTemporary: true
-      }]);
-
-      // Call enhanced edge function with query intelligence
-      const response = await fetch(
-        "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-assistant",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ 
-            query: userQuery,
-            requestType: 'enhanced_analysis'
-          }),
-        }
-      );
-
-      // Remove thinking message
-      setMessages(prev => prev.filter(m => m.id !== thinkingMessageId));
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Enhanced AI Response:", data);
-
-      if (data.error) {
-        throw new Error(data.message || data.error);
-      }
-
-      // Show API execution plan if available
-      if (data.apiPlan) {
-        setMessages(prev => [...prev, {
-          id: `api-plan-${Date.now()}`,
-          type: "bot",
-          content: `🔍 **API Strategy:** ${data.apiPlan.intent}\n📊 **Data Sources:** ${data.apiPlan.endpoints.join(', ')}`,
-          timestamp: new Date(),
-        }]);
-      }
-
-      // Add main AI response
-      setMessages(prev => [...prev, {
-        id: `ai-enhanced-${Date.now()}`,
-        type: "bot",
-        content: data.message || "Here's my analysis based on the latest cricket data.",
-        timestamp: new Date(),
-        isAiGenerated: true
-      }]);
-
-      // Show structured recommendations if available
-      if (data.playerStats && data.playerStats.length > 0) {
-        const recommendations = data.playerStats;
-        let suggestionText = "🎯 **Enhanced Recommendations:**\n\n";
-        
-        recommendations.forEach((player: any) => {
-          suggestionText += `• **${player.name}** (${player.role}): ${player.details}\n`;
-        });
-
-        setMessages(prev => [...prev, {
-          id: `enhanced-recs-${Date.now()}`,
-          type: "bot",
-          content: suggestionText,
-          timestamp: new Date(),
-          isFantasyRecommendation: true
-        }]);
-      }
-
-      // Update matches data if provided
-      if (data.cricketData && data.cricketData.length > 0) {
-        setMatches(data.cricketData);
-      }
-
-    } catch (error) {
-      console.error("Error generating enhanced suggestions:", error);
-      setAiError(error.message);
-      
-      // Remove thinking message if still there
-      setMessages(prev => prev.filter(m => !m.isTemporary));
-      
-      // Fallback to basic suggestions
-      const fallbackSuggestions = generateBasicFantasySuggestions(userQuery, matches);
-      setMessages(prev => [...prev, {
-        id: `fallback-${Date.now()}`,
-        type: "bot",
-        content: `⚠️ Enhanced analysis temporarily unavailable. Here are basic recommendations:\n\n${fallbackSuggestions}`,
-        timestamp: new Date(),
-      }]);
-    } finally {
-      setIsAiThinking(false);
     }
   };
 
