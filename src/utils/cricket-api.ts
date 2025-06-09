@@ -1,5 +1,4 @@
-
-import { supabase } from '@/integrations/supabase/client';
+import axios from 'axios';
 
 const API_ENDPOINT = 'https://api.cricapi.com/v1';
 const API_KEY = import.meta.env.VITE_CRIC_API_KEY || 'a52ea237-09e7-4d69-b7cc-e4f0e79fb8ae';
@@ -78,58 +77,59 @@ export interface BowlingStats {
   economy: number;
 }
 
+export const fetchMatches = async (): Promise<Match[]> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/matches`, {
+      params: {
+        apikey: API_KEY,
+        offset: 0
+      }
+    });
+    return response.data.data as Match[];
+  } catch (error) {
+    console.error("Error fetching matches:", error);
+    return [];
+  }
+};
+
 export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
   try {
-    console.log("Fetching live matches via secure endpoint...");
-    
-    const { data, error } = await supabase.functions.invoke('fetch-cricket-data');
-    
-    console.log("Supabase response:", { data, error });
-    
-    if (error) {
-      console.error("Supabase function error:", error);
-      throw new Error(`API Error: ${error.message}`);
-    }
-    
-    if (!data) {
-      console.error("No data received from endpoint");
-      throw new Error("No data received from cricket endpoint");
-    }
-    
-    if (!data.success) {
-      console.error("API returned unsuccessful response:", data);
-      throw new Error(data.error || "Cricket API returned an error");
-    }
-    
-    const matches = data.data || [];
-    console.log(`Successfully processed ${matches.length} matches`);
-    
-    return matches;
-    
+    const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
+      params: {
+        apikey: API_KEY,
+        offset: 0
+      }
+    });
+    return response.data.data as CricketMatch[];
   } catch (error) {
-    console.error("Error in fetchLiveMatches:", error);
-    
-    // Return empty array instead of throwing to prevent UI crashes
+    console.error("Error fetching live matches:", error);
     return [];
   }
 };
 
 export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
-  return fetchLiveMatches();
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/cricScore`, {
+      params: {
+        apikey: API_KEY
+      }
+    });
+    return response.data.data as CricketMatch[];
+  } catch (error) {
+    console.error("Error fetching live scores:", error);
+    return [];
+  }
 };
 
 export const fetchMatchScorecard = async (matchId: string): Promise<ScorecardData | null> => {
   try {
-    const { data, error } = await supabase.functions.invoke('cricket-assistant', {
-      body: {
-        query: `Get scorecard for match ${matchId}`,
-        requestType: 'scorecard',
-        matchId
+    const response = await axios.get(`${API_ENDPOINT}/match_scorecard`, {
+      params: {
+        apikey: API_KEY,
+        id: matchId
       }
     });
-    
-    if (error) throw error;
-    return data;
+    return response.data.data as ScorecardData;
   } catch (error) {
     console.error("Error fetching match scorecard:", error);
     return null;
@@ -178,16 +178,13 @@ export const categorizeMatches = (matches: any[]): CricketMatch[] => {
 
 export const fetchMatchDetails = async (matchId: string) => {
   try {
-    const { data, error } = await supabase.functions.invoke('cricket-assistant', {
-      body: {
-        query: `Get details for match ${matchId}`,
-        requestType: 'match_details',
-        matchId
+    const response = await axios.get(`${API_ENDPOINT}/match_info`, {
+      params: {
+        apikey: API_KEY,
+        match_id: matchId
       }
     });
-    
-    if (error) throw error;
-    return data;
+    return response.data.data;
   } catch (error) {
     console.error("Error fetching match details:", error);
     return null;
@@ -196,16 +193,14 @@ export const fetchMatchDetails = async (matchId: string) => {
 
 export const fetchPlayers = async (matchId: string) => {
   try {
-    const { data, error } = await supabase.functions.invoke('cricket-assistant', {
-      body: {
-        query: `Get players for match ${matchId}`,
-        requestType: 'players',
-        matchId
+    const response = await axios.get(`${API_ENDPOINT}/players`, {
+      params: {
+        apikey: API_KEY,
+        match_id: matchId,
+        offset: 0
       }
     });
-    
-    if (error) throw error;
-    return data;
+    return response.data.data;
   } catch (error) {
     console.error("Error fetching players:", error);
     return null;

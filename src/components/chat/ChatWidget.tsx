@@ -1,15 +1,15 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, X, ChevronDown, Share2, RefreshCw, AlertTriangle, Brain } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { fetchLiveMatches, CricketMatch } from "@/utils/cricket-api";
+import { fetchLiveMatches, fetchLiveScores, CricketMatch } from "@/utils/cricket-api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Message } from "./types";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LiveMatches from "./LiveMatches";
-import { formatMatchData, processUserQuery } from "./chatHelpers";
+import { formatMatchData, mergeMatchData, processUserQuery } from "./chatHelpers";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -57,28 +57,32 @@ const ChatWidget: React.FC = () => {
     }
   };
 
-  // Fetch cricket match data using secure backend
+  // Fetch cricket match data
   const fetchCricketData = async () => {
     setIsLoading(true);
     setDataLoadingStatus("loading");
     try {
-      console.log("Fetching cricket data via secure backend...");
+      const [liveMatches, liveScores] = await Promise.all([
+        fetchLiveMatches(),
+        fetchLiveScores()
+      ]);
       
-      const matchesData = await fetchLiveMatches();
+      console.log("Fetched matches data:", liveMatches.length);
+      console.log("Fetched scores data:", liveScores.length);
       
-      console.log("Fetched matches data:", matchesData.length);
-      
-      setMatches(matchesData);
-      setDataLoadingStatus(matchesData.length > 0 ? "success" : "empty");
+      // Combine data from both APIs to get the most complete information
+      const combinedMatches = mergeMatchData(liveMatches, liveScores);
+      setMatches(combinedMatches);
+      setDataLoadingStatus(combinedMatches.length > 0 ? "success" : "empty");
       
       // Add a match update message if there are matches
-      if (matchesData.length > 0) {
+      if (combinedMatches.length > 0) {
         setMessages(prev => [
           ...prev,
           {
             id: `match-update-${Date.now()}`,
             type: "bot",
-            content: `📊 I found ${matchesData.length} cricket matches with live data. Ask me for fantasy suggestions or player analysis!`,
+            content: `📊 I found ${combinedMatches.length} cricket matches with live data. Ask me for fantasy suggestions or player analysis!`,
             timestamp: new Date(),
           }
         ]);
@@ -101,7 +105,7 @@ const ChatWidget: React.FC = () => {
         {
           id: `error-${Date.now()}`,
           type: "bot",
-          content: "❌ Couldn't fetch live cricket data. Please check API configuration or try again later.",
+          content: "❌ Couldn't fetch live cricket data. I'll work with cached data for fantasy suggestions.",
           timestamp: new Date(),
         }
       ]);
@@ -123,7 +127,7 @@ const ChatWidget: React.FC = () => {
     );
   };
 
-  // Generate AI-powered fantasy suggestions using secure backend
+  // Generate AI-powered fantasy suggestions
   const generateFantasySuggestions = async (userQuery: string, matchData: CricketMatch[]) => {
     setIsAiThinking(true);
     
@@ -138,22 +142,30 @@ const ChatWidget: React.FC = () => {
         isTemporary: true
       }]);
 
-      // Call the enhanced edge function using secure backend
-      const { data, error } = await supabase.functions.invoke('cricket-assistant', {
-        body: { 
-          query: userQuery,
-          matchData: matchData.slice(0, 3), // Send top 3 matches to avoid payload size issues
-          requestType: 'fantasy_analysis'
+      // Call the enhanced edge function
+      const response = await fetch(
+        "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-assistant",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            query: userQuery,
+            matchData: matchData.slice(0, 3), // Send top 3 matches to avoid payload size issues
+            requestType: 'fantasy_analysis'
+          }),
         }
-      });
+      );
 
       // Remove thinking message
       setMessages(prev => prev.filter(m => m.id !== thinkingMessageId));
 
-      if (error) {
-        throw new Error(error.message || 'Failed to get AI response');
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
       }
 
+      const data = await response.json();
       console.log("AI Fantasy Response:", data);
 
       if (data.error) {
@@ -305,7 +317,7 @@ const ChatWidget: React.FC = () => {
     }
   };
 
-  // Fetch AI-powered response from edge function
+  // Fetch AI-powered response from edge function (existing functionality)
   const fetchAIResponse = async (query: string) => {
     try {
       // Show thinking message
@@ -317,21 +329,25 @@ const ChatWidget: React.FC = () => {
         isTemporary: true
       }]);
 
-      const { data, error } = await supabase.functions.invoke('cricket-assistant', {
-        body: { query }
-      });
+      const response = await fetch(
+        "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-assistant",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query }),
+        }
+      );
 
       // Remove thinking message
       setMessages(prev => prev.filter(m => !m.isTemporary));
 
-      if (error) {
-        throw new Error(error.message || 'Failed to get AI response');
-      }
-
+      const data = await response.json();
       console.log("AI response:", data);
       
-      if (data.error) {
-        const errorMessage = data.error || 'Unknown error';
+      if (!response.ok || data.error) {
+        const errorMessage = data.error || `Edge function returned ${response.status}`;
         console.error("Edge function error:", errorMessage);
         
         setAiError(errorMessage);
@@ -377,6 +393,7 @@ const ChatWidget: React.FC = () => {
     }
   };
 
+  // Share link to invite friends
   const handleShareInvite = () => {
     const shareUrl = window.location.origin;
     
@@ -396,6 +413,7 @@ const ChatWidget: React.FC = () => {
     }
   };
   
+  // Copy to clipboard helper
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       toast.success("Invite link copied to clipboard!");
@@ -405,6 +423,7 @@ const ChatWidget: React.FC = () => {
     });
   };
 
+  // Render error notice
   const renderErrorNotice = () => {
     if (!aiError) return null;
     
