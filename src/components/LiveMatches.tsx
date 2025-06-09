@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { fetchLiveMatches, getTeamLogoUrl, formatMatchStatus, formatTossInfo, CricketMatch } from "../utils/cricket-api";
 import { Card } from "@/components/ui/card";
@@ -31,17 +30,18 @@ const LiveMatches = () => {
       console.log("Fetching matches via secure backend...");
       
       const matchesData = await fetchLiveMatches();
+      console.log("Raw matches response:", matchesData);
 
       if (!Array.isArray(matchesData)) {
+        console.error("Invalid response format:", matchesData);
         throw new Error("Invalid response format from secure API");
       }
 
-      console.log("Fetched matches:", matchesData.length);
-
+      console.log("Successfully fetched matches:", matchesData.length);
       setMatches(matchesData);
       setFilteredMatches(matchesData);
       setLastUpdated(new Date().toLocaleTimeString());
-      setCurrentPage(1); // Reset to first page when new data loads
+      setCurrentPage(1);
       
       if (matchesData.length === 0) {
         toast.info("No matches are currently available. Check back later!");
@@ -52,7 +52,15 @@ const LiveMatches = () => {
       console.error("Fetch Matches Error:", error);
       setMatches([]);
       setFilteredMatches([]);
-      toast.error("Failed to fetch match data. Please try again later.");
+      
+      // More specific error handling
+      if (error.message?.includes('Failed to fetch')) {
+        toast.error("Network error. Please check your connection and try again.");
+      } else if (error.message?.includes('API')) {
+        toast.error("Cricket API is temporarily unavailable. Please try again later.");
+      } else {
+        toast.error("Failed to fetch match data. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
@@ -60,7 +68,7 @@ const LiveMatches = () => {
 
   const filterMatches = (category: string) => {
     setActiveFilter(category);
-    setCurrentPage(1); // Reset to first page when filter changes
+    setCurrentPage(1);
     setFilteredMatches(
       category === "All" 
         ? matches 
@@ -76,13 +84,11 @@ const LiveMatches = () => {
     setSelectedMatch(null);
   };
 
-  // Calculate pagination values
   const indexOfLastMatch = currentPage * matchesPerPage;
   const indexOfFirstMatch = indexOfLastMatch - matchesPerPage;
   const currentMatches = filteredMatches.slice(indexOfFirstMatch, indexOfLastMatch);
   const totalPages = Math.ceil(filteredMatches.length / matchesPerPage);
 
-  // Pagination controls
   const goToNextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
@@ -171,8 +177,9 @@ const LiveMatches = () => {
             size="sm" 
             onClick={fetchMatches}
             className="flex items-center gap-2"
+            disabled={loading}
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Refresh
           </Button>
         </div>
@@ -231,8 +238,9 @@ const LiveMatches = () => {
             onClick={fetchMatches} 
             variant="outline"
             className="bg-gradient-to-r from-purple-600/20 to-blue-500/20 hover:from-purple-600/30 hover:to-blue-600/30"
+            disabled={loading}
           >
-            <RefreshCw size={16} className="mr-2" />
+            <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh Data
           </Button>
         </div>

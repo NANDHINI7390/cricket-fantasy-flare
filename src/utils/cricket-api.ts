@@ -78,48 +78,43 @@ export interface BowlingStats {
   economy: number;
 }
 
-export const fetchMatches = async (): Promise<Match[]> => {
-  try {
-    const response = await axios.get(`${API_ENDPOINT}/matches`, {
-      params: {
-        apikey: API_KEY,
-        offset: 0
-      }
-    });
-    return response.data.data as Match[];
-  } catch (error) {
-    console.error("Error fetching matches:", error);
-    return [];
-  }
-};
-
 export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
   try {
     console.log("Fetching live matches via secure endpoint...");
     
     const { data, error } = await supabase.functions.invoke('fetch-cricket-data');
     
+    console.log("Supabase response:", { data, error });
+    
     if (error) {
-      console.error("Error fetching matches:", error);
-      throw error;
+      console.error("Supabase function error:", error);
+      throw new Error(`API Error: ${error.message}`);
     }
     
-    if (!data || !data.success) {
-      console.error("Invalid response from cricket data endpoint:", data);
-      return [];
+    if (!data) {
+      console.error("No data received from endpoint");
+      throw new Error("No data received from cricket endpoint");
     }
     
-    console.log(`Successfully fetched ${data.data?.length || 0} matches`);
-    return data.data || [];
+    if (!data.success) {
+      console.error("API returned unsuccessful response:", data);
+      throw new Error(data.error || "Cricket API returned an error");
+    }
+    
+    const matches = data.data || [];
+    console.log(`Successfully processed ${matches.length} matches`);
+    
+    return matches;
     
   } catch (error) {
     console.error("Error in fetchLiveMatches:", error);
+    
+    // Return empty array instead of throwing to prevent UI crashes
     return [];
   }
 };
 
 export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
-  // This is now handled by the main fetch function
   return fetchLiveMatches();
 };
 

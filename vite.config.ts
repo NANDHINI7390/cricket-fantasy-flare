@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    hmr: {
+      timeout: 60000
+    }
   },
   plugins: [
     react(),
@@ -20,4 +23,27 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['@radix-ui/react-tabs', '@radix-ui/react-scroll-area', '@radix-ui/react-dialog']
+        }
+      }
+    }
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-scroll-area',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-sheet',
+      'framer-motion',
+      'lucide-react'
+    ]
+  }
 }));
