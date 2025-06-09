@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { fetchLiveMatches, fetchLiveScores, getTeamLogoUrl, formatMatchStatus, categorizeMatches, formatTossInfo, CricketMatch } from "../utils/cricket-api";
+import { fetchLiveMatches, getTeamLogoUrl, formatMatchStatus, formatTossInfo, CricketMatch } from "../utils/cricket-api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,96 +28,25 @@ const LiveMatches = () => {
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      const liveMatches = await fetchLiveMatches();
-      const liveScores = await fetchLiveScores();
+      console.log("Fetching matches via secure backend...");
+      
+      const matchesData = await fetchLiveMatches();
 
-      if (!Array.isArray(liveMatches) || !Array.isArray(liveScores)) {
-        throw new Error("Invalid response format from API");
+      if (!Array.isArray(matchesData)) {
+        throw new Error("Invalid response format from secure API");
       }
 
-      console.log("Fetched matches:", liveMatches.length);
-      console.log("Fetched scores:", liveScores.length);
+      console.log("Fetched matches:", matchesData.length);
 
-      // Combine data from both API calls
-      const updatedMatches = liveMatches.map((match) => {
-        const scoreData = liveScores.find((s) => s.id === match.id);
-        return { 
-          ...match, 
-          score: scoreData?.score || match.score || [],
-          teams: match.teams || scoreData?.teams || [],
-          teamInfo: match.teamInfo || scoreData?.teamInfo || [],
-          localDateTime: match.localDateTime || scoreData?.localDateTime
-        };
-      });
-
-      // Filter out matches older than a week for completed matches
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      
-      const recentMatches = updatedMatches.filter(match => {
-        // Skip filtering for Live and upcoming matches
-        if (match.status === "Live" || !match.matchStarted) {
-          return true;
-        }
-        
-        // For completed matches, check if they ended recently
-        if (match.matchEnded && match.dateTimeGMT) {
-          const matchDate = new Date(match.dateTimeGMT);
-          return matchDate > oneWeekAgo;
-        }
-        
-        return true;
-      });
-
-      // Apply improved categorization
-      const categorizedMatches = categorizeMatches(recentMatches);
-      
-      // Sort matches - first Live, then Upcoming by time, then Recent Completed
-      const sortedMatches = categorizedMatches.sort((a, b) => {
-        // Priority order: Live > Upcoming > Completed
-        const categoryOrder = { 'Live': 0, 'Upcoming': 1, 'Completed': 2 };
-        const categoryDiff = 
-          categoryOrder[a.category as keyof typeof categoryOrder] - 
-          categoryOrder[b.category as keyof typeof categoryOrder];
-        
-        if (categoryDiff !== 0) return categoryDiff;
-        
-        // For matches with same category:
-        if (a.category === 'Upcoming' && b.category === 'Upcoming') {
-          // Sort upcoming matches by start time (closer first)
-          const timeA = a.dateTimeGMT ? new Date(a.dateTimeGMT).getTime() : 0;
-          const timeB = b.dateTimeGMT ? new Date(b.dateTimeGMT).getTime() : 0;
-          return timeA - timeB;
-        }
-        
-        if (a.category === 'Completed') {
-          // For completed matches, show most recent first
-          const timeA = a.dateTimeGMT ? new Date(a.dateTimeGMT).getTime() : 0;
-          const timeB = b.dateTimeGMT ? new Date(b.dateTimeGMT).getTime() : 0;
-          return timeB - timeA; // Reverse order (newest first)
-        }
-        
-        if (a.category === 'Live' && b.category === 'Live') {
-          // For live matches, prioritize by match type (T20 > ODI > Test)
-          const typeOrder = { 't20': 0, 'odi': 1, 'test': 2, 'other': 3 };
-          const typeA = a.matchType?.toLowerCase() || 'other';
-          const typeB = b.matchType?.toLowerCase() || 'other';
-          return (typeOrder[typeA as keyof typeof typeOrder] || 3) - 
-                 (typeOrder[typeB as keyof typeof typeOrder] || 3);
-        }
-        
-        return 0;
-      });
-      
-      setMatches(sortedMatches);
-      setFilteredMatches(sortedMatches);
+      setMatches(matchesData);
+      setFilteredMatches(matchesData);
       setLastUpdated(new Date().toLocaleTimeString());
       setCurrentPage(1); // Reset to first page when new data loads
       
-      if (sortedMatches.length === 0) {
+      if (matchesData.length === 0) {
         toast.info("No matches are currently available. Check back later!");
       } else {
-        toast.success(`Found ${sortedMatches.length} cricket matches`);
+        toast.success(`Found ${matchesData.length} cricket matches`);
       }
     } catch (error) {
       console.error("Fetch Matches Error:", error);
