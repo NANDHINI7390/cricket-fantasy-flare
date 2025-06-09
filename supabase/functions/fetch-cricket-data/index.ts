@@ -40,37 +40,54 @@ serve(async (req: Request) => {
   }
 
   try {
+    console.log("Starting cricket data fetch with API key status:", CRICAPI_KEY ? "Available" : "Missing");
+    
     if (!CRICAPI_KEY) {
-      throw new Error("Cricket API key not configured");
+      throw new Error("CRICAPI_KEY not found in environment variables");
     }
 
-    console.log("Fetching cricket data with secure API key");
-
     // Fetch current matches
+    console.log("Fetching current matches...");
     const currentMatchesResponse = await fetch(
-      `https://api.cricapi.com/v1/currentMatches?apikey=${CRICAPI_KEY}&offset=0`
+      `https://api.cricapi.com/v1/currentMatches?apikey=${CRICAPI_KEY}&offset=0`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Cricket-Fantasy-App/1.0'
+        }
+      }
     );
     
     if (!currentMatchesResponse.ok) {
-      throw new Error(`Current matches API failed: ${currentMatchesResponse.status}`);
+      throw new Error(`Current matches API failed: ${currentMatchesResponse.status} ${currentMatchesResponse.statusText}`);
     }
     
     const currentMatches = await currentMatchesResponse.json();
-    console.log("Current matches fetched:", currentMatches.data?.length || 0);
+    console.log("Current matches API response status:", currentMatches.status);
+    console.log("Current matches count:", currentMatches.data?.length || 0);
 
     // Fetch live scores
+    console.log("Fetching live scores...");
     const scoresResponse = await fetch(
-      `https://api.cricapi.com/v1/cricScore?apikey=${CRICAPI_KEY}`
+      `https://api.cricapi.com/v1/cricScore?apikey=${CRICAPI_KEY}`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Cricket-Fantasy-App/1.0'
+        }
+      }
     );
     
     let scores = { data: [] };
     if (scoresResponse.ok) {
       scores = await scoresResponse.json();
-      console.log("Live scores fetched:", scores.data?.length || 0);
+      console.log("Live scores count:", scores.data?.length || 0);
+    } else {
+      console.warn("Live scores API failed, continuing with current matches only");
     }
 
     if (currentMatches.status !== "success" || !currentMatches.data) {
-      throw new Error("Invalid response from cricket API");
+      throw new Error(`Invalid response from cricket API: ${currentMatches.status || 'Unknown error'}`);
     }
 
     // Process and combine data
@@ -80,20 +97,25 @@ serve(async (req: Request) => {
       // Format match time to IST
       let localDateTime = '';
       if (match.dateTimeGMT) {
-        const matchDate = new Date(match.dateTimeGMT);
-        const istFormatter = new Intl.DateTimeFormat('en-IN', {
-          timeZone: 'Asia/Kolkata',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric',
-          hour12: true
-        });
-        localDateTime = istFormatter.format(matchDate);
+        try {
+          const matchDate = new Date(match.dateTimeGMT);
+          const istFormatter = new Intl.DateTimeFormat('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true
+          });
+          localDateTime = istFormatter.format(matchDate);
+        } catch (err) {
+          console.warn("Error formatting date:", err);
+          localDateTime = match.dateTimeGMT;
+        }
       }
 
-      // Determine category
+      // Determine category based on status and time
       let category = "Upcoming";
       const now = new Date();
       
@@ -113,6 +135,7 @@ serve(async (req: Request) => {
           else if (statusLower.includes("won") || 
                   statusLower.includes("drawn") || 
                   statusLower.includes("match ended") ||
+                  statusLower.includes("completed") ||
                   match.matchEnded === true) {
             category = "Completed";
           }
@@ -176,13 +199,14 @@ serve(async (req: Request) => {
       return 0;
     });
 
-    console.log(`Processed ${sortedMatches.length} matches successfully`);
+    console.log(`Successfully processed ${sortedMatches.length} matches`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: sortedMatches,
-        count: sortedMatches.length
+        count: sortedMatches.length,
+        timestamp: new Date().toISOString()
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -195,7 +219,8 @@ serve(async (req: Request) => {
       JSON.stringify({ 
         success: false,
         error: error.message,
-        data: []
+        data: [],
+        timestamp: new Date().toISOString()
       }),
       { 
         status: 500,

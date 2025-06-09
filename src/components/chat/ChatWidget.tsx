@@ -9,7 +9,7 @@ import { Message } from "./types";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LiveMatches from "./LiveMatches";
-import { formatMatchData, mergeMatchData, processUserQuery } from "./chatHelpers";
+import { formatMatchData, processUserQuery } from "./chatHelpers";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -101,7 +101,7 @@ const ChatWidget: React.FC = () => {
         {
           id: `error-${Date.now()}`,
           type: "bot",
-          content: "❌ Couldn't fetch live cricket data. I'll work with cached data for fantasy suggestions.",
+          content: "❌ Couldn't fetch live cricket data. Please check API configuration or try again later.",
           timestamp: new Date(),
         }
       ]);
