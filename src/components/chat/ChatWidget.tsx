@@ -23,7 +23,6 @@ const ChatWidget: React.FC = () => {
   const [dataLoadingStatus, setDataLoadingStatus] = useState<string>("idle");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const supabase = supabase;
 
   // Initial welcome message
   useEffect(() => {

@@ -100,7 +100,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, formatMatchData }) =
         </div>
       );
     
-    case "live-analysis":
+    case "ai-analysis":
       if (!message.liveAnalysis) return null;
       
       return (
