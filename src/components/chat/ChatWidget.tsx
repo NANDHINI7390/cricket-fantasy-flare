@@ -1,15 +1,15 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, X, ChevronDown, Share2, RefreshCw, AlertTriangle, Brain } from "lucide-react";
 import { fetchLiveMatches, fetchLiveScores, CricketMatch } from "@/utils/cricket-api";
+import { createClient } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Message } from "./types";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LiveMatches from "./LiveMatches";
-import { formatMatchData, mergeMatchData, processUserQuery } from "./chatHelpers";
+import { formatMatchData, mergeMatchData, parseAIResponse } from "./chatHelpers";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -23,6 +23,7 @@ const ChatWidget: React.FC = () => {
   const [dataLoadingStatus, setDataLoadingStatus] = useState<string>("idle");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const supabase = createClient();
 
   // Initial welcome message
   useEffect(() => {
@@ -30,7 +31,7 @@ const ChatWidget: React.FC = () => {
       {
         id: "welcome",
         type: "bot",
-        content: "🏏 Welcome to Cricket Fantasy Assistant! I can help you with:\n\n• Live match scores and analysis\n• Fantasy team suggestions\n• Player performance insights\n• Captain/vice-captain recommendations\n\nTry asking: 'Show live scores' or 'Suggest a fantasy team'",
+        content: "🏏 Welcome to Cricket Fantasy Assistant! I'm powered by AI and have access to live cricket data. I can help you with:\n\n• Live match analysis and scores\n• AI-powered fantasy team suggestions\n• Detailed player performance insights\n• Captain/vice-captain recommendations with reasoning\n• Match predictions and strategies\n\nTry asking: 'Suggest a fantasy team for today's matches' or 'Who should I pick as captain?'",
         timestamp: new Date(),
       },
     ]);
@@ -79,22 +80,22 @@ const ChatWidget: React.FC = () => {
           {
             id: `match-update-${Date.now()}`,
             type: "bot",
-            content: `📊 I found ${combinedMatches.length} cricket matches with live data. Ask me for fantasy suggestions or player analysis!`,
+            content: `🤖 AI Assistant loaded with ${combinedMatches.length} live cricket matches! I'm ready to provide intelligent fantasy insights and analysis.`,
             timestamp: new Date(),
           }
         ]);
-        toast.success(`Found ${combinedMatches.length} cricket matches`);
+        toast.success(`AI Assistant ready with ${combinedMatches.length} matches`);
       } else {
         setMessages(prev => [
           ...prev,
           {
             id: `no-matches-${Date.now()}`,
             type: "bot",
-            content: "⚠️ No live matches found right now. I can still help with general fantasy cricket advice!",
+            content: "⚠️ No live matches found right now, but I can still provide expert fantasy cricket advice and strategies!",
             timestamp: new Date(),
           }
         ]);
-        toast.info("No matches are currently available. Check back later!");
+        toast.info("No matches available. AI assistant ready for general advice!");
       }
     } catch (error) {
       console.error("Error fetching cricket data:", error);
@@ -104,17 +105,17 @@ const ChatWidget: React.FC = () => {
         {
           id: `error-${Date.now()}`,
           type: "bot",
-          content: "❌ Couldn't fetch live cricket data. Please try refreshing or check back later.",
+          content: "❌ Couldn't fetch live cricket data. I'm still here to help with general fantasy cricket strategies!",
           timestamp: new Date(),
         }
       ]);
-      toast.error("Failed to fetch match data. Please try again later.");
+      toast.error("Failed to fetch match data. AI assistant still available!");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle user message submission
+  // Enhanced AI-powered message handling
   const handleSendMessage = async (inputValue: string) => {
     if (!inputValue.trim()) return;
     
@@ -137,24 +138,73 @@ const ChatWidget: React.FC = () => {
         // Refresh data
         await fetchCricketData();
       } else {
-        // Process user query with basic response logic
-        processUserQuery(userQuery, matches, setMessages);
+        // Use AI assistant for intelligent responses
+        console.log("Calling cricket assistant with query:", inputValue);
+        
+        // Determine request type for better AI responses
+        let requestType = 'general';
+        if (userQuery.includes('fantasy') || userQuery.includes('team') || 
+            userQuery.includes('captain') || userQuery.includes('pick') || 
+            userQuery.includes('suggest')) {
+          requestType = 'fantasy_analysis';
+        }
+        
+        const { data, error } = await supabase.functions.invoke('cricket-assistant', {
+          body: {
+            query: inputValue,
+            matchData: matches.slice(0, 5), // Send current match data
+            requestType: requestType
+          }
+        });
+
+        if (error) {
+          console.error("Cricket assistant error:", error);
+          // Fallback to basic response
+          setMessages(prev => [...prev, {
+            id: `fallback-${Date.now()}`,
+            type: "bot",
+            content: "🤖 I'm having trouble accessing my AI brain right now. Let me give you a quick response based on available data...\n\nFor fantasy teams, focus on in-form players, check recent performances, and balance your team with reliable batsmen, wicket-takers, and all-rounders. Would you like me to refresh the data and try again?",
+            timestamp: new Date(),
+          }]);
+        } else {
+          console.log("AI Response received:", data);
+          
+          // Parse AI response for structured display
+          const parsedResponse = parseAIResponse(data.message || data.response || "I'm here to help with cricket insights!");
+          
+          // Add AI response message
+          const aiMessage: Message = {
+            id: `ai-${Date.now()}`,
+            type: data.playerStats ? "ai-analysis" : "bot",
+            content: parsedResponse.content,
+            timestamp: new Date(),
+            liveAnalysis: parsedResponse.liveAnalysis,
+            playerStats: data.playerStats
+          };
+          
+          setMessages(prev => [...prev, aiMessage]);
+          
+          // Show success toast for fantasy analysis
+          if (requestType === 'fantasy_analysis' && data.playerStats) {
+            toast.success("AI Fantasy Analysis Complete!");
+          }
+        }
       }
     } catch (error) {
       console.error("Error processing message:", error);
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         type: "bot",
-        content: "❌ Sorry, I encountered an error. Please try again or refresh the data.",
+        content: "🤖 Oops! My AI circuits got a bit tangled. Let me try a simpler approach...\n\nI can help you with fantasy cricket strategies, player analysis, and match insights. Try asking something like 'Who should I pick as captain today?' or refresh the data to try again.",
         timestamp: new Date(),
       }]);
+      toast.error("AI assistant temporarily unavailable");
     } finally {
       setIsLoading(false);
       setTimeout(scrollToBottom, 100);
     }
   };
 
-  // Share link to invite friends
   const handleShareInvite = () => {
     const shareUrl = window.location.origin;
     
@@ -174,7 +224,6 @@ const ChatWidget: React.FC = () => {
     }
   };
   
-  // Copy to clipboard helper
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       toast.success("Invite link copied to clipboard!");
@@ -225,7 +274,7 @@ const ChatWidget: React.FC = () => {
         }`}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        aria-label="Toggle chat assistant"
+        aria-label="Toggle AI cricket assistant"
       >
         {isOpen ? <X size={24} /> : (
           <div className="relative">
@@ -248,10 +297,10 @@ const ChatWidget: React.FC = () => {
             {/* Chat header */}
             <div className="bg-gradient-to-r from-purple-600 to-blue-500 text-white px-4 py-3 flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <h3 className="font-medium">Cricket Fantasy Assistant</h3>
+                <h3 className="font-medium">AI Cricket Assistant</h3>
                 <span className="bg-green-500 text-xs px-1.5 py-0.5 rounded-full text-white font-semibold flex items-center gap-1">
                   <Brain size={10} />
-                  Live
+                  AI Powered
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -292,7 +341,7 @@ const ChatWidget: React.FC = () => {
             {/* Tabs */}
             <Tabs defaultValue="chat" value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
               <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="chat">Chat</TabsTrigger>
+                <TabsTrigger value="chat">AI Chat</TabsTrigger>
                 <TabsTrigger value="matches">Live Matches</TabsTrigger>
               </TabsList>
               
@@ -316,9 +365,9 @@ const ChatWidget: React.FC = () => {
                     {isLoading && (
                       <div className="flex justify-center py-2">
                         <div className="animate-pulse flex space-x-1">
-                          <div className="h-2 w-2 bg-purple-400 rounded-full"></div>
-                          <div className="h-2 w-2 bg-blue-400 rounded-full"></div>
-                          <div className="h-2 w-2 bg-purple-400 rounded-full"></div>
+                          <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce"></div>
+                          <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                          <div className="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                         </div>
                       </div>
                     )}
@@ -337,6 +386,10 @@ const ChatWidget: React.FC = () => {
                     >
                       <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
                     </button>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <Brain size={12} />
+                      AI Powered
+                    </span>
                   </div>
                   <ChatInput 
                     onSendMessage={handleSendMessage} 
