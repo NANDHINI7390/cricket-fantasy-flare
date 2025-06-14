@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 
 const API_ENDPOINT = 'https://api.cricapi.com/v1';
@@ -79,6 +80,7 @@ export interface BowlingStats {
 
 export const fetchMatches = async (): Promise<Match[]> => {
   try {
+    console.log("Calling edge function for cricket data...");
     const response = await fetch(
       "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
       {
@@ -90,13 +92,23 @@ export const fetchMatches = async (): Promise<Match[]> => {
     );
     
     if (!response.ok) {
+      console.error(`Edge function request failed with status ${response.status}`);
+      const errorText = await response.text();
+      console.error("Error response:", errorText);
       throw new Error(`API request failed with status ${response.status}`);
     }
     
     const data = await response.json();
-    console.log("Fetched cricket data via edge function:", data);
+    console.log("Edge function response:", data);
     
-    return data.currentMatches || [];
+    if (data.error) {
+      console.warn("API returned error:", data.error);
+      return [];
+    }
+    
+    const matches = data.currentMatches || [];
+    console.log("Processed matches:", matches.length);
+    return matches;
   } catch (error) {
     console.error("Error fetching matches via edge function:", error);
     return [];
@@ -105,6 +117,7 @@ export const fetchMatches = async (): Promise<Match[]> => {
 
 export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
   try {
+    console.log("Fetching live matches via edge function...");
     const response = await fetch(
       "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
       {
@@ -116,10 +129,18 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
     );
     
     if (!response.ok) {
+      console.error(`Edge function request failed with status ${response.status}`);
       throw new Error(`API request failed with status ${response.status}`);
     }
     
     const data = await response.json();
+    console.log("Live matches data received:", data);
+    
+    if (data.error) {
+      console.warn("API returned error:", data.error);
+      return [];
+    }
+    
     return data.currentMatches || [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
@@ -129,6 +150,7 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
 
 export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
   try {
+    console.log("Fetching live scores via edge function...");
     const response = await fetch(
       "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
       {
@@ -140,10 +162,18 @@ export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
     );
     
     if (!response.ok) {
+      console.error(`Edge function request failed with status ${response.status}`);
       throw new Error(`API request failed with status ${response.status}`);
     }
     
     const data = await response.json();
+    console.log("Live scores data received:", data);
+    
+    if (data.error) {
+      console.warn("API returned error:", data.error);
+      return [];
+    }
+    
     return data.liveScores || [];
   } catch (error) {
     console.error("Error fetching live scores:", error);
