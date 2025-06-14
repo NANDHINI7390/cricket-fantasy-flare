@@ -79,28 +79,48 @@ export interface BowlingStats {
 
 export const fetchMatches = async (): Promise<Match[]> => {
   try {
-    const response = await axios.get(`${API_ENDPOINT}/matches`, {
-      params: {
-        apikey: API_KEY,
-        offset: 0
+    const response = await fetch(
+      "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
-    });
-    return response.data.data as Match[];
+    );
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log("Fetched cricket data via edge function:", data);
+    
+    return data.currentMatches || [];
   } catch (error) {
-    console.error("Error fetching matches:", error);
+    console.error("Error fetching matches via edge function:", error);
     return [];
   }
 };
 
 export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
   try {
-    const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
-      params: {
-        apikey: API_KEY,
-        offset: 0
+    const response = await fetch(
+      "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
-    });
-    return response.data.data as CricketMatch[];
+    );
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.currentMatches || [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
@@ -109,12 +129,22 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
 
 export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
   try {
-    const response = await axios.get(`${API_ENDPOINT}/cricScore`, {
-      params: {
-        apikey: API_KEY
+    const response = await fetch(
+      "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
-    });
-    return response.data.data as CricketMatch[];
+    );
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.liveScores || [];
   } catch (error) {
     console.error("Error fetching live scores:", error);
     return [];

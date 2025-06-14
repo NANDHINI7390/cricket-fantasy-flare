@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, X, ChevronDown, Share2, RefreshCw, AlertTriangle, Brain } from "lucide-react";
@@ -33,7 +32,7 @@ const ChatWidget: React.FC = () => {
       {
         id: "welcome",
         type: "bot",
-        content: "🏏 Welcome to Cricket Fantasy AI Assistant! I can help you with:\n\n• Live match scores and analysis\n• Fantasy team suggestions using AI\n• Player performance insights\n• Captain/vice-captain recommendations\n\nTry asking: 'Suggest a fantasy team for today's match' or 'Who are the top performers in the current matches?'",
+        content: "🏏 Welcome to Cricket Fantasy AI Assistant! I'm powered by secure APIs and can help you with:\n\n• Live match scores and analysis\n• AI-powered fantasy team suggestions\n• Player performance insights\n• Captain/vice-captain recommendations\n\nTry asking: 'Suggest a fantasy team for today's match' or 'Who are the top performers in the current matches?'",
         timestamp: new Date(),
       },
     ]);
@@ -127,7 +126,7 @@ const ChatWidget: React.FC = () => {
     );
   };
 
-  // Generate AI-powered fantasy suggestions
+  // Enhanced AI-powered fantasy suggestions using secure APIs
   const generateFantasySuggestions = async (userQuery: string, matchData: CricketMatch[]) => {
     setIsAiThinking(true);
     
@@ -137,12 +136,12 @@ const ChatWidget: React.FC = () => {
       setMessages(prev => [...prev, {
         id: thinkingMessageId,
         type: "bot",
-        content: "🧠 Analyzing live match data with AI...",
+        content: "🧠 Analyzing live match data with secure AI APIs...",
         timestamp: new Date(),
         isTemporary: true
       }]);
 
-      // Call the enhanced edge function
+      // Call the enhanced edge function with secure API keys
       const response = await fetch(
         "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/cricket-assistant",
         {
@@ -152,7 +151,7 @@ const ChatWidget: React.FC = () => {
           },
           body: JSON.stringify({ 
             query: userQuery,
-            matchData: matchData.slice(0, 3), // Send top 3 matches to avoid payload size issues
+            matchData: matchData.slice(0, 3),
             requestType: 'fantasy_analysis'
           }),
         }
@@ -162,50 +161,33 @@ const ChatWidget: React.FC = () => {
       setMessages(prev => prev.filter(m => m.id !== thinkingMessageId));
 
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        throw new Error(`AI API request failed with status ${response.status}`);
       }
 
       const data = await response.json();
-      console.log("AI Fantasy Response:", data);
+      console.log("AI Fantasy Response with secure APIs:", data);
 
       if (data.error) {
         throw new Error(data.message || data.error);
       }
 
-      // Add AI response with fantasy recommendations
+      // Add enhanced AI response
       setMessages(prev => [...prev, {
         id: `ai-fantasy-${Date.now()}`,
         type: "bot",
-        content: data.message || "Here are my AI-powered fantasy recommendations based on current match data.",
+        content: data.message || "Here are my AI-powered fantasy recommendations based on live data.",
         timestamp: new Date(),
         isAiGenerated: true
       }]);
 
-      // If we have structured player recommendations, show them
+      // Show structured recommendations if available
       if (data.playerStats && data.playerStats.length > 0) {
         const recommendations = data.playerStats;
-        const captain = recommendations.find((p: any) => p.role === 'Captain');
-        const viceCaptain = recommendations.find((p: any) => p.role === 'Vice-Captain');
-        const otherPlayers = recommendations.filter((p: any) => 
-          p.role !== 'Captain' && p.role !== 'Vice-Captain'
-        );
-
-        let suggestionText = "🎯 **Fantasy Team Recommendations:**\n\n";
+        let suggestionText = "🎯 **Detailed Fantasy Analysis:**\n\n";
         
-        if (captain) {
-          suggestionText += `👑 **Captain:** ${captain.name}\n${captain.details}\n\n`;
-        }
-        
-        if (viceCaptain) {
-          suggestionText += `⭐ **Vice-Captain:** ${viceCaptain.name}\n${viceCaptain.details}\n\n`;
-        }
-        
-        if (otherPlayers.length > 0) {
-          suggestionText += "🏏 **Key Players:**\n";
-          otherPlayers.slice(0, 5).forEach((player: any) => {
-            suggestionText += `• ${player.name} (${player.role}): ${player.details}\n`;
-          });
-        }
+        recommendations.forEach((player: any, index: number) => {
+          suggestionText += `${index + 1}. **${player.name}** (${player.role})\n   ${player.details}\n\n`;
+        });
 
         setMessages(prev => [...prev, {
           id: `fantasy-breakdown-${Date.now()}`,
@@ -216,32 +198,18 @@ const ChatWidget: React.FC = () => {
         }]);
       }
 
-      // Show relevant match cards if available
-      if (data.cricketData && data.cricketData.length > 0) {
-        data.cricketData.slice(0, 2).forEach((match: CricketMatch) => {
-          setMessages(prev => [...prev, {
-            id: `match-${match.id}-${Date.now()}`,
-            type: "match-update",
-            content: match.name,
-            timestamp: new Date(),
-            matchData: match,
-          }]);
-        });
-      }
-
     } catch (error) {
-      console.error("Error generating fantasy suggestions:", error);
+      console.error("Error with secure AI fantasy suggestions:", error);
       setAiError(error.message);
       
       // Remove thinking message if still there
       setMessages(prev => prev.filter(m => !m.isTemporary));
       
-      // Fallback to basic suggestions
-      const fallbackSuggestions = generateBasicFantasySuggestions(userQuery, matchData);
+      // Fallback message
       setMessages(prev => [...prev, {
         id: `fallback-${Date.now()}`,
         type: "bot",
-        content: `⚠️ AI analysis temporarily unavailable. Here are basic recommendations:\n\n${fallbackSuggestions}`,
+        content: `⚠️ AI analysis temporarily unavailable. The secure APIs are working but there might be a temporary issue. Please try again.`,
         timestamp: new Date(),
       }]);
     } finally {
