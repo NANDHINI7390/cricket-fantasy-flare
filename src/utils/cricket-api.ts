@@ -80,68 +80,28 @@ export interface BowlingStats {
 
 export const fetchMatches = async (): Promise<Match[]> => {
   try {
-    console.log("Calling edge function for cricket data...");
-    const response = await fetch(
-      "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+    const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
+      params: {
+        apikey: API_KEY,
+        offset: 0
       }
-    );
-    
-    if (!response.ok) {
-      console.error(`Edge function request failed with status ${response.status}`);
-      const errorText = await response.text();
-      console.error("Error response:", errorText);
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("Edge function response:", data);
-    
-    if (data.error) {
-      console.warn("API returned error:", data.error);
-      return [];
-    }
-    
-    const matches = data.currentMatches || [];
-    console.log("Processed matches:", matches.length);
-    return matches;
+    });
+    return response.data.data || [];
   } catch (error) {
-    console.error("Error fetching matches via edge function:", error);
+    console.error("Error fetching matches:", error);
     return [];
   }
 };
 
 export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
   try {
-    console.log("Fetching live matches via edge function...");
-    const response = await fetch(
-      "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+    const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
+      params: {
+        apikey: API_KEY,
+        offset: 0
       }
-    );
-    
-    if (!response.ok) {
-      console.error(`Edge function request failed with status ${response.status}`);
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("Live matches data received:", data);
-    
-    if (data.error) {
-      console.warn("API returned error:", data.error);
-      return [];
-    }
-    
-    return data.currentMatches || [];
+    });
+    return response.data.data || [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
@@ -150,31 +110,12 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
 
 export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
   try {
-    console.log("Fetching live scores via edge function...");
-    const response = await fetch(
-      "https://yefrdovbporfjdhfojyx.supabase.co/functions/v1/fetch-cricket-data",
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+    const response = await axios.get(`${API_ENDPOINT}/cricScore`, {
+      params: {
+        apikey: API_KEY
       }
-    );
-    
-    if (!response.ok) {
-      console.error(`Edge function request failed with status ${response.status}`);
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("Live scores data received:", data);
-    
-    if (data.error) {
-      console.warn("API returned error:", data.error);
-      return [];
-    }
-    
-    return data.liveScores || [];
+    });
+    return response.data.data || [];
   } catch (error) {
     console.error("Error fetching live scores:", error);
     return [];
