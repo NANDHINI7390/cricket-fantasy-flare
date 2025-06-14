@@ -44,6 +44,11 @@ export interface ChatInputProps {
   isLoading: boolean;
 }
 
+export interface ChatMessageProps {
+  message: Message;
+  formatMatchData: (match: CricketMatch) => any;
+}
+
 export interface MatchDetails {
   team1: string;
   team2: string;
@@ -52,4 +57,47 @@ export interface MatchDetails {
   status: string;
   team1Logo?: string;
   team2Logo?: string;
+}
+
+export interface LiveAnalysisProps {
+  analysis: {
+    matchName: string;
+    teamScores: string[];
+    captainPick?: {
+      name: string;
+      stats: string;
+      reason: string;
+    };
+    bowlingPick?: {
+      name: string;
+      stats: string;
+      reason: string;
+    };
+    otherRecommendations?: Array<{
+      name: string;
+      role: string;
+      reason: string;
+    }>;
+  };
+  content: string;
+}
+
+export interface LiveMatchesProps {
+  matches: CricketMatch[];
+  formatMatchData: (match: CricketMatch) => any;
+  onRefresh: () => void;
+}
+
+export interface MatchCardProps {
+  match: CricketMatch;
+  details: MatchDetails;
+}
+
+export interface PlayerSuggestionProps {
+  playerSuggestions: {
+    captain?: Player;
+    viceCaptain?: Player;
+    allrounders?: Player[];
+  };
+  content: string;
 }
