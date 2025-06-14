@@ -1,10 +1,12 @@
 
-import { Player } from "@/types/player";
 import { CricketMatch } from "@/utils/cricket-api";
+import { Player } from "@/types/player";
+
+export type MessageType = "user" | "bot" | "match-update" | "player-suggestion" | "live-analysis";
 
 export interface Message {
   id: string;
-  type: "user" | "bot" | "match-update" | "player-suggestion" | "ai-analysis";
+  type: MessageType;
   content: string;
   timestamp: Date;
   matchData?: CricketMatch;
@@ -13,6 +15,7 @@ export interface Message {
     viceCaptain?: Player;
     allrounders?: Player[];
   };
+  isTemporary?: boolean;
   liveAnalysis?: {
     matchName: string;
     teamScores: string[];
@@ -32,11 +35,6 @@ export interface Message {
       reason: string;
     }>;
   };
-  playerStats?: Array<{
-    name: string;
-    role: string;
-    details: string;
-  }>;
 }
 
 export interface ChatInputProps {
@@ -46,7 +44,7 @@ export interface ChatInputProps {
 
 export interface ChatMessageProps {
   message: Message;
-  formatMatchData: (match: CricketMatch) => any;
+  formatMatchData: (match: CricketMatch) => string | MatchDetails;
 }
 
 export interface MatchDetails {
@@ -55,8 +53,28 @@ export interface MatchDetails {
   team1Score: string;
   team2Score: string;
   status: string;
-  team1Logo?: string;
-  team2Logo?: string;
+  team1Logo: string;
+  team2Logo: string;
+}
+
+export interface LiveMatchesProps {
+  matches: CricketMatch[];
+  formatMatchData: (match: CricketMatch) => string | MatchDetails;
+  onRefresh: () => void;
+}
+
+export interface MatchCardProps {
+  match: CricketMatch;
+  details: MatchDetails;
+}
+
+export interface PlayerSuggestionProps {
+  playerSuggestions: {
+    captain?: Player;
+    viceCaptain?: Player;
+    allrounders?: Player[];
+  };
+  content: string;
 }
 
 export interface LiveAnalysisProps {
@@ -78,26 +96,6 @@ export interface LiveAnalysisProps {
       role: string;
       reason: string;
     }>;
-  };
-  content: string;
-}
-
-export interface LiveMatchesProps {
-  matches: CricketMatch[];
-  formatMatchData: (match: CricketMatch) => any;
-  onRefresh: () => void;
-}
-
-export interface MatchCardProps {
-  match: CricketMatch;
-  details: MatchDetails;
-}
-
-export interface PlayerSuggestionProps {
-  playerSuggestions: {
-    captain?: Player;
-    viceCaptain?: Player;
-    allrounders?: Player[];
   };
   content: string;
 }
