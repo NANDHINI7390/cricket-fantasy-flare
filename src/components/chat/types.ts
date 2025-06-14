@@ -2,7 +2,7 @@
 import { CricketMatch } from "@/utils/cricket-api";
 import { Player } from "@/types/player";
 
-export type MessageType = "user" | "bot" | "match-update" | "player-suggestion" | "live-analysis";
+export type MessageType = "user" | "bot" | "match-update" | "player-suggestion" | "ai-analysis";
 
 export interface Message {
   id: string;
