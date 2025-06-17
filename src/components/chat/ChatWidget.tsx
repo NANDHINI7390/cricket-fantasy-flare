@@ -24,13 +24,13 @@ const ChatWidget: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Enhanced welcome message with real fantasy data capabilities
+  // Enhanced welcome message with AI capabilities
   useEffect(() => {
     setMessages([
       {
         id: "welcome",
         type: "bot",
-        content: "🏏 **Welcome to Cricket Fantasy AI Elite Pro!** 🤖\n\nI'm your advanced AI assistant powered by **real-time cricket data** and **live fantasy information**. Here's what makes me special:\n\n**🎯 Real Fantasy Data Integration**\n• Live fantasy squad analysis with credits\n• Actual player points and performance data\n• Smart captain picks based on recent scores\n• Value player recommendations (points per credit)\n\n**📊 Advanced Analytics**\n• Real-time match scorecard analysis\n• Fantasy points breakdown by player\n• Squad composition and role analysis\n• Differential pick suggestions\n\n**🔮 Smart Recommendations**\n• AI-powered team building with real data\n• Credit-efficient player combinations\n• Risk vs safe player analysis\n• Match-specific strategy insights\n\n**Try these enhanced commands:**\n• \"Show fantasy squad for today's match\"\n• \"Who scored most fantasy points recently?\"\n• \"Suggest value picks under 8 credits\"\n• \"Build me a 100-credit winning team\"\n• \"Captain options with recent performance\"\n\nReady to dominate with real data insights? 🚀",
+        content: "🏏 **Welcome to Cricket Fantasy AI Elite!** 🤖\n\nI'm your advanced AI assistant powered by real-time cricket data. Here's what I can do:\n\n**🎯 Smart Recommendations**\n• AI-powered captain & vice-captain picks\n• Team composition with reasoning\n• Risk vs safe player analysis\n\n**📊 Live Intelligence**\n• Real-time match analysis\n• Player form & performance insights\n• Pitch conditions & weather impact\n\n**🔮 Predictive Analysis**\n• Fantasy point predictions\n• Match outcome probabilities\n• Strategic team building\n\n**Try asking:**\n• \"Suggest best captain for today\"\n• \"Build me a winning team\"\n• \"Analyze current live matches\"\n• \"Best differential picks\"\n\nReady to dominate fantasy cricket? 🚀",
         timestamp: new Date(),
       },
     ]);
