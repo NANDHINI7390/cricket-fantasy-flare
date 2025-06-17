@@ -268,16 +268,7 @@ export const getCountryFlagUrl = (teamName: string): string => {
 };
 
 export const analyzeScorecardData = (scorecard: ScorecardData) => {
-  // Basic analysis of scorecard data with null checks
-  if (!scorecard || !scorecard.batting || !scorecard.bowling) {
-    return {
-      topBatsmen: [],
-      topBowlers: [],
-      totalRuns: 0,
-      totalWickets: 0
-    };
-  }
-  
+  // Basic analysis of scorecard data
   const topBatsmen = scorecard.batting.sort((a, b) => b.runs - a.runs).slice(0, 3);
   const topBowlers = scorecard.bowling.sort((a, b) => b.wickets - a.wickets).slice(0, 3);
   
