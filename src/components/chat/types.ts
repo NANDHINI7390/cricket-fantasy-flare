@@ -44,11 +44,6 @@ export interface ChatInputProps {
   isLoading: boolean;
 }
 
-export interface ChatMessageProps {
-  message: Message;
-  formatMatchData: (match: CricketMatch) => any;
-}
-
 export interface MatchDetails {
   team1: string;
   team2: string;
@@ -57,6 +52,11 @@ export interface MatchDetails {
   status: string;
   team1Logo?: string;
   team2Logo?: string;
+}
+
+export interface ChatMessageProps {
+  message: Message;
+  formatMatchData: (match: CricketMatch) => MatchDetails | string;
 }
 
 export interface LiveAnalysisProps {
@@ -84,7 +84,7 @@ export interface LiveAnalysisProps {
 
 export interface LiveMatchesProps {
   matches: CricketMatch[];
-  formatMatchData: (match: CricketMatch) => any;
+  formatMatchData: (match: CricketMatch) => MatchDetails | string;
   onRefresh: () => void;
 }
 
