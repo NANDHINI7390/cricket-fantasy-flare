@@ -523,7 +523,7 @@ export const processUserQuery = async (
           id: `bot-${Date.now()}`,
           type: "bot",
           content: "Fantasy points data not available for this match. Try asking about live scores or player suggestions.",
-          timestamp: a new Date(),
+          timestamp: new Date(),
         }]);
       }
       
