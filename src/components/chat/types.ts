@@ -2,7 +2,29 @@
 import { CricketMatch } from "@/utils/cricket-api";
 import { Player } from "@/types/player";
 
-export type MessageType = "user" | "bot" | "match-update" | "player-suggestion" | "live-analysis";
+export type MessageType = "user" | "bot" | "match-update" | "player-suggestion" | "ai-analysis";
+
+export interface SmartRecommendations {
+  captainPicks: Array<{
+    name: string;
+    team: string;
+    credits: number;
+    recentPoints?: number;
+    reason: string;
+  }>;
+  valuePicks: Array<{
+    name: string;
+    team: string;
+    credits: number;
+    reason: string;
+  }>;
+  differentialPicks: Array<{
+    name: string;
+    team: string;
+    credits: number;
+    reason: string;
+  }>;
+}
 
 export interface Message {
   id: string;
@@ -15,6 +37,7 @@ export interface Message {
     viceCaptain?: Player;
     allrounders?: Player[];
   };
+  smartRecommendations?: SmartRecommendations;
   isTemporary?: boolean;
   liveAnalysis?: {
     matchName: string;

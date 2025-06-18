@@ -1,10 +1,190 @@
-
-import { CricketMatch } from "@/utils/cricket-api";
+import { CricketMatch, FantasySquad, FantasyPoints, PlayerInfo } from "@/utils/cricket-api";
+import { fetchFantasySquad, fetchFantasyPoints, fetchMatchScorecard, fetchAllPlayers } from "@/utils/cricket-api";
 import { mockPlayers } from "./mockData";
 import { Message, MatchDetails } from "./types";
 import { Player } from "@/types/player";
+import { supabase } from "@/integrations/supabase/client";
 
-// Format match data for display
+// Enhanced AI-powered response generation with real fantasy data
+export const generateIntelligentResponse = async (
+  query: string, 
+  matches: CricketMatch[]
+): Promise<{ message: string; analysisData?: any }> => {
+  try {
+    // Get additional fantasy data for live matches
+    const enhancedMatchData = await getEnhancedMatchData(matches.slice(0, 3));
+    
+    // Call the enhanced cricket-assistant edge function
+    const { data, error } = await supabase.functions.invoke('cricket-assistant', {
+      body: {
+        query,
+        matchData: enhancedMatchData,
+        requestType: determineRequestType(query)
+      }
+    });
+
+    if (error) {
+      console.error("Error calling cricket-assistant:", error);
+      return { message: generateBasicResponse(query, matches) };
+    }
+
+    return {
+      message: data.message || generateBasicResponse(query, matches),
+      analysisData: data.playerStats
+    };
+  } catch (error) {
+    console.error("Error in intelligent response:", error);
+    return { message: generateBasicResponse(query, matches) };
+  }
+};
+
+// Get enhanced match data with fantasy squad and points
+const getEnhancedMatchData = async (matches: CricketMatch[]) => {
+  const enhancedMatches = await Promise.all(
+    matches.map(async (match) => {
+      try {
+        const [fantasySquad, fantasyPoints, scorecard] = await Promise.all([
+          fetchFantasySquad(match.id),
+          fetchFantasyPoints(match.id),
+          fetchMatchScorecard(match.id)
+        ]);
+
+        return {
+          ...match,
+          fantasySquad,
+          fantasyPoints,
+          scorecard
+        };
+      } catch (error) {
+        console.error(`Error enhancing match ${match.id}:`, error);
+        return match;
+      }
+    })
+  );
+
+  return enhancedMatches;
+};
+
+// Determine the type of request for better AI processing
+const determineRequestType = (query: string): string => {
+  const queryLower = query.toLowerCase();
+  
+  if (queryLower.includes("captain") || queryLower.includes("vc")) {
+    return "captain_suggestion";
+  } else if (queryLower.includes("team") || queryLower.includes("suggest") || queryLower.includes("pick")) {
+    return "fantasy_analysis";
+  } else if (queryLower.includes("score") || queryLower.includes("live") || queryLower.includes("match")) {
+    return "live_analysis";
+  } else if (queryLower.includes("player") && (queryLower.includes("form") || queryLower.includes("stats"))) {
+    return "player_analysis";
+  } else if (queryLower.includes("weather") || queryLower.includes("pitch") || queryLower.includes("condition")) {
+    return "pitch_analysis";
+  } else if (queryLower.includes("points") || queryLower.includes("fantasy")) {
+    return "fantasy_points";
+  } else if (queryLower.includes("squad") || queryLower.includes("playing11")) {
+    return "squad_analysis";
+  }
+  
+  return "general";
+};
+
+// Enhanced smart fantasy recommendations using real data
+export const getSmartFantasyRecommendations = async (matches: CricketMatch[]): Promise<{
+  captainPicks: Array<{
+    name: string;
+    team: string;
+    credits: number;
+    recentPoints: number;
+    reason: string;
+  }>;
+  valuePicks: Array<{
+    name: string;
+    team: string;
+    credits: number;
+    reason: string;
+  }>;
+  differentialPicks: Array<{
+    name: string;
+    team: string;
+    credits: number;
+    reason: string;
+  }>;
+}> => {
+  const recommendations = {
+    captainPicks: [],
+    valuePicks: [],
+    differentialPicks: []
+  };
+
+  try {
+    for (const match of matches.slice(0, 2)) {
+      const [fantasySquad, fantasyPoints] = await Promise.all([
+        fetchFantasySquad(match.id),
+        fetchFantasyPoints(match.id)
+      ]);
+
+      if (fantasySquad && fantasyPoints) {
+        // Analyze captain picks based on recent points
+        const topPerformers = fantasyPoints.points
+          .sort((a, b) => b.points - a.points)
+          .slice(0, 3);
+
+        topPerformers.forEach(player => {
+          const squadPlayer = findPlayerInSquad(fantasySquad, player.player_id);
+          if (squadPlayer) {
+            recommendations.captainPicks.push({
+              name: player.name,
+              team: squadPlayer.team,
+              credits: squadPlayer.credits,
+              recentPoints: player.points,
+              reason: `Scored ${player.points} points recently with ${player.breakdown.runs || 0} runs and ${player.breakdown.wickets || 0} wickets`
+            });
+          }
+        });
+
+        // Find value picks (good points per credit ratio)
+        const valuePlayers = fantasyPoints.points
+          .map(player => {
+            const squadPlayer = findPlayerInSquad(fantasySquad, player.player_id);
+            return squadPlayer ? {
+              ...player,
+              ...squadPlayer,
+              pointsPerCredit: player.points / squadPlayer.credits
+            } : null;
+          })
+          .filter(p => p && p.credits <= 8.5 && p.pointsPerCredit > 1)
+          .sort((a, b) => b.pointsPerCredit - a.pointsPerCredit)
+          .slice(0, 3);
+
+        valuePlayers.forEach(player => {
+          recommendations.valuePicks.push({
+            name: player.name,
+            team: player.team,
+            credits: player.credits,
+            reason: `Great value at ${player.credits} credits with ${player.pointsPerCredit.toFixed(1)} points per credit`
+          });
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error getting smart recommendations:", error);
+  }
+
+  return recommendations;
+};
+
+// Helper function to find player in squad
+const findPlayerInSquad = (fantasySquad: FantasySquad, playerId: string) => {
+  for (const squad of fantasySquad.squads) {
+    const player = squad.players.find(p => p.id === playerId);
+    if (player) {
+      return { ...player, team: squad.team };
+    }
+  }
+  return null;
+};
+
+// Enhanced match data formatting with fantasy insights
 export const formatMatchData = (match: CricketMatch): string | MatchDetails => {
   if (!match) return "Match details unavailable";
   
@@ -57,38 +237,66 @@ export const mergeMatchData = (matches1: CricketMatch[], matches2: CricketMatch[
   return Array.from(uniqueMatches.values());
 };
 
-// Suggest players for fantasy team
-export const suggestPlayers = (query: string): { content: string; playerSuggestions: { captain?: Player; viceCaptain?: Player; allrounders?: Player[] } } => {
-  // In a real implementation, you would analyze the query and fetch relevant player data
-  // For this example, we'll use the mock data
+// Enhanced player suggestions with AI reasoning
+export const suggestPlayersWithAI = async (query: string, matches: CricketMatch[]): Promise<{
+  content: string;
+  playerSuggestions: {
+    captain?: Player;
+    viceCaptain?: Player;
+    allrounders?: Player[];
+  };
+  reasoning?: string;
+}> => {
+  try {
+    const response = await generateIntelligentResponse(query, matches);
+    
+    // Parse AI response for structured player data
+    const playerSuggestions = extractPlayerSuggestions(response.message);
+    
+    return {
+      content: response.message,
+      playerSuggestions,
+      reasoning: extractReasoning(response.message)
+    };
+  } catch (error) {
+    console.error("Error in AI player suggestions:", error);
+    return suggestPlayers(query);
+  }
+};
+
+// Extract player suggestions from AI response
+const extractPlayerSuggestions = (aiResponse: string): {
+  captain?: Player;
+  viceCaptain?: Player;
+  allrounders?: Player[];
+} => {
+  // Look for captain mentions
+  const captainMatch = aiResponse.match(/(?:captain|cap)[:\s]+([a-zA-Z\s]+?)(?:\n|\.|\s-)/i);
+  const vcMatch = aiResponse.match(/(?:vice.captain|vc)[:\s]+([a-zA-Z\s]+?)(?:\n|\.|\s-)/i);
   
-  // Determine what kind of suggestions to make
-  const isCaptainQuery = query.includes("captain");
-  const isAllRounderQuery = query.includes("all") && query.includes("round");
+  let captain, viceCaptain;
   
-  // Create player suggestions
-  const captain = mockPlayers.find(p => p.id === "p1"); // Virat for captain
-  const viceCaptain = mockPlayers.find(p => p.id === "p4"); // KL Rahul for VC
-  const allrounders = mockPlayers.filter(p => p.role === "allrounder");
-  
-  let content = "";
-  
-  if (isCaptainQuery) {
-    content = "Based on recent form and matchup, here are my captain recommendations:";
-  } else if (isAllRounderQuery) {
-    content = "Here are the top all-rounders for your fantasy team:";
-  } else {
-    content = "Here are my fantasy team recommendations based on recent form and matchups:";
+  if (captainMatch) {
+    const captainName = captainMatch[1].trim();
+    captain = mockPlayers.find(p => p.name.toLowerCase().includes(captainName.toLowerCase())) 
+      || mockPlayers.find(p => p.role === "batsman");
   }
   
-  return {
-    content,
-    playerSuggestions: {
-      captain,
-      viceCaptain,
-      allrounders
-    }
-  };
+  if (vcMatch) {
+    const vcName = vcMatch[1].trim();
+    viceCaptain = mockPlayers.find(p => p.name.toLowerCase().includes(vcName.toLowerCase())) 
+      || mockPlayers.find(p => p.role === "allrounder");
+  }
+  
+  const allrounders = mockPlayers.filter(p => p.role === "allrounder").slice(0, 3);
+  
+  return { captain, viceCaptain, allrounders };
+};
+
+// Extract reasoning from AI response
+const extractReasoning = (aiResponse: string): string => {
+  const reasoningMatch = aiResponse.match(/(?:because|reason|due to|considering)[:\s](.+?)(?:\n\n|$)/i);
+  return reasoningMatch ? reasoningMatch[1].trim() : "Based on current form and match conditions";
 };
 
 // Parse AI response for structured display
@@ -215,15 +423,180 @@ export const parseAIResponse = (response: string): {
   return parsedContent;
 };
 
-// Process user query and prepare response
-export const processUserQuery = (
+// Enhanced query processing with real fantasy data
+export const processUserQuery = async (
   query: string, 
   matches: CricketMatch[], 
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
 ) => {
-  // Handle different query types
-  if (query.includes("score") || query.includes("match") || query.includes("live")) {
-    // Show all matches
+  const queryLower = query.toLowerCase();
+  
+  // Smart fantasy suggestions with real data
+  if (queryLower.includes("captain") || queryLower.includes("team") || queryLower.includes("pick") || queryLower.includes("suggest")) {
+    try {
+      const smartRecommendations = await getSmartFantasyRecommendations(matches);
+      const aiResponse = await generateIntelligentResponse(query, matches);
+      
+      // Parse the AI response for live analysis format
+      const parsedResponse = parseAIResponse(aiResponse.message);
+      
+      if (parsedResponse.liveAnalysis) {
+        setMessages(prev => [...prev, {
+          id: `ai-analysis-${Date.now()}`,
+          type: "ai-analysis",
+          content: parsedResponse.content,
+          timestamp: new Date(),
+          liveAnalysis: parsedResponse.liveAnalysis,
+          smartRecommendations
+        }]);
+      } else {
+        // Show smart recommendations
+        let smartContent = aiResponse.message;
+        
+        if (smartRecommendations.captainPicks.length > 0) {
+          smartContent += "\n\n🎯 **Smart Captain Picks:**\n";
+          smartRecommendations.captainPicks.forEach(pick => {
+            smartContent += `• **${pick.name}** (${pick.team}) - ${pick.credits} credits\n  ${pick.reason}\n`;
+          });
+        }
+
+        if (smartRecommendations.valuePicks.length > 0) {
+          smartContent += "\n💰 **Value Picks:**\n";
+          smartRecommendations.valuePicks.forEach(pick => {
+            smartContent += `• **${pick.name}** (${pick.team}) - ${pick.credits} credits\n  ${pick.reason}\n`;
+          });
+        }
+        
+        setMessages(prev => [...prev, {
+          id: `smart-suggestion-${Date.now()}`,
+          type: "bot",
+          content: smartContent,
+          timestamp: new Date(),
+        }]);
+      }
+      
+      return;
+    } catch (error) {
+      console.error("Error in smart processing:", error);
+    }
+  }
+  
+  // Fantasy points analysis
+  if (queryLower.includes("points") || queryLower.includes("fantasy")) {
+    if (matches.length === 0) {
+      setMessages(prev => [...prev, {
+        id: `bot-${Date.now()}`,
+        type: "bot",
+        content: "No matches available for fantasy points analysis. Please refresh to get latest data.",
+        timestamp: new Date(),
+      }]);
+      return;
+    }
+
+    try {
+      const match = matches[0];
+      const fantasyPoints = await fetchFantasyPoints(match.id);
+      
+      if (fantasyPoints) {
+        const topScorers = fantasyPoints.points
+          .sort((a, b) => b.points - a.points)
+          .slice(0, 5);
+        
+        let pointsContent = `📊 **Fantasy Points Analysis for ${match.name}:**\n\n`;
+        pointsContent += "🏆 **Top Performers:**\n";
+        
+        topScorers.forEach((player, index) => {
+          pointsContent += `${index + 1}. **${player.name}** - ${player.points} points\n`;
+          if (player.breakdown.runs) pointsContent += `   Runs: ${player.breakdown.runs}\n`;
+          if (player.breakdown.wickets) pointsContent += `   Wickets: ${player.breakdown.wickets}\n`;
+          pointsContent += "\n";
+        });
+        
+        setMessages(prev => [...prev, {
+          id: `fantasy-points-${Date.now()}`,
+          type: "bot",
+          content: pointsContent,
+          timestamp: new Date(),
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          id: `bot-${Date.now()}`,
+          type: "bot",
+          content: "Fantasy points data not available for this match. Try asking about live scores or player suggestions.",
+          timestamp: a new Date(),
+        }]);
+      }
+      
+      return;
+    } catch (error) {
+      console.error("Error fetching fantasy points:", error);
+    }
+  }
+
+  // Squad analysis
+  if (queryLower.includes("squad") || queryLower.includes("playing11")) {
+    if (matches.length === 0) {
+      setMessages(prev => [...prev, {
+        id: `bot-${Date.now()}`,
+        type: "bot",
+        content: "No matches available for squad analysis. Please refresh to get latest data.",
+        timestamp: new Date(),
+      }]);
+      return;
+    }
+
+    try {
+      const match = matches[0];
+      const fantasySquad = await fetchFantasySquad(match.id);
+      
+      if (fantasySquad) {
+        let squadContent = `👥 **Fantasy Squad for ${match.name}:**\n\n`;
+        
+        fantasySquad.squads.forEach(squad => {
+          squadContent += `🏏 **${squad.team}:**\n`;
+          const batsmen = squad.players.filter(p => p.role.toLowerCase().includes('bat'));
+          const bowlers = squad.players.filter(p => p.role.toLowerCase().includes('bowl'));
+          const allrounders = squad.players.filter(p => p.role.toLowerCase().includes('all'));
+          const keepers = squad.players.filter(p => p.role.toLowerCase().includes('keep'));
+          
+          if (batsmen.length > 0) {
+            squadContent += "**Batsmen:** " + batsmen.map(p => `${p.name} (${p.credits})`).join(", ") + "\n";
+          }
+          if (bowlers.length > 0) {
+            squadContent += "**Bowlers:** " + bowlers.map(p => `${p.name} (${p.credits})`).join(", ") + "\n";
+          }
+          if (allrounders.length > 0) {
+            squadContent += "**All-rounders:** " + allrounders.map(p => `${p.name} (${p.credits})`).join(", ") + "\n";
+          }
+          if (keepers.length > 0) {
+            squadContent += "**Wicket-keepers:** " + keepers.map(p => `${p.name} (${p.credits})`).join(", ") + "\n";
+          }
+          squadContent += "\n";
+        });
+        
+        setMessages(prev => [...prev, {
+          id: `squad-analysis-${Date.now()}`,
+          type: "bot",
+          content: squadContent,
+          timestamp: new Date(),
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          id: `bot-${Date.now()}`,
+          type: "bot",
+          content: "Squad data not available for this match. Try asking about live scores or general player suggestions.",
+          timestamp: new Date(),
+        }]);
+      }
+      
+      return;
+    } catch (error) {
+      console.error("Error fetching squad data:", error);
+    }
+  }
+  
+  // Live scores with AI insights
+  if (queryLower.includes("score") || queryLower.includes("match") || queryLower.includes("live")) {
     if (matches.length === 0) {
       setMessages(prev => [...prev, {
         id: `bot-${Date.now()}`,
@@ -234,7 +607,25 @@ export const processUserQuery = (
       return;
     }
 
-    // Add a message for each match (limit to 3 for simplicity)
+    // Get AI insights for live matches with enhanced data
+    try {
+      const enhancedMatches = await getEnhancedMatchData(matches.slice(0, 2));
+      const aiResponse = await generateIntelligentResponse(
+        `Analyze these live cricket matches for fantasy insights with squad and points data`,
+        enhancedMatches
+      );
+      
+      setMessages(prev => [...prev, {
+        id: `ai-insight-${Date.now()}`,
+        type: "bot",
+        content: aiResponse.message,
+        timestamp: new Date(),
+      }]);
+    } catch (error) {
+      console.error("Error getting AI insights:", error);
+    }
+    
+    // Show match data
     const matchesToShow = matches.slice(0, 3);
     matchesToShow.forEach(match => {
       setMessages(prev => [...prev, {
@@ -246,7 +637,6 @@ export const processUserQuery = (
       }]);
     });
 
-    // Add a summary message if there are more matches
     if (matches.length > 3) {
       setMessages(prev => [...prev, {
         id: `bot-${Date.now()}`,
@@ -255,36 +645,137 @@ export const processUserQuery = (
         timestamp: new Date(),
       }]);
     }
-  } else if (query.includes("captain") || query.includes("team") || query.includes("pick") || query.includes("suggest")) {
-    // Suggest players for fantasy team
-    const { content, playerSuggestions } = suggestPlayers(query);
     
-    setMessages(prev => [...prev, {
-      id: `player-suggestion-${Date.now()}`,
-      type: "player-suggestion",
-      content,
-      timestamp: new Date(),
-      playerSuggestions
-    }]);
-  } else if (query.includes("help")) {
-    // Show help
+    return;
+  }
+  
+  // Player analysis with AI
+  if (queryLower.includes("player") || queryLower.includes("form") || queryLower.includes("stats")) {
+    try {
+      const aiResponse = await generateIntelligentResponse(query, matches);
+      setMessages(prev => [...prev, {
+        id: `player-analysis-${Date.now()}`,
+        type: "bot",
+        content: aiResponse.message,
+        timestamp: new Date(),
+      }]);
+      return;
+    } catch (error) {
+      console.error("Error in player analysis:", error);
+    }
+  }
+  
+  // Help command with enhanced features
+  if (queryLower.includes("help")) {
     setMessages(prev => [...prev, {
       id: `bot-${Date.now()}`,
       type: "bot",
-      content: `You can ask me things like:
+      content: `🏏 **Cricket Fantasy AI Assistant - Enhanced Edition**
+
+I can help you with:
+
+**📊 Live Match Analysis**
 • "Show live scores"
-• "Who should I pick as captain?"
-• "Suggest players for my fantasy team"
-• "Refresh cricket data"`,
+• "What's happening in the match?"
+• "Match updates with fantasy impact"
+
+**👑 Smart Captain & Team Suggestions**
+• "Who should I pick as captain?" (Uses real points data)
+• "Suggest best vice-captain"
+• "Build me a winning team"
+• "Value picks under 8 credits"
+
+**📈 Real Fantasy Data**
+• "Show fantasy points for [match]"
+• "Squad analysis for today's match"
+• "Top performers this match"
+• "Best differential picks"
+
+**🎯 Advanced Strategy**
+• "Pitch conditions impact"
+• "Weather effect on fantasy"
+• "Safe vs risky picks"
+• "Points per credit analysis"
+
+**💰 Credit Management**
+• "Budget-friendly team"
+• "Premium player analysis"
+• "Value vs expensive picks"
+
+Just ask naturally - I now use real fantasy squad data, points, and player information! 🤖`,
       timestamp: new Date(),
     }]);
-  } else {
-    // Generic response
+    return;
+  }
+  
+  // General AI response for any other query
+  try {
+    const aiResponse = await generateIntelligentResponse(query, matches);
+    setMessages(prev => [...prev, {
+      id: `ai-general-${Date.now()}`,
+      type: "bot",
+      content: aiResponse.message,
+      timestamp: new Date(),
+    }]);
+  } catch (error) {
+    console.error("Error in general AI response:", error);
     setMessages(prev => [...prev, {
       id: `bot-${Date.now()}`,
       type: "bot",
-      content: "You can type 'scores' to see live matches, 'suggest team' for fantasy recommendations, or 'help' for more options.",
+      content: "I'm here to help with cricket fantasy questions! Try asking about live scores, player suggestions, or team building tips.",
       timestamp: new Date(),
     }]);
   }
+};
+
+// Fallback basic response function
+const generateBasicResponse = (query: string, matches: CricketMatch[]): string => {
+  const queryLower = query.toLowerCase();
+  
+  if (queryLower.includes("captain") || queryLower.includes("team")) {
+    return "🏏 For the best captain picks, I recommend looking at top-order batsmen in good form. Consider players who are consistent run-scorers and can provide stability to your fantasy team.";
+  }
+  
+  if (queryLower.includes("score") || queryLower.includes("live")) {
+    if (matches.length > 0) {
+      return `📺 I found ${matches.length} cricket matches. ${matches[0].name} is ${matches[0].status}. Check the Matches tab for detailed scores.`;
+    }
+    return "⚠️ No live matches found at the moment. Please check back later.";
+  }
+  
+  return "🤖 I'm your cricket fantasy AI assistant! Ask me about live scores, player suggestions, or team building strategies.";
+};
+
+// Suggest players for fantasy team
+export const suggestPlayers = (query: string): { content: string; playerSuggestions: { captain?: Player; viceCaptain?: Player; allrounders?: Player[] } } => {
+  // In a real implementation, you would analyze the query and fetch relevant player data
+  // For this example, we'll use the mock data
+  
+  // Determine what kind of suggestions to make
+  const isCaptainQuery = query.includes("captain");
+  const isAllRounderQuery = query.includes("all") && query.includes("round");
+  
+  // Create player suggestions
+  const captain = mockPlayers.find(p => p.id === "p1"); // Virat for captain
+  const viceCaptain = mockPlayers.find(p => p.id === "p4"); // KL Rahul for VC
+  const allrounders = mockPlayers.filter(p => p.role === "allrounder");
+  
+  let content = "";
+  
+  if (isCaptainQuery) {
+    content = "Based on recent form and matchup, here are my captain recommendations:";
+  } else if (isAllRounderQuery) {
+    content = "Here are the top all-rounders for your fantasy team:";
+  } else {
+    content = "Here are my fantasy team recommendations based on recent form and matchups:";
+  }
+  
+  return {
+    content,
+    playerSuggestions: {
+      captain,
+      viceCaptain,
+      allrounders
+    }
+  };
 };

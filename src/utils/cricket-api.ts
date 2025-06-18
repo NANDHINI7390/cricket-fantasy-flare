@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 const API_ENDPOINT = 'https://api.cricapi.com/v1';
@@ -76,6 +75,45 @@ export interface BowlingStats {
   wickets: number;
   runs: number;
   economy: number;
+}
+
+export interface FantasySquad {
+  match_id: string;
+  squads: Array<{
+    team: string;
+    players: Array<{
+      id: string;
+      name: string;
+      role: string;
+      credits: number;
+    }>;
+  }>;
+}
+
+export interface FantasyPoints {
+  match_id: string;
+  points: Array<{
+    player_id: string;
+    name: string;
+    points: number;
+    breakdown: {
+      runs?: number;
+      wickets?: number;
+      catches?: number;
+      stumping?: number;
+      runout?: number;
+    };
+  }>;
+}
+
+export interface PlayerInfo {
+  id: string;
+  name: string;
+  country: string;
+  role: string;
+  battingStyle?: string;
+  bowlingStyle?: string;
+  recentForm?: string;
 }
 
 export const fetchMatches = async (): Promise<Match[]> => {
@@ -278,4 +316,52 @@ export const analyzeScorecardData = (scorecard: ScorecardData) => {
     totalRuns: scorecard.batting.reduce((sum, player) => sum + player.runs, 0),
     totalWickets: scorecard.bowling.reduce((sum, player) => sum + player.wickets, 0)
   };
+};
+
+export const fetchFantasySquad = async (matchId: string): Promise<FantasySquad | null> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/match_squad`, {
+      params: {
+        apikey: API_KEY,
+        id: matchId,
+        offset: 0
+      }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching fantasy squad:", error);
+    return null;
+  }
+};
+
+export const fetchFantasyPoints = async (matchId: string, ruleset: string = "0"): Promise<FantasyPoints | null> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/match_points`, {
+      params: {
+        apikey: API_KEY,
+        id: matchId,
+        ruleset,
+        offset: 0
+      }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching fantasy points:", error);
+    return null;
+  }
+};
+
+export const fetchAllPlayers = async (): Promise<PlayerInfo[]> => {
+  try {
+    const response = await axios.get(`${API_ENDPOINT}/players`, {
+      params: {
+        apikey: API_KEY,
+        offset: 0
+      }
+    });
+    return response.data.data || [];
+  } catch (error) {
+    console.error("Error fetching players:", error);
+    return [];
+  }
 };
