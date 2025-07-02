@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, ChevronDown, Share2, RefreshCw, AlertTriangle, Brain, Zap } from "lucide-react";
+import { MessageSquare, X, ChevronDown, Share2, RefreshCw, Brain, Zap } from "lucide-react";
 import { fetchLiveMatches, fetchLiveScores, CricketMatch } from "@/utils/cricket-api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,13 +24,13 @@ const ChatWidget: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Enhanced welcome message with real fantasy data capabilities
+  // Enhanced welcome message
   useEffect(() => {
     setMessages([
       {
         id: "welcome",
         type: "bot",
-        content: "🏏 **Welcome to Cricket Fantasy AI Elite Pro!** 🤖\n\nI'm your advanced AI assistant powered by **real-time cricket data** and **live fantasy information**. Here's what makes me special:\n\n**🎯 Real Fantasy Data Integration**\n• Live fantasy squad analysis with credits\n• Actual player points and performance data\n• Smart captain picks based on recent scores\n• Value player recommendations (points per credit)\n\n**📊 Advanced Analytics**\n• Real-time match scorecard analysis\n• Fantasy points breakdown by player\n• Squad composition and role analysis\n• Differential pick suggestions\n\n**🔮 Smart Recommendations**\n• AI-powered team building with real data\n• Credit-efficient player combinations\n• Risk vs safe player analysis\n• Match-specific strategy insights\n\n**Try these enhanced commands:**\n• \"Show fantasy squad for today's match\"\n• \"Who scored most fantasy points recently?\"\n• \"Suggest value picks under 8 credits\"\n• \"Build me a 100-credit winning team\"\n• \"Captain options with recent performance\"\n\nReady to dominate with real data insights? 🚀",
+        content: "🏏 **Welcome to Cricket Fantasy AI - AVP Edition!** 🧠\n\nI'm your enhanced AI assistant powered by **real-time CrickAPI data** and **OpenAI intelligence**. Here's my smart workflow:\n\n**🧭 Smart Data Processing**\n• Live match data from CrickAPI\n• Player stats and fantasy points\n• AI-powered analysis with OpenAI\n• Intelligent fallback when data is unavailable\n\n**🎯 What I Can Do**\n• **Captain Suggestions**: \"Who should be my captain between Gill, Pant, and Bumrah?\"\n• **Live Analysis**: \"What's the current match situation?\"\n• **Fantasy Teams**: \"Build me a winning team for today\"\n• **Player Stats**: \"How is Kohli performing recently?\"\n• **Strategic Insights**: \"Best value picks under 8 credits\"\n\n**🤖 AI-Enhanced Features**\n• Smart prompting with live data\n• Contextual cricket knowledge\n• Fallback intelligence when APIs fail\n• Natural language understanding\n\nReady to dominate fantasy cricket with AI intelligence? 🚀",
         timestamp: new Date(),
       },
     ]);
@@ -69,10 +69,9 @@ const ChatWidget: React.FC = () => {
       setDataLoadingStatus(combinedMatches.length > 0 ? "success" : "empty");
       
       if (combinedMatches.length > 0) {
-        // Get AI insights for the fetched matches
         try {
           const aiInsights = await generateIntelligentResponse(
-            "Analyze these live cricket matches and provide key fantasy insights",
+            "Analyze these live cricket matches and provide key insights",
             combinedMatches
           );
           
@@ -81,7 +80,7 @@ const ChatWidget: React.FC = () => {
             {
               id: `ai-insights-${Date.now()}`,
               type: "bot",
-              content: `🎯 **Live Cricket Intelligence Update**\n\n${aiInsights.message}\n\n📊 Found ${combinedMatches.length} matches with live data. Ask me for specific recommendations!`,
+              content: `🧠 **AI Cricket Intelligence Update**\n\n${aiInsights.message}\n\n📊 Found ${combinedMatches.length} matches with live data. Ask me anything!`,
               timestamp: new Date(),
             }
           ]);
@@ -92,7 +91,7 @@ const ChatWidget: React.FC = () => {
             {
               id: `match-update-${Date.now()}`,
               type: "bot",
-              content: `📊 I found ${combinedMatches.length} cricket matches with live data. Ask me for fantasy suggestions or player analysis!`,
+              content: `📊 I found ${combinedMatches.length} cricket matches with live data. My AI brain is ready to help with analysis!`,
               timestamp: new Date(),
             }
           ]);
@@ -105,11 +104,10 @@ const ChatWidget: React.FC = () => {
           {
             id: `no-matches-${Date.now()}`,
             type: "bot",
-            content: "⚠️ No live matches found right now. I can still help with general fantasy cricket strategies and tips!",
+            content: "⚠️ No live matches found right now. But my AI knowledge is still here to help with cricket strategies!",
             timestamp: new Date(),
           }
         ]);
-        toast.info("No matches are currently available. Check back later!");
       }
     } catch (error) {
       console.error("Error fetching cricket data:", error);
@@ -119,17 +117,16 @@ const ChatWidget: React.FC = () => {
         {
           id: `error-${Date.now()}`,
           type: "bot",
-          content: "❌ Couldn't fetch live cricket data. But I'm still here to help with fantasy strategies! Try refreshing later.",
+          content: "❌ Couldn't fetch live data. But I can still help with cricket insights using my AI knowledge!",
           timestamp: new Date(),
         }
       ]);
-      toast.error("Failed to fetch match data. Please try again later.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Enhanced message handling with AI processing
+  // Enhanced message handling with AI workflow
   const handleSendMessage = async (inputValue: string) => {
     if (!inputValue.trim()) return;
     
@@ -141,24 +138,23 @@ const ChatWidget: React.FC = () => {
     };
     
     setMessages(prev => [...prev, userMessage]);
-    const userQuery = inputValue.toLowerCase();
     
     setIsLoading(true);
     setIsAIThinking(true);
     
     try {
-      if (userQuery.includes("refresh") || userQuery.includes("update")) {
+      if (inputValue.toLowerCase().includes("refresh") || inputValue.toLowerCase().includes("update")) {
         await fetchCricketData();
       } else {
-        // Use enhanced AI processing
-        await processUserQuery(userQuery, matches, setMessages);
+        // Use enhanced AI processing workflow
+        await processUserQuery(inputValue, matches, setMessages);
       }
     } catch (error) {
       console.error("Error processing message:", error);
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         type: "bot",
-        content: "❌ I encountered an error while processing your request. Please try rephrasing your question or refresh the data.",
+        content: "❌ I encountered an error while processing your request. My AI brain needs a moment to recover. Please try again!",
         timestamp: new Date(),
       }]);
     } finally {
@@ -173,8 +169,8 @@ const ChatWidget: React.FC = () => {
     
     if (navigator.share) {
       navigator.share({
-        title: 'Fantasy Cricket Elite',
-        text: 'Join me on Fantasy Cricket Elite for cricket fantasy experience!',
+        title: 'Fantasy Cricket AI - AVP Edition',
+        text: 'Join me on Fantasy Cricket AI for the ultimate cricket fantasy experience!',
         url: shareUrl,
       }).then(() => {
         toast.success("Share successful!");
@@ -204,7 +200,7 @@ const ChatWidget: React.FC = () => {
     
     switch (dataLoadingStatus) {
       case "loading":
-        statusMessage = "Loading cricket intelligence...";
+        statusMessage = "Loading AI cricket intelligence...";
         statusColor = "text-blue-600";
         break;
       case "empty":
@@ -212,7 +208,7 @@ const ChatWidget: React.FC = () => {
         statusColor = "text-orange-600";
         break;
       case "error":
-        statusMessage = "Failed to load cricket data";
+        statusMessage = "AI working offline mode";
         statusColor = "text-red-600";
         break;
     }
@@ -229,7 +225,7 @@ const ChatWidget: React.FC = () => {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end">
-      {/* Enhanced chat toggle button */}
+      {/* Enhanced chat toggle button with AI branding */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={`rounded-full p-3 shadow-lg focus:outline-none ${
@@ -260,10 +256,10 @@ const ChatWidget: React.FC = () => {
             transition={{ duration: 0.2 }}
             className="bg-white rounded-lg shadow-xl w-80 sm:w-96 h-[500px] mb-2 flex flex-col overflow-hidden border border-purple-200"
           >
-            {/* Enhanced chat header */}
+            {/* Enhanced header with AI branding */}
             <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-green-500 text-white px-4 py-3 flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <h3 className="font-medium">Cricket AI Elite</h3>
+                <h3 className="font-medium">Cricket AI - AVP</h3>
                 <span className="bg-green-500 text-xs px-1.5 py-0.5 rounded-full text-white font-semibold flex items-center gap-1">
                   <Brain size={10} />
                   AI Live
@@ -271,7 +267,7 @@ const ChatWidget: React.FC = () => {
                 {isAIThinking && (
                   <span className="bg-yellow-500 text-xs px-1.5 py-0.5 rounded-full text-white font-semibold flex items-center gap-1">
                     <div className="animate-spin h-2 w-2 border border-white rounded-full border-t-transparent"></div>
-                    Thinking
+                    Processing
                   </span>
                 )}
               </div>
@@ -284,9 +280,9 @@ const ChatWidget: React.FC = () => {
                   </SheetTrigger>
                   <SheetContent>
                     <SheetHeader>
-                      <SheetTitle>Invite Friends</SheetTitle>
+                      <SheetTitle>Share Cricket AI</SheetTitle>
                       <SheetDescription>
-                        Share Fantasy Cricket Elite with friends!
+                        Share Fantasy Cricket AI - AVP Edition with friends!
                       </SheetDescription>
                     </SheetHeader>
                     <div className="py-6">
@@ -295,7 +291,7 @@ const ChatWidget: React.FC = () => {
                         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600"
                       >
                         <Share2 size={16} />
-                        Share Invite Link
+                        Share AI Assistant
                       </Button>
                     </div>
                   </SheetContent>
@@ -344,17 +340,18 @@ const ChatWidget: React.FC = () => {
                   </div>
                 </ScrollArea>
                 
-                <div className="border-t border-gray-200 mt-auto">
-                  <div className="p-2 flex justify-between items-center">
+                <div className="mt-auto">
+                  <div className="px-4 py-2 flex justify-between items-center border-t">
                     <button 
                       onClick={fetchCricketData}
                       className="text-blue-600 hover:text-blue-800 p-1 rounded"
-                      title="Refresh cricket intelligence"
+                      title="Refresh AI intelligence"
                       disabled={isLoading}
                     >
                       <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
                     </button>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                      <Brain size={12} />
                       AI-powered insights
                     </div>
                   </div>

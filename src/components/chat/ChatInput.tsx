@@ -13,23 +13,31 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   return (
-    <div className="border-t p-3">
-      <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
+    <div className="border-t p-4 bg-white">
+      <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-3 border border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-          placeholder="Ask about matches or players..."
-          className="bg-transparent flex-grow focus:outline-none"
+          onKeyPress={handleKeyPress}
+          placeholder="Ask about matches, players, or fantasy suggestions..."
+          className="bg-transparent flex-grow focus:outline-none text-gray-800 placeholder-gray-500"
+          disabled={isLoading}
         />
         <button 
           onClick={handleSendMessage}
-          className="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none"
-          disabled={isLoading}
+          className="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={isLoading || !inputValue.trim()}
         >
-          <Send size={18} />
+          <Send size={20} />
         </button>
       </div>
     </div>
