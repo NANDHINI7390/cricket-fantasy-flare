@@ -10,14 +10,16 @@ export const generateIntelligentResponse = async (
   matches: CricketMatch[]
 ): Promise<{ message: string; analysisData?: any }> => {
   try {
-    console.log("Starting intelligent response generation...");
+    console.log("🤖 Starting intelligent response generation...");
+    console.log("🏏 Matches provided:", matches.length);
     
     // Fetch enhanced cricket data for the query
     const cricketData = await getEnhancedCricketData(query, matches);
-    console.log("Enhanced cricket data fetched:", !!cricketData);
+    console.log("📊 Enhanced cricket data fetched:", !!cricketData);
+    console.log("🏏 Cricket data matches:", cricketData?.matches?.length || 0);
     
     // Call the enhanced cricket-assistant edge function with smart prompting
-    console.log("Calling cricket-assistant edge function...");
+    console.log("🚀 Calling cricket-assistant edge function...");
     
     const { data, error } = await supabase.functions.invoke('cricket-assistant', {
       body: {
@@ -29,18 +31,33 @@ export const generateIntelligentResponse = async (
     });
 
     if (error) {
-      console.error("Error calling cricket-assistant:", error);
+      console.error("❌ Error calling cricket-assistant:", error);
       return { message: generateFallbackResponse(query, matches) };
     }
 
-    console.log("Cricket assistant response received:", !!data.message);
+    console.log("✅ Cricket assistant response received");
+    console.log("📊 Response status:", data?.cricketApiStatus, data?.openAiStatus);
+
+    // Add status information to the message
+    let statusInfo = "";
+    if (data?.cricketApiStatus === "working") {
+      statusInfo = "🟢 **Live Data Active** | ";
+    } else {
+      statusInfo = "🔴 **Offline Mode** | ";
+    }
+    
+    if (data?.openAiStatus === "available") {
+      statusInfo += "🤖 **AI Enhanced**\n\n";
+    } else {
+      statusInfo += "⚠️ **Basic Mode**\n\n";
+    }
 
     return {
-      message: data.message || generateFallbackResponse(query, matches),
+      message: statusInfo + (data.message || generateFallbackResponse(query, matches)),
       analysisData: data.playerStats
     };
   } catch (error) {
-    console.error("Error in intelligent response generation:", error);
+    console.error("❌ Error in intelligent response generation:", error);
     return { message: generateFallbackResponse(query, matches) };
   }
 };
@@ -180,12 +197,13 @@ export const processUserQuery = async (
 ) => {
   const queryLower = query.toLowerCase();
   
-  console.log("Processing user query:", query);
+  console.log("🤖 Processing user query:", query);
+  console.log("🏏 Available matches:", matches.length);
   
   try {
     // Use the smart workflow for all queries
     const aiResponse = await generateIntelligentResponse(query, matches);
-    console.log("AI response received:", !!aiResponse.message);
+    console.log("✅ AI response received:", !!aiResponse.message);
     
     // Handle different types of responses with enhanced formatting
     if (queryLower.includes("captain") || queryLower.includes("team") || queryLower.includes("pick")) {
@@ -218,7 +236,7 @@ export const processUserQuery = async (
       }]);
     }
   } catch (error) {
-    console.error("Error processing user query:", error);
+    console.error("❌ Error processing user query:", error);
     setMessages(prev => [...prev, {
       id: `error-${Date.now()}`,
       type: "bot",
@@ -232,24 +250,25 @@ export const processUserQuery = async (
 const generateFallbackResponse = (query: string, matches: CricketMatch[]): string => {
   const queryLower = query.toLowerCase();
   
-  console.log("Generating fallback response for:", queryLower);
+  console.log("⚠️ Generating fallback response for:", queryLower);
+  console.log("🏏 Available matches for fallback:", matches.length);
   
   if (queryLower.includes("captain") || queryLower.includes("team")) {
-    return "🏏 **Captain Strategy (Offline Mode):**\n\nFor captain picks, focus on:\n• Top-order batsmen with consistent form\n• All-rounders who contribute with both bat and ball\n• Key bowlers on favorable pitches\n• Players with good recent performances\n\nConsider the pitch conditions and recent team performances when making your choice!";
+    return "🏏 **Captain Strategy (Basic Mode):**\n\nFor captain picks, focus on:\n• Top-order batsmen with consistent form\n• All-rounders who contribute with both bat and ball\n• Key bowlers on favorable pitches\n• Players with good recent performances\n\n⚠️ **Note:** This is basic advice. Live data and AI analysis are currently unavailable.";
   }
   
   if (queryLower.includes("score") || queryLower.includes("live")) {
     if (matches.length > 0) {
-      return `📺 **Match Update:**\n\nI found ${matches.length} cricket matches in our database. The most recent match is "${matches[0].name}" with status: ${matches[0].status}.\n\nCheck the Matches tab for more detailed information!`;
+      return `📺 **Match Update (Basic Mode):**\n\nI found ${matches.length} cricket matches in our database. The most recent match is "${matches[0].name}" with status: ${matches[0].status}.\n\n⚠️ **Note:** Live scoring data may not be current. Check the Matches tab for more details.`;
     }
-    return "⚠️ **No Live Data:**\n\nNo live matches found at the moment. This could be due to:\n• No matches currently scheduled\n• API connectivity issues\n• Maintenance period\n\nPlease check back later for live updates!";
+    return "❌ **No Live Data:**\n\nNo live matches found. This could be due to:\n• No matches currently scheduled\n• CrickAPI connectivity issues\n• API rate limits exceeded\n• Server maintenance\n\nPlease try again later!";
   }
   
   if (queryLower.includes("player") || queryLower.includes("stats")) {
-    return "👤 **Player Analysis (Offline Mode):**\n\nFor player selection, consider:\n• Recent batting/bowling averages\n• Performance against specific teams\n• Home vs away record\n• Current form in the tournament\n• Pitch and weather conditions\n\nFocus on players who have been consistently performing in similar match situations!";
+    return "👤 **Player Analysis (Basic Mode):**\n\nFor player selection, consider:\n• Recent batting/bowling averages\n• Performance against specific teams\n• Home vs away record\n• Current form in the tournament\n• Pitch and weather conditions\n\n⚠️ **Note:** Live player stats are unavailable. Using general strategy guidance.";
   }
   
-  return "🤖 **Cricket Assistant (Basic Mode):**\n\nI'm currently running in offline mode but can still help with:\n• General cricket strategy and tips\n• Fantasy team building advice\n• Player role explanations\n• Match format strategies\n\nAsk me specific questions about cricket strategy, and I'll do my best to help with my cricket knowledge!";
+  return "🤖 **Cricket Assistant (Basic Mode):**\n\nI'm currently running in basic mode due to API connectivity issues, but I can still help with:\n• General cricket strategy and tips\n• Fantasy team building advice\n• Player role explanations\n• Match format strategies\n\n⚠️ **Status:** Live data and AI features are temporarily unavailable.\n\nAsk me specific questions about cricket strategy!";
 };
 
 // Suggest players for fantasy team

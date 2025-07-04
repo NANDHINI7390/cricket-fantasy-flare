@@ -118,44 +118,89 @@ export interface PlayerInfo {
 
 export const fetchMatches = async (): Promise<Match[]> => {
   try {
+    console.log("🏏 Fetching matches with API key:", API_KEY.substring(0, 8) + "...");
     const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
       params: {
         apikey: API_KEY,
         offset: 0
-      }
+      },
+      timeout: 10000 // 10 second timeout
     });
-    return response.data.data || [];
+    
+    console.log("🏏 CrickAPI Response Status:", response.status);
+    console.log("🏏 CrickAPI Response Data:", response.data);
+    
+    if (response.data && response.data.status === "success") {
+      console.log("✅ CrickAPI Success - Found", response.data.data?.length || 0, "matches");
+      return response.data.data || [];
+    } else {
+      console.error("❌ CrickAPI Error Response:", response.data);
+      return [];
+    }
   } catch (error) {
-    console.error("Error fetching matches:", error);
+    console.error("❌ Error fetching matches:", error);
+    if (error.response) {
+      console.error("❌ Response error:", error.response.status, error.response.data);
+    }
     return [];
   }
 };
 
 export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
   try {
+    console.log("🏏 Fetching live matches with API key:", API_KEY.substring(0, 8) + "...");
     const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
       params: {
         apikey: API_KEY,
         offset: 0
-      }
+      },
+      timeout: 10000
     });
-    return response.data.data || [];
+    
+    console.log("🏏 Live Matches Response Status:", response.status);
+    console.log("🏏 Live Matches Response:", response.data);
+    
+    if (response.data && response.data.status === "success") {
+      console.log("✅ Live Matches Success - Found", response.data.data?.length || 0, "matches");
+      return response.data.data || [];
+    } else {
+      console.error("❌ Live Matches Error:", response.data);
+      return [];
+    }
   } catch (error) {
-    console.error("Error fetching live matches:", error);
+    console.error("❌ Error fetching live matches:", error);
+    if (error.response) {
+      console.error("❌ Live matches response error:", error.response.status, error.response.data);
+    }
     return [];
   }
 };
 
 export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
   try {
+    console.log("🏏 Fetching live scores with API key:", API_KEY.substring(0, 8) + "...");
     const response = await axios.get(`${API_ENDPOINT}/cricScore`, {
       params: {
         apikey: API_KEY
-      }
+      },
+      timeout: 10000
     });
-    return response.data.data || [];
+    
+    console.log("🏏 Live Scores Response Status:", response.status);
+    console.log("🏏 Live Scores Response:", response.data);
+    
+    if (response.data && response.data.status === "success") {
+      console.log("✅ Live Scores Success - Found", response.data.data?.length || 0, "scores");
+      return response.data.data || [];
+    } else {
+      console.error("❌ Live Scores Error:", response.data);
+      return [];
+    }
   } catch (error) {
-    console.error("Error fetching live scores:", error);
+    console.error("❌ Error fetching live scores:", error);
+    if (error.response) {
+      console.error("❌ Live scores response error:", error.response.status, error.response.data);
+    }
     return [];
   }
 };
