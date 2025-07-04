@@ -39,24 +39,27 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Processing ${requestType} query with smart prompting: ${useSmartPrompting}`);
+    console.log(`Processing ${requestType} query:`, query);
+    console.log(`Smart prompting enabled:`, useSmartPrompting);
+    console.log(`OpenAI API Key available:`, !!OPENAI_API_KEY);
 
     let message: string;
     let playerStats: any;
 
-    // Use OpenAI with smart prompting if API key is available
+    // Use OpenAI if API key is available
     if (OPENAI_API_KEY && useSmartPrompting) {
       try {
-        const aiResponse = await generateSmartAIResponse(query, cricketData, requestType);
+        console.log("Calling OpenAI with cricket data:", !!cricketData);
+        const aiResponse = await generateOpenAIResponse(query, cricketData, requestType);
         message = aiResponse.message;
         playerStats = aiResponse.playerStats;
       } catch (error) {
-        console.error("Error with OpenAI:", error);
+        console.error("OpenAI API error:", error);
         // Fallback to basic response
         message = generateBasicResponse(query, cricketData);
       }
     } else {
-      // Basic response without OpenAI
+      console.log("Using basic response (no OpenAI key or smart prompting disabled)");
       message = generateBasicResponse(query, cricketData);
     }
     
@@ -64,20 +67,20 @@ serve(async (req: Request) => {
       JSON.stringify({
         message,
         playerStats,
-        hasData: cricketData?.matches?.length > 0,
+        hasData: cricketData?.matches?.length > 0 || cricketData?.currentMatches?.length > 0,
         requestType,
-        aiEnhanced: !!OPENAI_API_KEY
+        aiEnhanced: !!OPENAI_API_KEY && useSmartPrompting
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   } catch (error) {
-    console.error(`Error processing request: ${error.message}`);
+    console.error(`Edge function error:`, error);
     return new Response(
       JSON.stringify({ 
         error: "Server error", 
-        message: "Sorry, I encountered an error processing your request." 
+        message: "Sorry, I encountered an error processing your request. Please try again." 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -87,37 +90,37 @@ serve(async (req: Request) => {
   }
 });
 
-// Smart AI response generation using OpenAI with enhanced prompting
-async function generateSmartAIResponse(query: string, cricketData: any, requestType: string): Promise<{ message: string; playerStats?: any[] }> {
+// OpenAI response generation
+async function generateOpenAIResponse(query: string, cricketData: any, requestType: string): Promise<{ message: string; playerStats?: any[] }> {
   if (!OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
   }
 
-  // Create smart prompting structure
+  console.log("Preparing OpenAI request...");
+
   const messages = [
     {
       role: "system",
-      content: `You are a cricket fantasy assistant that uses live match/player data when available. If live data is missing, provide the best intelligent guess using your cricket knowledge.
+      content: `You are an expert cricket fantasy assistant. Provide specific, actionable advice for fantasy cricket.
 
-IMPORTANT GUIDELINES:
-- Always provide specific, actionable advice
-- Use data when available, cricket knowledge when not
-- Be confident but explain your reasoning
-- Focus on fantasy cricket optimization
-- Provide captain, vice-captain, and strategic insights
-- Consider recent form, match conditions, and value picks
+GUIDELINES:
+- Give clear captain/vice-captain recommendations with reasoning
+- Consider recent form, pitch conditions, and match context
+- Provide value picks and strategy tips
+- Be confident but explain your logic
+- Focus on fantasy points optimization
 
-Response Style: Be conversational, engaging, and provide clear recommendations with reasoning.`
+If live data is available, use it. If not, use your cricket knowledge to give the best possible advice.`
     },
     {
       role: "user",
-      content: `User asked: '${query}'`
+      content: `User question: "${query}"`
     }
   ];
 
   // Add cricket data context if available
   if (cricketData && Object.keys(cricketData).length > 0) {
-    let dataContext = "Here is the current cricket data:\n\n";
+    let dataContext = "Current cricket data:\n\n";
     
     if (cricketData.matches?.length > 0) {
       dataContext += "**Live Matches:**\n";
@@ -126,7 +129,7 @@ Response Style: Be conversational, engaging, and provide clear recommendations w
         if (match.teams) {
           dataContext += `  Teams: ${match.teams.join(' vs ')}\n`;
         }
-        if (match.score && match.score.length > 0) {
+        if (match.score?.length > 0) {
           dataContext += `  Score: `;
           match.score.forEach((s: any) => {
             dataContext += `${s.inning}: ${s.r}/${s.w} (${s.o} overs) `;
@@ -136,20 +139,11 @@ Response Style: Be conversational, engaging, and provide clear recommendations w
       });
     }
 
-    if (cricketData.fantasyData?.length > 0) {
-      dataContext += "\n**Fantasy Data Available:**\n";
-      cricketData.fantasyData.forEach((data: any) => {
-        if (data.squad) {
-          dataContext += `- Squad data for match ${data.matchId}\n`;
-        }
-        if (data.points) {
-          dataContext += `- Fantasy points data for match ${data.matchId}\n`;
-        }
+    if (cricketData.currentMatches?.length > 0) {
+      dataContext += "\n**Current Matches:**\n";
+      cricketData.currentMatches.slice(0, 3).forEach((match: any) => {
+        dataContext += `- ${match.name || 'Match'}: ${match.status || 'Status unknown'}\n`;
       });
-    }
-
-    if (cricketData.players?.length > 0) {
-      dataContext += `\n**Player Information:** ${cricketData.players.length} players available\n`;
     }
 
     messages.push({
@@ -159,11 +153,13 @@ Response Style: Be conversational, engaging, and provide clear recommendations w
   } else {
     messages.push({
       role: "user",
-      content: "Live data from CrickAPI is currently unavailable. Please use your best cricket knowledge to provide helpful advice."
+      content: "Live cricket data is currently unavailable. Please use your extensive cricket knowledge to provide the best possible fantasy advice."
     });
   }
 
   try {
+    console.log("Making OpenAI API call...");
+    
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -174,17 +170,19 @@ Response Style: Be conversational, engaging, and provide clear recommendations w
         model: "gpt-4o",
         messages,
         temperature: 0.7,
-        max_tokens: 1000
+        max_tokens: 800
       })
     });
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenAI API error:", errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error("OpenAI API error response:", errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
+    console.log("OpenAI response received successfully");
+    
     const aiMessage = data.choices[0].message.content;
     
     // Extract player recommendations for structured display
@@ -216,30 +214,32 @@ Response Style: Be conversational, engaging, and provide clear recommendations w
       playerStats: playerStats.length > 0 ? playerStats : undefined
     };
   } catch (error) {
-    console.error("Error calling OpenAI API:", error);
+    console.error("Error in OpenAI API call:", error);
     throw error;
   }
 }
 
-// Basic response fallback when OpenAI is not available
+// Basic response fallback
 function generateBasicResponse(query: string, cricketData: any): string {
   const queryLower = query.toLowerCase();
   
+  console.log("Generating basic response for query:", queryLower);
+  
   if (queryLower.includes("captain") || queryLower.includes("team")) {
-    return "🏏 For captain picks, I recommend focusing on top-order batsmen who are in good form. Look for players with consistent run-scoring ability and consider the pitch conditions. All-rounders can also be excellent captain choices as they contribute with both bat and ball.";
+    return "🏏 **Captain Recommendation Strategy:**\n\nFor fantasy captain picks, consider:\n• Top-order batsmen in good form\n• All-rounders who contribute with bat and ball\n• Bowlers on bowling-friendly pitches\n• Players with consistent recent performances\n\nLook for players who are likely to get more overs/chances to perform!";
   }
   
   if (queryLower.includes("score") || queryLower.includes("live")) {
-    if (cricketData?.matches?.length > 0) {
-      const match = cricketData.matches[0];
-      return `📺 ${match.name || 'Current match'} - Status: ${match.status || 'In progress'}. Check the live scores for detailed information.`;
+    if (cricketData?.matches?.length > 0 || cricketData?.currentMatches?.length > 0) {
+      const matchCount = (cricketData.matches?.length || 0) + (cricketData.currentMatches?.length || 0);
+      return `📺 **Live Cricket Update:**\n\nFound ${matchCount} cricket matches. Check the Matches tab for detailed scores and updates!`;
     }
-    return "⚠️ No live matches found at the moment. Please check back later for live updates.";
+    return "⚠️ **No Live Matches:**\n\nNo live cricket matches found at the moment. Please check back later for live scores and updates.";
   }
   
   if (queryLower.includes("player") || queryLower.includes("stats")) {
-    return "👤 For player analysis, consider recent form, playing conditions, and head-to-head records. Look for players who have been consistent in similar match situations.";
+    return "👤 **Player Analysis Strategy:**\n\nFor player selection, consider:\n• Recent form and consistency\n• Head-to-head records against opponent\n• Performance in similar conditions\n• Current team role and batting position\n\nFocus on players who have been performing consistently in recent matches!";
   }
   
-  return "🤖 I'm here to help with cricket fantasy strategies! Ask me about captain picks, player analysis, live scores, or team building tips. I work best when you ask specific questions about players or matches.";
+  return "🤖 **Cricket Fantasy Assistant Ready!**\n\nI'm here to help with:\n• Captain and team suggestions\n• Live cricket scores and updates\n• Player analysis and form guide\n• Fantasy strategy and tips\n\nAsk me specific questions about players, matches, or fantasy strategy!";
 }
