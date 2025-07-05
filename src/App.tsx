@@ -19,6 +19,8 @@ import Wallet from "./pages/Wallet";
 import JoinLeague from "./pages/JoinLeague";
 import Analytics from "./pages/Analytics";
 import AIOptimizer from "./pages/AIOptimizer";
+import PlayerAnalysis from "./pages/PlayerAnalysis";
+import AdminPanel from "./pages/AdminPanel";
 import TermsConditions from "./components/TermsConditions";
 
 import { useEffect } from "react";
@@ -78,6 +80,8 @@ const App = () => {
                     <Route path="/leagues" element={<LeaguePage />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/ai-optimizer" element={<AIOptimizer />} />
+                    <Route path="/player-analysis" element={<PlayerAnalysis />} />
+                    <Route path="/admin" element={<AdminPanel />} />
                     <Route path="/terms" element={<TermsConditions />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

@@ -15,6 +15,7 @@ import {
   CreditCard,
   ListChecks,
   Wallet,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +68,7 @@ const Navbar = () => {
     { label: "Home", path: "/", icon: <Home className="h-4 w-4 mr-2" /> },
     { label: "Leagues", path: "/leagues", icon: <ListChecks className="h-4 w-4 mr-2" /> }, // Added Leagues
     { label: "Contests", path: "/contests", icon: <Trophy className="h-4 w-4 mr-2" /> },
+    { label: "Player Analysis", path: "/player-analysis", icon: <BarChart3 className="h-4 w-4 mr-2" /> },
     { label: "Leaderboard", path: "/leaderboard", icon: <Users className="h-4 w-4 mr-2" /> },
     { label: "My Teams", path: "/my-teams", icon: <UserCircle className="h-4 w-4 mr-2" /> },
   ];

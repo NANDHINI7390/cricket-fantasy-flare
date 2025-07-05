@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, PlusCircle, Trophy, Users, Calendar, Shield, Coins, Share2 } from "lucide-react";
+import LeagueDetailsModal from "@/components/LeagueDetailsModal";
 
 // Type definition for the League data
 type League = {
@@ -41,6 +42,8 @@ const LeaguePage = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
   // Fetch leagues from localStorage on component mount
@@ -87,6 +90,12 @@ const LeaguePage = () => {
   // Navigate to home page to create a new league
   const handleCreateLeague = () => {
     navigate("/");
+  };
+
+  // Handle view details
+  const handleViewDetails = (league: League) => {
+    setSelectedLeague(league);
+    setIsModalOpen(true);
   };
 
   // Loading state
@@ -200,7 +209,7 @@ const LeaguePage = () => {
               <Button
                 variant="outline"
                 className="border-teal-500 text-teal-500 hover:bg-teal-50"
-                onClick={() => console.log(`View details for league ${league.id}`)}
+                onClick={() => handleViewDetails(league)}
               >
                 View Details
               </Button>
@@ -232,6 +241,12 @@ const LeaguePage = () => {
           </Card>
         ))}
       </div>
+
+      <LeagueDetailsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        league={selectedLeague}
+      />
     </div>
   );
 };
