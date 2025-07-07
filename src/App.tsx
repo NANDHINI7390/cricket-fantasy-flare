@@ -20,6 +20,7 @@ import JoinLeague from "./pages/JoinLeague";
 import Analytics from "./pages/Analytics";
 import AIOptimizer from "./pages/AIOptimizer";
 import PlayerAnalysis from "./pages/PlayerAnalysis";
+import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import TermsConditions from "./components/TermsConditions";
 import Subscription from "./pages/Subscription";
@@ -73,6 +74,7 @@ const App = () => {
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/create-team" element={<CreateTeam />} />
                     <Route path="/contests" element={<Contests />} />
                     <Route path="/leaderboard" element={<Leaderboard />} />
