@@ -22,6 +22,9 @@ import AIOptimizer from "./pages/AIOptimizer";
 import PlayerAnalysis from "./pages/PlayerAnalysis";
 import AdminPanel from "./pages/AdminPanel";
 import TermsConditions from "./components/TermsConditions";
+import Subscription from "./pages/Subscription";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCanceled from "./pages/PaymentCanceled";
 
 import { useEffect } from "react";
 import { initSentry } from "./integrations/sentry/config";
@@ -83,6 +86,9 @@ const App = () => {
                     <Route path="/player-analysis" element={<PlayerAnalysis />} />
                     <Route path="/admin" element={<AdminPanel />} />
                     <Route path="/terms" element={<TermsConditions />} />
+                    <Route path="/subscription" element={<Subscription />} />
+                    <Route path="/payment-success" element={<PaymentSuccess />} />
+                    <Route path="/payment-canceled" element={<PaymentCanceled />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>

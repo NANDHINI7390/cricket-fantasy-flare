@@ -16,6 +16,7 @@ import {
   ListChecks,
   Wallet,
   BarChart3,
+  Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,6 +72,7 @@ const Navbar = () => {
     { label: "Player Analysis", path: "/player-analysis", icon: <BarChart3 className="h-4 w-4 mr-2" /> },
     { label: "Leaderboard", path: "/leaderboard", icon: <Users className="h-4 w-4 mr-2" /> },
     { label: "My Teams", path: "/my-teams", icon: <UserCircle className="h-4 w-4 mr-2" /> },
+    { label: "Subscription", path: "/subscription", icon: <Crown className="h-4 w-4 mr-2" /> },
   ];
 
   const handleLogout = async () => {
