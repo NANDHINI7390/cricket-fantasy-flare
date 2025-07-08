@@ -89,17 +89,24 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-gradient-to-r from-purple-700 to-indigo-800 text-white shadow-md">
+    <nav className="bg-gradient-to-r from-purple-700 via-blue-600 to-indigo-800 text-white shadow-lg border-b border-white/10">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16 ">
+        <div className="flex items-center justify-between h-16">
           {/* Logo and brand */}
-          <Link to="/" className="flex items-center space-x-2 text-xl font-bold">
-            <span className="text-white">Cricket</span>
-            <span className="text-purple-200">Fantasy</span>
+          <Link to="/" className="flex items-center space-x-3 text-xl font-bold hover:opacity-80 transition-opacity">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-lg font-black">🏏</span>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-white text-lg leading-none">Cricket AI</span>
+                <span className="text-purple-200 text-xs leading-none">Fantasy Elite</span>
+              </div>
+            </div>
           </Link>
 
           {/* Desktop navigation */}
-          <div className="hidden md:flex items-center space-x-1">
+          <div className="hidden md:flex items-center space-x-2">
             {mainMenuItems.map((item) => (
               <NavLink
                 key={item.path}
