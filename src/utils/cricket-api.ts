@@ -147,6 +147,19 @@ export const fetchMatches = async (): Promise<Match[]> => {
 };
 
 export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
+  const { cacheService, CacheKeys } = await import('./cache-service');
+  const cacheKey = CacheKeys.liveMatches();
+  
+  // Check cache first
+  const cachedData = cacheService.get<CricketMatch[]>(cacheKey);
+  if (cachedData) {
+    console.log("🏏 Using cached live matches data");
+    cacheService.recordHit();
+    return cachedData;
+  }
+  
+  cacheService.recordMiss();
+  
   try {
     console.log("🏏 Fetching live matches with API key:", API_KEY.substring(0, 8) + "...");
     const response = await axios.get(`${API_ENDPOINT}/currentMatches`, {
@@ -154,53 +167,99 @@ export const fetchLiveMatches = async (): Promise<CricketMatch[]> => {
         apikey: API_KEY,
         offset: 0
       },
-      timeout: 10000
+      timeout: 15000, // Increased timeout
+      headers: {
+        'User-Agent': 'CricketFantasyApp/1.0'
+      }
     });
     
     console.log("🏏 Live Matches Response Status:", response.status);
-    console.log("🏏 Live Matches Response:", response.data);
     
     if (response.data && response.data.status === "success") {
-      console.log("✅ Live Matches Success - Found", response.data.data?.length || 0, "matches");
-      return response.data.data || [];
+      const matches = response.data.data || [];
+      console.log("✅ Live Matches Success - Found", matches.length, "matches");
+      
+      // Cache successful response
+      cacheService.set(cacheKey, matches);
+      return matches;
     } else {
       console.error("❌ Live Matches Error:", response.data);
-      return [];
+      throw new Error(`API Error: ${response.data?.status || 'Unknown error'}`);
     }
   } catch (error) {
     console.error("❌ Error fetching live matches:", error);
     if (error.response) {
-      console.error("❌ Live matches response error:", error.response.status, error.response.data);
+      console.error("❌ API Response Error:", error.response.status, error.response.data);
+      
+      // Handle rate limiting
+      if (error.response.status === 429) {
+        throw new Error("API rate limit exceeded. Please upgrade your CricAPI subscription.");
+      }
+      
+      // Handle API key issues
+      if (error.response.status === 401) {
+        throw new Error("Invalid API key. Please check your CricAPI credentials.");
+      }
     }
+    
+    // Return empty array instead of throwing for network errors
     return [];
   }
 };
 
 export const fetchLiveScores = async (): Promise<CricketMatch[]> => {
+  const { cacheService, CacheKeys } = await import('./cache-service');
+  const cacheKey = CacheKeys.liveScores();
+  
+  // Check cache first
+  const cachedData = cacheService.get<CricketMatch[]>(cacheKey);
+  if (cachedData) {
+    console.log("🏏 Using cached live scores data");
+    cacheService.recordHit();
+    return cachedData;
+  }
+  
+  cacheService.recordMiss();
+  
   try {
     console.log("🏏 Fetching live scores with API key:", API_KEY.substring(0, 8) + "...");
     const response = await axios.get(`${API_ENDPOINT}/cricScore`, {
       params: {
         apikey: API_KEY
       },
-      timeout: 10000
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'CricketFantasyApp/1.0'
+      }
     });
     
     console.log("🏏 Live Scores Response Status:", response.status);
-    console.log("🏏 Live Scores Response:", response.data);
     
     if (response.data && response.data.status === "success") {
-      console.log("✅ Live Scores Success - Found", response.data.data?.length || 0, "scores");
-      return response.data.data || [];
+      const scores = response.data.data || [];
+      console.log("✅ Live Scores Success - Found", scores.length, "scores");
+      
+      // Cache successful response
+      cacheService.set(cacheKey, scores);
+      return scores;
     } else {
       console.error("❌ Live Scores Error:", response.data);
-      return [];
+      throw new Error(`API Error: ${response.data?.status || 'Unknown error'}`);
     }
   } catch (error) {
     console.error("❌ Error fetching live scores:", error);
     if (error.response) {
-      console.error("❌ Live scores response error:", error.response.status, error.response.data);
+      console.error("❌ API Response Error:", error.response.status, error.response.data);
+      
+      if (error.response.status === 429) {
+        throw new Error("API rate limit exceeded. Please upgrade your CricAPI subscription.");
+      }
+      
+      if (error.response.status === 401) {
+        throw new Error("Invalid API key. Please check your CricAPI credentials.");
+      }
     }
+    
     return [];
   }
 };

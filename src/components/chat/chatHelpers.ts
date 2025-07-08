@@ -271,14 +271,46 @@ const generateFallbackResponse = (query: string, matches: CricketMatch[]): strin
   return "🤖 **Cricket Assistant (Basic Mode):**\n\nI'm currently running in basic mode due to API connectivity issues, but I can still help with:\n• General cricket strategy and tips\n• Fantasy team building advice\n• Player role explanations\n• Match format strategies\n\n⚠️ **Status:** Live data and AI features are temporarily unavailable.\n\nAsk me specific questions about cricket strategy!";
 };
 
-// Suggest players for fantasy team
-export const suggestPlayers = (query: string): { content: string; playerSuggestions: { captain?: Player; viceCaptain?: Player; allrounders?: Player[] } } => {
+// Suggest players for fantasy team using real API data
+export const suggestPlayers = async (query: string): Promise<{ content: string; playerSuggestions: { captain?: Player; viceCaptain?: Player; allrounders?: Player[] } }> => {
+  try {
+    // Try to get real players from database first
+    const { data: realPlayers, error } = await supabase
+      .from('players')
+      .select('*')
+      .limit(10);
+
+    if (!error && realPlayers && realPlayers.length > 0) {
+      // Transform database players to match Player interface
+      const transformedPlayers: Player[] = realPlayers.map(p => ({
+        ...p,
+        role: p.role as 'batsman' | 'bowler' | 'allrounder' | 'wicketkeeper'
+      }));
+      
+      const captain = transformedPlayers.find(p => p.role === 'batsman') || transformedPlayers[0];
+      const viceCaptain = transformedPlayers.find(p => p.role === 'allrounder') || transformedPlayers[1];
+      const allrounders = transformedPlayers.filter(p => p.role === 'allrounder').slice(0, 3);
+      
+      return {
+        content: "Here are my enhanced fantasy team recommendations based on real player data:",
+        playerSuggestions: {
+          captain,
+          viceCaptain,
+          allrounders
+        }
+      };
+    }
+  } catch (error) {
+    console.error("Error fetching real players:", error);
+  }
+
+  // Fallback to mock data if real data unavailable
   const captain = mockPlayers.find(p => p.id === "p1");
   const viceCaptain = mockPlayers.find(p => p.id === "p4");
   const allrounders = mockPlayers.filter(p => p.role === "allrounder");
   
   return {
-    content: "Here are my enhanced fantasy team recommendations based on analysis:",
+    content: "Here are my fantasy team recommendations (using sample data - connect to real API for live suggestions):",
     playerSuggestions: {
       captain,
       viceCaptain,
