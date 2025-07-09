@@ -161,6 +161,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string
+          id: string
+          message: string
+          priority: string
+          read: boolean
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          priority?: string
+          read?: boolean
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          priority?: string
+          read?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number | null
@@ -234,18 +273,21 @@ export type Database = {
         Row: {
           avatar_url: string | null
           id: string
+          role: string | null
           updated_at: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           id: string
+          role?: string | null
           updated_at?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           id?: string
+          role?: string | null
           updated_at?: string | null
           username?: string | null
         }
@@ -415,7 +457,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      admin_stats: {
+        Row: {
+          active_contests: number | null
+          total_contests: number | null
+          total_entries: number | null
+          total_revenue: number | null
+          total_teams: number | null
+          total_users: number | null
+        }
+        Relationships: []
+      }
+      leaderboard: {
+        Row: {
+          avatar_url: string | null
+          contests_joined: number | null
+          email: string | null
+          id: string | null
+          rank: number | null
+          teams_created: number | null
+          total_points: number | null
+          total_winnings: number | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       join_contest: {

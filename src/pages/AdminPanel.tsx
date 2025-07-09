@@ -121,15 +121,29 @@ const AdminPanel = () => {
 
   const fetchAdminStats = async () => {
     try {
-      // Mock admin stats for now
+      // Fetch real admin stats from database view
+      const { data, error } = await supabase
+        .from('admin_stats')
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
       setAdminStats({
-        totalUsers: 1247,
-        totalContests: contests.length,
-        totalRevenue: 125000,
-        activeContests: contests.filter(c => c.filled_spots < c.total_spots).length
+        totalUsers: data?.total_users || 0,
+        totalContests: data?.total_contests || 0,
+        totalRevenue: data?.total_revenue || 0,
+        activeContests: data?.active_contests || 0
       });
     } catch (error) {
       console.error("Error fetching admin stats:", error);
+      // Fallback to basic stats if view fails
+      setAdminStats({
+        totalUsers: 0,
+        totalContests: contests.length,
+        totalRevenue: 0,
+        activeContests: contests.filter(c => c.filled_spots < c.total_spots).length
+      });
     }
   };
 

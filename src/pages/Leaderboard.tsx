@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Trophy, Medal, TrendingUp, Search, Filter, ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -19,24 +21,12 @@ interface User {
   change: 'up' | 'down' | 'same';
 }
 
-// Sample leaderboard data
-const sampleUsers: User[] = [
-  { id: "1", name: "Virat Shahh", username: "kingkohli", avatar: "https://randomuser.me/api/portraits/men/32.jpg", rank: 1, points: 1289, teams: 12, winnings: 25000, change: 'same' },
-  { id: "2", name: "Rohit Malhotra", username: "hitman45", avatar: "https://randomuser.me/api/portraits/men/44.jpg", rank: 2, points: 1187, teams: 15, winnings: 18000, change: 'up' },
-  { id: "3", name: "Mahendra Singh", username: "captaincool07", avatar: "https://randomuser.me/api/portraits/men/67.jpg", rank: 3, points: 1142, teams: 10, winnings: 15000, change: 'down' },
-  { id: "4", name: "Ajay Patel", username: "cricket_king", avatar: "https://randomuser.me/api/portraits/men/55.jpg", rank: 4, points: 1098, teams: 14, winnings: 12000, change: 'up' },
-  { id: "5", name: "Priya Sharma", username: "fantasy_queen", avatar: "https://randomuser.me/api/portraits/women/22.jpg", rank: 5, points: 1065, teams: 8, winnings: 10000, change: 'up' },
-  { id: "6", name: "Rahul Mehta", username: "rahul_fantasy", avatar: "https://randomuser.me/api/portraits/men/11.jpg", rank: 6, points: 1032, teams: 11, winnings: 8000, change: 'down' },
-  { id: "7", name: "Anita Gupta", username: "anita_cricket", avatar: "https://randomuser.me/api/portraits/women/45.jpg", rank: 7, points: 987, teams: 9, winnings: 7500, change: 'down' },
-  { id: "8", name: "Deepak Verma", username: "deep_cricket", avatar: "https://randomuser.me/api/portraits/men/36.jpg", rank: 8, points: 954, teams: 7, winnings: 6000, change: 'same' },
-  { id: "9", name: "Nikhil Kapoor", username: "nikhil007", avatar: "https://randomuser.me/api/portraits/men/82.jpg", rank: 9, points: 923, teams: 12, winnings: 5500, change: 'up' },
-  { id: "10", name: "Sneha Joshi", username: "sneha_fantasy", avatar: "https://randomuser.me/api/portraits/women/67.jpg", rank: 10, points: 889, teams: 10, winnings: 5000, change: 'down' },
-  // Add more users as needed
-];
-
 const timeframes = ["Today", "This Week", "This Month", "All Time"];
 
 const Leaderboard = () => {
+  // Real leaderboard data from database
+  const [leaderboardData, setLeaderboardData] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTimeframe, setSelectedTimeframe] = useState("This Week");
   const [sortBy, setSortBy] = useState("points");
@@ -47,7 +37,46 @@ const Leaderboard = () => {
   ]);
   const [selectedContest, setSelectedContest] = useState("all");
 
-  const filteredUsers = sampleUsers.filter(user => 
+  // Fetch real leaderboard data
+  useEffect(() => {
+    fetchLeaderboardData();
+  }, [selectedTimeframe, sortBy]);
+
+  const fetchLeaderboardData = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('leaderboard')
+        .select('*')
+        .limit(50);
+
+      if (error) throw error;
+
+      // Transform the data to match User interface
+      const transformedData: User[] = (data || []).map((item, index) => ({
+        id: item.id || `user_${index}`,
+        name: item.username || 'Unknown User',
+        username: item.username || `user${index}`,
+        avatar: item.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.username || index}`,
+        rank: item.rank || index + 1,
+        points: item.total_points || 0,
+        teams: item.teams_created || 0,
+        winnings: item.total_winnings || 0,
+        change: 'same' as const // We could calculate this based on historical data
+      }));
+
+      setLeaderboardData(transformedData);
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      toast.error('Failed to load leaderboard data');
+      // Fallback to empty array
+      setLeaderboardData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredUsers = leaderboardData.filter(user => 
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.username.toLowerCase().includes(searchQuery.toLowerCase())
   ).sort((a, b) => {
@@ -172,7 +201,20 @@ const Leaderboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredUsers.map((user, index) => (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      Loading leaderboard data...
+                    </td>
+                  </tr>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      No players found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user, index) => (
                   <tr key={user.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -206,7 +248,8 @@ const Leaderboard = () => {
                       ₹{user.winnings.toLocaleString()}
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>

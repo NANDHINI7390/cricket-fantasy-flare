@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import NotificationSystem from "./NotificationSystem";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -123,6 +124,7 @@ const Navbar = () => {
 
             {isLoading ? null : user ? (
               <>
+                <NotificationSystem />
                 <NavLink
                   to={"/wallet"}
                   className={({ isActive }) =>
