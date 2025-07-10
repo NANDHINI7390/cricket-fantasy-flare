@@ -87,9 +87,9 @@ const LeaguePage = () => {
     window.open(whatsappUrl, "_blank");
   };
 
-  // Navigate to upcoming matches to create a new league
+  // Navigate to home page to create a new league
   const handleCreateLeague = () => {
-    navigate("/upcoming-matches");
+    navigate("/");
   };
 
   // Handle view details

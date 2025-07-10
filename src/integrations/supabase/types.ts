@@ -161,149 +161,6 @@ export type Database = {
         }
         Relationships: []
       }
-      fantasy_contests: {
-        Row: {
-          contest_type: string | null
-          created_at: string
-          deadline: string
-          entry_fee: number
-          filled_spots: number
-          first_prize: number
-          guaranteed_prize: boolean | null
-          id: string
-          is_active: boolean | null
-          match_id: string
-          max_entries_per_user: number | null
-          max_team_size: number | null
-          min_team_size: number | null
-          name: string
-          prize_pool: number
-          total_spots: number
-          updated_at: string
-          winning_percentage: number
-        }
-        Insert: {
-          contest_type?: string | null
-          created_at?: string
-          deadline: string
-          entry_fee?: number
-          filled_spots?: number
-          first_prize: number
-          guaranteed_prize?: boolean | null
-          id?: string
-          is_active?: boolean | null
-          match_id: string
-          max_entries_per_user?: number | null
-          max_team_size?: number | null
-          min_team_size?: number | null
-          name: string
-          prize_pool: number
-          total_spots: number
-          updated_at?: string
-          winning_percentage: number
-        }
-        Update: {
-          contest_type?: string | null
-          created_at?: string
-          deadline?: string
-          entry_fee?: number
-          filled_spots?: number
-          first_prize?: number
-          guaranteed_prize?: boolean | null
-          id?: string
-          is_active?: boolean | null
-          match_id?: string
-          max_entries_per_user?: number | null
-          max_team_size?: number | null
-          min_team_size?: number | null
-          name?: string
-          prize_pool?: number
-          total_spots?: number
-          updated_at?: string
-          winning_percentage?: number
-        }
-        Relationships: []
-      }
-      match_players: {
-        Row: {
-          created_at: string
-          id: string
-          is_playing_xi: boolean | null
-          match_id: string
-          player_id: string
-          team: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_playing_xi?: boolean | null
-          match_id: string
-          player_id: string
-          team: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_playing_xi?: boolean | null
-          match_id?: string
-          player_id?: string
-          team?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "match_players_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      matches: {
-        Row: {
-          created_at: string
-          date_time: string
-          id: string
-          match_id: string
-          name: string
-          status: string
-          team1_logo: string | null
-          team1_name: string
-          team2_logo: string | null
-          team2_name: string
-          updated_at: string
-          venue: string | null
-        }
-        Insert: {
-          created_at?: string
-          date_time: string
-          id?: string
-          match_id: string
-          name: string
-          status?: string
-          team1_logo?: string | null
-          team1_name: string
-          team2_logo?: string | null
-          team2_name: string
-          updated_at?: string
-          venue?: string | null
-        }
-        Update: {
-          created_at?: string
-          date_time?: string
-          id?: string
-          match_id?: string
-          name?: string
-          status?: string
-          team1_logo?: string | null
-          team1_name?: string
-          team2_logo?: string | null
-          team2_name?: string
-          updated_at?: string
-          venue?: string | null
-        }
-        Relationships: []
-      }
       notifications: {
         Row: {
           action_url: string | null
@@ -375,86 +232,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
-      }
-      player_performances: {
-        Row: {
-          balls_bowled: number | null
-          balls_faced: number | null
-          catches: number | null
-          created_at: string
-          economy_rate: number | null
-          fantasy_points: number | null
-          fours: number | null
-          id: string
-          is_duck: boolean | null
-          is_opener: boolean | null
-          maidens: number | null
-          match_id: string
-          player_id: string
-          run_outs: number | null
-          runs_conceded: number | null
-          runs_scored: number | null
-          sixes: number | null
-          strike_rate: number | null
-          stumpings: number | null
-          updated_at: string
-          wickets_taken: number | null
-        }
-        Insert: {
-          balls_bowled?: number | null
-          balls_faced?: number | null
-          catches?: number | null
-          created_at?: string
-          economy_rate?: number | null
-          fantasy_points?: number | null
-          fours?: number | null
-          id?: string
-          is_duck?: boolean | null
-          is_opener?: boolean | null
-          maidens?: number | null
-          match_id: string
-          player_id: string
-          run_outs?: number | null
-          runs_conceded?: number | null
-          runs_scored?: number | null
-          sixes?: number | null
-          strike_rate?: number | null
-          stumpings?: number | null
-          updated_at?: string
-          wickets_taken?: number | null
-        }
-        Update: {
-          balls_bowled?: number | null
-          balls_faced?: number | null
-          catches?: number | null
-          created_at?: string
-          economy_rate?: number | null
-          fantasy_points?: number | null
-          fours?: number | null
-          id?: string
-          is_duck?: boolean | null
-          is_opener?: boolean | null
-          maidens?: number | null
-          match_id?: string
-          player_id?: string
-          run_outs?: number | null
-          runs_conceded?: number | null
-          runs_scored?: number | null
-          sixes?: number | null
-          strike_rate?: number | null
-          stumpings?: number | null
-          updated_at?: string
-          wickets_taken?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "player_performances_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       players: {
         Row: {
@@ -592,12 +369,9 @@ export type Database = {
         Row: {
           captain_id: string | null
           created_at: string
-          final_rank: number | null
           id: string
-          is_locked: boolean | null
           match_id: string
           name: string
-          total_points: number | null
           updated_at: string
           user_id: string
           vice_captain_id: string | null
@@ -605,12 +379,9 @@ export type Database = {
         Insert: {
           captain_id?: string | null
           created_at?: string
-          final_rank?: number | null
           id?: string
-          is_locked?: boolean | null
           match_id: string
           name: string
-          total_points?: number | null
           updated_at?: string
           user_id: string
           vice_captain_id?: string | null
@@ -618,12 +389,9 @@ export type Database = {
         Update: {
           captain_id?: string | null
           created_at?: string
-          final_rank?: number | null
           id?: string
-          is_locked?: boolean | null
           match_id?: string
           name?: string
-          total_points?: number | null
           updated_at?: string
           user_id?: string
           vice_captain_id?: string | null
